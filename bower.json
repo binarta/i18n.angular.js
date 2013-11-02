@@ -1,5 +1,5 @@
 {
-    "name": "i18n.angular.js",
+    "name": "binarta.i18n.angular",
     "version": "0.0.0",
     "main": "./src/main/js/i18n.js",
     "dependencies": {
