@@ -1,5 +1,5 @@
 {
-    "name": "i18n.js",
+    "name": "i18n.angular.js",
     "version": "0.0.0",
     "main": "./src/main/js/i18n.js",
     "dependencies": {
