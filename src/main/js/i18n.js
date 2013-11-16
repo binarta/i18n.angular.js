@@ -32,8 +32,6 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
     return {
         require: '^i18nSupport',
         restrict: ['E', 'A'],
-        transclude: true,
-        templateUrl: 'app/partials/i18n/translation.html',
         scope: {
             code: '@',
             'default': '@',
@@ -55,13 +53,6 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
 
             scope.translating = false;
 
-            function resolve() {
-                i18n.resolve(scope, function (translation) {
-                    scope.var = translation;
-                    scope.translation = translation;
-                });
-            }
-
             topicRegistry.subscribe('edit.mode', function (editMode) {
                 activeUserHasPermission({
                     no: function () {
@@ -69,14 +60,18 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
                     },
                     yes: function () {
                         scope.translating = editMode;
+                        bindClickEvent(editMode);
                     }
                 }, 'i18n.message.add');
             });
-            function resolveWhenInitialized() {
-                scope.$watch('[code, default]', function () {
-                    initialized = true;
-                    resolve();
-                }, true);
+            function bindClickEvent(editMode) {
+                if (editMode) {
+                    element.bind("click", function () {
+                        scope.$apply(scope.translate());
+                    });
+                } else {
+                    element.unbind("click");
+                }
             }
 
             topicRegistry.subscribe('app.start', function () {
@@ -84,6 +79,17 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
                     initialized ? resolve() : resolveWhenInitialized();
                 });
             });
+            function resolve() {
+                i18n.resolve(scope, function (translation) {
+                    scope.var = translation;
+                });
+            }
+            function resolveWhenInitialized() {
+                scope.$watch('[code, default]', function () {
+                    initialized = true;
+                    resolve();
+                }, true);
+            }
         }
     };
 }
@@ -119,6 +125,7 @@ function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeU
         }
 
         function fallbackToDefaultWhenUnknown(translation) {
+            if(!context.default) context.default = 'place your text here';
             return isUnknown(translation) ? context.default : translation;
         }
 

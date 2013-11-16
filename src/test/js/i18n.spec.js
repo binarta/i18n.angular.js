@@ -102,7 +102,7 @@ describe('i18n', function () {
                 context.code = code;
                 resolver.resolve(context, presenter);
                 resolveTo(unknownCode);
-                expect(receivedTranslation).toEqual(unknownCode);
+                expect(receivedTranslation).toEqual('place your text here');
             });
 
             it('failed resolution fallback to default', function () {
@@ -423,7 +423,8 @@ describe('i18n', function () {
                 $watch: function (expression, callback) {
                     scope.watches[expression] = callback;
                 },
-                watches: {}
+                watches: {},
+                $apply: function(arg){}
             };
             resolver = {
                 resolve: function (args, callback) {
@@ -460,14 +461,6 @@ describe('i18n', function () {
             expect(directive.restrict).toEqual(['E', 'A']);
         });
 
-        it('transclude', function () {
-            expect(directive.transclude).toEqual(true);
-        });
-
-        it('template url', function () {
-            expect(directive.templateUrl).toEqual('app/partials/i18n/translation.html');
-        });
-
         it('scope', function () {
             expect(directive.scope).toEqual({
                 code: '@',
@@ -479,8 +472,19 @@ describe('i18n', function () {
         });
 
         describe('when linked', function () {
+            var clickEvent;
+            var clickHandler;
+            var element = {
+                bind: function(event, handler){
+                    clickEvent = event;
+                    clickHandler = handler;
+                },
+                unbind: function(event) {
+                    clickEvent = event;
+                }
+            }
             beforeEach(function () {
-                directive.link(scope);
+                directive.link(scope, element, null, support);
             });
 
             describe('and received edit.mode enabled notification', function () {
@@ -499,6 +503,19 @@ describe('i18n', function () {
 
                     it('the directive should enter translation mode', function () {
                         expect(scope.translating).toEqual(true);
+                    });
+
+                    describe('and element receives click event', function () {
+                        it('linker calls translate function', function() {
+                            scope.code = 'code';
+                            scope.var = 'var';
+
+                            clickHandler();
+
+                            expect(clickEvent).toEqual('click');
+                            expect(support.code).toEqual(scope.code);
+                            expect(support.var).toEqual(scope.var);
+                        });
                     });
                 });
 
@@ -536,6 +553,10 @@ describe('i18n', function () {
 
                         it('the directive should exit translation mode', function () {
                             expect(scope.translating).toEqual(false);
+                        });
+
+                        it('element should unbind click event', function () {
+                            expect(clickEvent).toEqual('click');
                         });
                     });
 
@@ -597,7 +618,6 @@ describe('i18n', function () {
 
                             it('exposes translation on scope', function () {
                                 expect(scope.var).toEqual('translation');
-                                expect(scope.translation).toEqual('translation');
                             });
                         });
 
@@ -617,6 +637,8 @@ describe('i18n', function () {
                                 expect(scope.watches).toEqual({});
                             });
                         });
+
+
                     });
                 });
             });
