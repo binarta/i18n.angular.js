@@ -87,7 +87,7 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
             function resolveWhenInitialized() {
                 scope.$watch('[code, default]', function () {
                     initialized = true;
-                    resolve();
+                    if (scope.code) resolve();
                 }, true);
             }
         }

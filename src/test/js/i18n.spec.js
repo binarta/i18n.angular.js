@@ -602,42 +602,57 @@ describe('i18n', function () {
                         expect(resolver.args).toEqual({});
                     });
 
-                    describe('and attribute change watch has triggered', function () {
+                    describe('and code is unknown', function () {
                         beforeEach(function () {
                             scope.watches['[code, default]']();
                         });
 
-                        it('triggers message resolution', function () {
-                            expect(resolver.args).toEqual(scope);
+                        it('does not trigger message resolution', function () {
+                            expect(resolver.args).toEqual({});
+                        });
+                    });
+
+                    describe('and code is known', function () {
+                        beforeEach(function () {
+                            scope.code = 'code';
                         });
 
-                        describe('and message resolution completes', function () {
+                        describe('and attribute change watch has triggered', function () {
                             beforeEach(function () {
-                                resolver.callback('translation');
+                                scope.watches['[code, default]']();
                             });
 
-                            it('exposes translation on scope', function () {
-                                expect(scope.var).toEqual('translation');
-                            });
-                        });
-
-                        describe('and any subsequent i18n.locale notifications', function () {
-                            beforeEach(function () {
-                                locale = 'lang';
-                                resolver.args = {};
-                                scope.watches = {};
-                                registry['i18n.locale'](locale);
-                            });
-
-                            it('trigger message resolution', function () {
+                            it('triggers message resolution', function () {
                                 expect(resolver.args).toEqual(scope);
                             });
 
-                            it('should not re-install watches', function() {
-                                expect(scope.watches).toEqual({});
+                            describe('and message resolution completes', function () {
+                                beforeEach(function () {
+                                    resolver.callback('translation');
+                                });
+
+                                it('exposes translation on scope', function () {
+                                    expect(scope.var).toEqual('translation');
+                                });
+                            });
+
+                            describe('and any subsequent i18n.locale notifications', function () {
+                                beforeEach(function () {
+                                    locale = 'lang';
+                                    resolver.args = {};
+                                    scope.watches = {};
+                                    registry['i18n.locale'](locale);
+                                });
+
+                                it('trigger message resolution', function () {
+                                    expect(resolver.args).toEqual(scope);
+                                });
+
+                                it('should not re-install watches', function() {
+                                    expect(scope.watches).toEqual({});
+                                });
                             });
                         });
-
 
                     });
                 });
