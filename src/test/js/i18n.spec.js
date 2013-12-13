@@ -155,7 +155,7 @@ describe('i18n', function () {
         });
         it('open dialog for editing', function () {
             ctrl.open(code, translation, presenter, editor);
-            expect(ctrl.dialog.visibilityClass).toEqual('');
+            expect(ctrl.dialog.visibilityClass).toEqual('show');
             expect(ctrl.dialog.code).toEqual(code);
             expect(ctrl.dialog.translation).toEqual(translation);
             expect(ctrl.presenter).toEqual(presenter);

@@ -215,7 +215,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     });
 
     this.open = function (code, translation, presenter, editor) {
-        this.dialog.visibilityClass = '';
+        this.dialog.visibilityClass = 'show';
         this.dialog.code = code;
         this.dialog.translation = translation;
         this.presenter = presenter;
