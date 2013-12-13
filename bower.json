@@ -1,6 +1,6 @@
 {
     "name": "binarta.i18n.angular",
-    "version": "0.0.0",
+    "version": "0.0.2",
     "main": "./src/main/js/i18n.js",
     "dependencies": {
         "angular": "1.0.7"
