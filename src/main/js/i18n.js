@@ -32,23 +32,19 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
     return {
         require: '^i18nSupport',
         restrict: ['E', 'A'],
-        scope: {
-            code: '@',
-            'default': '@',
-            'var': '=',
-            striptags: '=',
-            editor: '@'
-        },
+        scope: true,
         link: function (scope, element, attrs, support) {
             var initialized = false;
+
+            scope.code = attrs.code;
+            scope.default = attrs.default;
 
             scope.translate = function () {
                 support.open(scope.code, scope.var, {
                     success: function (translation) {
-                        if (scope.striptags) translation = translation.replace(/<.*?>/g, '');
                         scope.var = translation;
                     }
-                }, scope.editor);
+                }, attrs.editor);
             };
 
             scope.translating = false;
@@ -82,6 +78,7 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
             function resolve() {
                 i18n.resolve(scope, function (translation) {
                     scope.var = translation;
+                    if (attrs.var) scope.$parent[attrs.var] = translation;
                 });
             }
             function resolveWhenInitialized() {
@@ -132,7 +129,6 @@ function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeU
         if (self.namespace) context.namespace = self.namespace;
         if (localStorage.locale) context.locale = localStorage.locale;
         i18nMessageGateway(context, function (translation) {
-            if (context.striptags) translation = translation.replace(/<.*?>/g, '');
             presenter(fallbackToDefaultWhenUnknown(translation));
         }, function () {
             presenter(context.default);

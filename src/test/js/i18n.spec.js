@@ -85,12 +85,6 @@ describe('i18n', function () {
                 expect(receivedTranslation).toEqual(translation);
             });
 
-            it('strip tag on resolution support', function () {
-                context.striptags = 'true';
-                resolveTo('<p>message</p>');
-                expect(receivedTranslation).toEqual('message');
-            });
-
             it('resolution fallback to default', function () {
                 context.code = code;
                 context.default = defaultTranslation;
@@ -416,6 +410,7 @@ describe('i18n', function () {
 
     describe('i18n directive', function () {
         var directive, scope, resolver, support, registry, permitter;
+        var attrs = [];
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper) {
             permitter = activeUserHasPermissionHelper;
@@ -462,13 +457,7 @@ describe('i18n', function () {
         });
 
         it('scope', function () {
-            expect(directive.scope).toEqual({
-                code: '@',
-                'default': '@',
-                'var': '=',
-                striptags: '=',
-                editor: '@'
-            });
+            expect(directive.scope).toEqual(true);
         });
 
         describe('when linked', function () {
@@ -483,12 +472,14 @@ describe('i18n', function () {
                     clickEvent = event;
                 }
             }
+
             beforeEach(function () {
-                directive.link(scope, element, null, support);
+                directive.link(scope, element, attrs, support);
             });
 
             describe('and received edit.mode enabled notification', function () {
                 beforeEach(function () {
+//                    attrs.code = scope.code;
                     registry['edit.mode'](true);
                 });
 
@@ -660,12 +651,12 @@ describe('i18n', function () {
         });
 
         it('linker exposes resolver translation mode on scope', function () {
-            directive.link(scope);
+            directive.link(scope, null, attrs);
             expect(scope.translating).toEqual(resolver.translationMode);
         });
 
         it('linker registers a translate function', function () {
-            directive.link(scope, null, null, support);
+            directive.link(scope, null, attrs, support);
             scope.code = 'code';
             scope.var = 'var';
             scope.translate();
@@ -674,17 +665,9 @@ describe('i18n', function () {
         });
 
         it('on translation success expose on var', function () {
-            directive.link(scope, null, null, support);
+            directive.link(scope, null, attrs, support);
             scope.translate();
             support.callback.success('translation');
-            expect(scope.var).toEqual('translation');
-        });
-
-        it('strip tags from translation', function () {
-            directive.link(scope, null, null, support);
-            scope.striptags = true;
-            scope.translate();
-            support.callback.success('<p>translation</p>');
             expect(scope.var).toEqual('translation');
         });
     });
