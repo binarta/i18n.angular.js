@@ -421,6 +421,7 @@ describe('i18n', function () {
                 watches: {},
                 $apply: function(arg){}
             };
+            scope.$parent = [];
             resolver = {
                 resolve: function (args, callback) {
                     resolver.args = args;
@@ -474,12 +475,18 @@ describe('i18n', function () {
             }
 
             beforeEach(function () {
+                attrs.code = 'code';
+                attrs.default = 'default';
                 directive.link(scope, element, attrs, support);
+            });
+
+            it('code and default are available on scope', function () {
+                expect(scope.code).toEqual('code');
+                expect(scope.default).toEqual('default');
             });
 
             describe('and received edit.mode enabled notification', function () {
                 beforeEach(function () {
-//                    attrs.code = scope.code;
                     registry['edit.mode'](true);
                 });
 
@@ -595,6 +602,7 @@ describe('i18n', function () {
 
                     describe('and code is unknown', function () {
                         beforeEach(function () {
+                            scope.code = undefined;
                             scope.watches['[code, default]']();
                         });
 
@@ -617,13 +625,32 @@ describe('i18n', function () {
                                 expect(resolver.args).toEqual(scope);
                             });
 
-                            describe('and message resolution completes', function () {
+                            describe('and message resolution completes without var defined on attributes', function () {
                                 beforeEach(function () {
                                     resolver.callback('translation');
                                 });
 
                                 it('exposes translation on scope', function () {
                                     expect(scope.var).toEqual('translation');
+                                });
+
+                                it('does not exposes translation on parent scope', function () {
+                                    expect(scope.$parent[attrs.var]).toEqual(undefined);
+                                });
+                            });
+
+                            describe('and message resolution completes with var defined on attributes', function () {
+                                beforeEach(function () {
+                                    attrs.var = 'var';
+                                    resolver.callback('translation');
+                                });
+
+                                it('exposes translation on scope', function () {
+                                    expect(scope.var).toEqual('translation');
+                                });
+
+                                it('exposes translation on parent scope', function () {
+                                    expect(scope.$parent[attrs.var]).toEqual('translation');
                                 });
                             });
 
@@ -664,11 +691,41 @@ describe('i18n', function () {
             expect(support.var).toEqual(scope.var);
         });
 
-        it('on translation success expose on var', function () {
-            directive.link(scope, null, attrs, support);
-            scope.translate();
-            support.callback.success('translation');
-            expect(scope.var).toEqual('translation');
+        describe('on translation success', function () {
+
+            describe('and var is defined on attributes', function () {
+                beforeEach(function () {
+                    attrs.var = 'var';
+                    directive.link(scope, null, attrs, support);
+                    scope.translate();
+                    support.callback.success('translation');
+                });
+
+                it('exposes translation on scope', function () {
+                    expect(scope.var).toEqual('translation');
+                });
+
+                it('exposes translation on parent scope', function () {
+                    expect(scope.$parent[attrs.var]).toEqual('translation');
+                });
+            });
+
+            describe('and var is not defined on attributes', function () {
+                beforeEach(function () {
+                    attrs.var = undefined;
+                    directive.link(scope, null, attrs, support);
+                    scope.translate();
+                    support.callback.success('translation');
+                });
+
+                it('exposes translation on scope', function () {
+                    expect(scope.var).toEqual('translation');
+                });
+
+                it('does not exposes translation on parent scope', function () {
+                    expect(scope.$parent[attrs.var]).toEqual(undefined);
+                });
+            });
         });
     });
 

@@ -43,6 +43,7 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
                 support.open(scope.code, scope.var, {
                     success: function (translation) {
                         scope.var = translation;
+                        if (attrs.var) scope.$parent[attrs.var] = translation;
                     }
                 }, attrs.editor);
             };
