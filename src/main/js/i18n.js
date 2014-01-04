@@ -20,7 +20,7 @@ angular.module('i18n', ['web.storage'])
         }
     })
     .directive('i18nTranslate', i18nDirectiveFactory)
-    .directive('i18n', ['i18n', 'topicRegistry', 'activeUserHasPermission', i18nDirectiveFactory]);
+    .directive('i18n', ['i18n', 'topicRegistry', 'activeUserHasPermission', 'topicMessageDispatcher', i18nDirectiveFactory]);
 
 function i18nSupportDirectiveFactory() {
     return {
@@ -28,7 +28,7 @@ function i18nSupportDirectiveFactory() {
         controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'topicMessageDispatcher', 'localStorage', 'usecaseAdapterFactory', I18nSupportController]
     }
 }
-function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
+function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topicMessageDispatcher) {
     return {
         require: '^i18nSupport',
         restrict: ['E', 'A'],
@@ -42,8 +42,7 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
             scope.translate = function () {
                 support.open(scope.code, scope.var, {
                     success: function (translation) {
-                        scope.var = translation;
-                        if (attrs.var) scope.$parent[attrs.var] = translation;
+                        topicMessageDispatcher.fire('i18n.updated', {code: scope.code, translation: translation});
                     }
                 }, attrs.editor);
             };
@@ -76,10 +75,12 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
                     initialized ? resolve() : resolveWhenInitialized();
                 });
             });
+            topicRegistry.subscribe('i18n.updated', function(t) {
+                if (scope.code == t.code) updateTranslation(t.translation);
+            });
             function resolve() {
                 i18n.resolve(scope, function (translation) {
-                    scope.var = translation;
-                    if (attrs.var) scope.$parent[attrs.var] = translation;
+                    updateTranslation(translation);
                 });
             }
             function resolveWhenInitialized() {
@@ -87,6 +88,10 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission) {
                     initialized = true;
                     if (scope.code) resolve();
                 }, true);
+            }
+            function updateTranslation(translation) {
+                scope.var = translation;
+                if (attrs.var) scope.$parent[attrs.var] = translation;
             }
         }
     };

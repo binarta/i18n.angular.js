@@ -385,7 +385,7 @@ describe('i18n', function () {
         var directive, dispatcher;
 
         beforeEach(inject(function(localStorage, topicMessageDispatcher, topicMessageDispatcherMock) {
-            dispatcher = topicMessageDispatcherMock
+            dispatcher = topicMessageDispatcherMock;
             directive = I18nDefaultDirectiveFactory(localStorage, topicMessageDispatcher);
         }));
 
@@ -409,10 +409,10 @@ describe('i18n', function () {
     });
 
     describe('i18n directive', function () {
-        var directive, scope, resolver, support, registry, permitter;
+        var directive, scope, resolver, support, registry, permitter, dispatcher, topics;
         var attrs = [];
 
-        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper) {
+        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock, topicMessageDispatcher) {
             permitter = activeUserHasPermissionHelper;
             scope = {
                 $watch: function (expression, callback) {
@@ -444,8 +444,10 @@ describe('i18n', function () {
                     registry[topic] = callback;
                 }
             };
+            dispatcher = topicMessageDispatcher;
+            topics = topicMessageDispatcherMock;
 
-            directive = i18nDirectiveFactory(resolver, registry, activeUserHasPermission);
+            directive = i18nDirectiveFactory(resolver, registry, activeUserHasPermission, dispatcher);
 
         }));
 
@@ -701,13 +703,6 @@ describe('i18n', function () {
                     support.callback.success('translation');
                 });
 
-                it('exposes translation on scope', function () {
-                    expect(scope.var).toEqual('translation');
-                });
-
-                it('exposes translation on parent scope', function () {
-                    expect(scope.$parent[attrs.var]).toEqual('translation');
-                });
             });
 
             describe('and var is not defined on attributes', function () {
@@ -718,12 +713,83 @@ describe('i18n', function () {
                     support.callback.success('translation');
                 });
 
-                it('exposes translation on scope', function () {
-                    expect(scope.var).toEqual('translation');
+                it('raises i18n.updated notification', function () {
+                    expect(topics['i18n.updated']).toEqual({
+                        code: 'code',
+                        translation: 'translation'
+                    });
+                });
+            });
+
+            describe('and received i18n.updated notification', function () {
+                describe('and code matches', function () {
+                    describe('and var is defined on attributes', function () {
+                        beforeEach(function () {
+                            scope.code = 'code';
+                            scope.var = 'translation';
+                            attrs.var = 'var';
+                            directive.link(scope, null, attrs, support);
+
+                            registry['i18n.updated']({code: 'code', translation: 'foo'});
+                        });
+
+                        it('update translation', function() {
+                            expect(scope.var).toEqual('foo');
+                            expect(scope.$parent[attrs.var]).toEqual('foo');
+                        });
+                    });
+
+                    describe('and var is not defined on attributes', function () {
+                        beforeEach(function () {
+                            scope.code = 'code';
+                            scope.var = 'translation';
+                            attrs.var = undefined;
+                            directive.link(scope, null, attrs, support);
+
+                            registry['i18n.updated']({code: 'code', translation: 'foo'});
+                        });
+
+                        it('update translation', function() {
+                            expect(scope.var).toEqual('foo');
+                            expect(scope.$parent[attrs.var]).toEqual(undefined);
+                        });
+                    });
                 });
 
-                it('does not exposes translation on parent scope', function () {
-                    expect(scope.$parent[attrs.var]).toEqual(undefined);
+                describe('and code is different', function () {
+                    describe('and var is defined on attributes', function () {
+                        beforeEach(function () {
+                            scope.code = 'code';
+                            scope.var = 'translation';
+                            attrs.var = 'var';
+                            scope.$parent[attrs.var] = scope.var;
+                            directive.link(scope, null, attrs, support);
+
+                            registry['i18n.updated']({code: 'other.code', translation: 'foo'});
+                        });
+
+                        it('translation should not be altered', function() {
+                            expect(scope.var).toEqual(scope.var);
+                            expect(scope.$parent[attrs.var]).toEqual(scope.var);
+                        });
+                    });
+
+                    describe('and var is defined on attributes', function () {
+                        beforeEach(function () {
+                            scope.code = 'code';
+                            scope.var = 'translation';
+                            attrs.var = undefined;
+                            directive.link(scope, null, attrs, support);
+
+                            registry['i18n.updated']({code: 'other.code', translation: 'foo'});
+                        });
+
+                        it('translation should not be altered', function() {
+                            expect(scope.var).toEqual(scope.var);
+                            expect(scope.$parent[attrs.var]).toEqual(undefined);
+                        });
+                    });
+
                 });
             });
         });

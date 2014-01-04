@@ -2,7 +2,13 @@
   "name": "binarta.i18n.angular",
   "main": "./src/main/js/i18n.js",
   "dependencies": {
-    "angular": "1.2.5"
+    "angular": "1.2.5",
+    "binarta.config.angular": "0.0.*",
+    "binarta.web.storage.angular": "0.0.*",
+    "binarta.i18n.rest.angular": "0.0.*",
+    "binarta.notifications.angular": "0.0.*",
+    "binarta.checkpoint.angular": "0.0.*",
+    "binarta.usecase.adapter.angular": "0.0.*"
   },
   "devDependencies": {
     "angular-mocks": "1.2.5",
