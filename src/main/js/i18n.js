@@ -25,7 +25,7 @@ angular.module('i18n', ['web.storage'])
 function i18nSupportDirectiveFactory() {
     return {
         restrict: 'C',
-        controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'topicMessageDispatcher', 'localStorage', 'usecaseAdapterFactory', I18nSupportController]
+        controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'topicMessageDispatcher', 'localStorage', 'usecaseAdapterFactory', 'config', I18nSupportController]
     }
 }
 function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topicMessageDispatcher) {
@@ -148,7 +148,7 @@ function I18nResolverFactory(i18n) {
     }
 }
 
-function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, topicMessageDispatcher, localStorage, usecaseAdapterFactory) {
+function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, topicMessageDispatcher, localStorage, usecaseAdapterFactory, config) {
     var self = this;
     var namespace;
     this.dialog = {};
@@ -190,15 +190,46 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     }
 
     function redirectToRememberedHomePageOrPortal() {
+        if (shouldInitializeLocaleByConfig()) initializeLocaleByConfig();
         if (isLocaleRemembered()) redirectToLocalizedHomePage();
+        else redirectToHomePage();
+    }
+
+    function shouldInitializeLocaleByConfig() {
+        return !isLocaleRemembered() && isLocalizationSupported();
     }
 
     function isLocaleRemembered() {
         return localStorage.locale;
     }
 
+    function isLocalizationSupported() {
+        return config.supportedLanguages != null;
+    }
+
+    function initializeLocaleByConfig() {
+        setLocaleToFirstSupportedLanguage();
+        if (isBrowserLanguageSupported()) localStorage.locale = browserLanguage();
+    }
+
+    function setLocaleToFirstSupportedLanguage() {
+        localStorage.locale = config.supportedLanguages[0];
+    }
+
+    function isBrowserLanguageSupported() {
+        return config.supportedLanguages.indexOf(browserLanguage()) > -1;
+    }
+
+    function browserLanguage() {
+        return (window.navigator.userLanguage || window.navigator.language).substr(0, 2);
+    }
+
     function redirectToLocalizedHomePage() {
         $location.path('/' + localStorage.locale + '/');
+    }
+
+    function redirectToHomePage() {
+        $location.path('/');
     }
 
     function getUnlocalizedPathPath(locale) {

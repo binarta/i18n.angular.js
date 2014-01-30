@@ -130,6 +130,9 @@ describe('i18n', function () {
         }};
         var editor = 'basic';
         var writer;
+        var config = {
+            namespace: 'namespace'
+        };
 
         beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, localStorage, i18nMessageWriter) {
             writer = i18nMessageWriter;
@@ -141,7 +144,7 @@ describe('i18n', function () {
             };
             registry = topicRegistryMock;
             dispatcher = topicMessageDispatcherMock;
-            ctrl = $controller(I18nSupportController, {$scope: scope});
+            ctrl = $controller(I18nSupportController, {$scope: scope, config: config});
         }));
 
         it('on init', function () {
@@ -178,7 +181,7 @@ describe('i18n', function () {
             });
 
             it('raise i18n.locale notification on construction', inject(function($controller) {
-                $controller(I18nSupportController, {$scope: scope});
+                $controller(I18nSupportController, {$scope: scope, config: config});
                 expect(dispatcher.persistent['i18n.locale']).toEqual(local.locale);
             }));
         });
@@ -192,10 +195,6 @@ describe('i18n', function () {
         }
 
         describe('with config.initialized notification received', function () {
-            var config = {
-                namespace: 'namespace'
-            };
-
             beforeEach(function () {
                 registry['config.initialized'](config);
             });
@@ -270,6 +269,86 @@ describe('i18n', function () {
 
                     expect(scope.unlocalizedPath).toEqual('/foo/bar');
                 }));
+
+                describe('and no remembered locale or locale in path with configured supported languages', function() {
+                    beforeEach(function() {
+                        locale.locale = null;
+                    });
+
+                    describe('and no browser user language or language', function() {
+                        it('with supported languages', inject(function($location) {
+                            config.supportedLanguages = ['su'];
+
+                            scope.$routeChangeSuccess(null, {params: params});
+
+                            expect($location.path()).toEqual('/su/');
+                        }));
+
+                        it('without configured supported languages', inject(function($location) {
+                            config.supportedLanguages = null;
+
+                            scope.$routeChangeSuccess(null, {params: params});
+
+                            expect($location.path()).toEqual('/')
+                        }));
+
+                        it('without supported languages', inject(function($location) {
+                            config.supportedLanguages = [];
+
+                            scope.$routeChangeSuccess(null, {params: params});
+
+                            expect($location.path()).toEqual('/');
+                        }));
+                    });
+
+                    describe('and browser user language', function() {
+                        describe('with user language is supported', function() {
+                            beforeEach(function() {
+                                window.navigator.userLanguage = 'fr_FR';
+                            });
+
+                            it('', inject(function($location) {
+                                config.supportedLanguages = ['nl', 'fr'];
+
+                                scope.$routeChangeSuccess(null, {params: params});
+
+                                expect($location.path()).toEqual('/fr/');
+                            }));
+                        });
+
+                        describe('with user language is not supported', function() {
+                            beforeEach(function() {
+                                window.navigator.userLanguage = 'un_SU';
+                            });
+
+                            it('fall back to first supported language', inject(function($location) {
+                                config.supportedLanguages = ['su'];
+
+                                scope.$routeChangeSuccess(null, {params: params});
+
+                                expect($location.path()).toEqual('/su/');
+                            }));
+                        });
+                    });
+
+                    describe('and no browser user language with browser language', function() {
+                        function browserLanguage() {
+                            return window.navigator.language.substr(0, 2);
+                        }
+                        beforeEach(function() {
+                            window.navigator.userLanguage = null;
+                        });
+
+                        it('', inject(function($location) {
+                            config.supportedLanguages = ['nl', 'fr', browserLanguage()];
+
+                            scope.$routeChangeSuccess(null, {params: params});
+
+                            expect($location.path()).toEqual('/' + browserLanguage() + '/');
+                        }));
+                    });
+
+                });
             });
         });
 
@@ -377,7 +456,7 @@ describe('i18n', function () {
         });
 
         it('controller', function () {
-            expect(directive.controller).toEqual(['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'topicMessageDispatcher', 'localStorage', 'usecaseAdapterFactory', I18nSupportController]);
+            expect(directive.controller).toEqual(['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'topicMessageDispatcher', 'localStorage', 'usecaseAdapterFactory', 'config', I18nSupportController]);
         });
     });
 
