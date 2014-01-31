@@ -210,6 +210,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     function initializeLocaleByConfig() {
         setLocaleToFirstSupportedLanguage();
         if (isBrowserLanguageSupported()) localStorage.locale = browserLanguage();
+        broadcast(localStorage.locale)
     }
 
     function setLocaleToFirstSupportedLanguage() {

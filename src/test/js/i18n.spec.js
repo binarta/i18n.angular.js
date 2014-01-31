@@ -276,12 +276,13 @@ describe('i18n', function () {
                     });
 
                     describe('and no browser user language or language', function() {
-                        it('with supported languages', inject(function($location) {
+                        it('with supported languages', inject(function($location, topicMessageDispatcherMock) {
                             config.supportedLanguages = ['su'];
 
                             scope.$routeChangeSuccess(null, {params: params});
 
                             expect($location.path()).toEqual('/su/');
+                            expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual('su');
                         }));
 
                         it('without configured supported languages', inject(function($location) {
@@ -307,12 +308,13 @@ describe('i18n', function () {
                                 window.navigator.userLanguage = 'fr_FR';
                             });
 
-                            it('', inject(function($location) {
+                            it('', inject(function($location, topicMessageDispatcherMock) {
                                 config.supportedLanguages = ['nl', 'fr'];
 
                                 scope.$routeChangeSuccess(null, {params: params});
 
                                 expect($location.path()).toEqual('/fr/');
+                                expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual('fr');
                             }));
                         });
 
@@ -321,12 +323,13 @@ describe('i18n', function () {
                                 window.navigator.userLanguage = 'un_SU';
                             });
 
-                            it('fall back to first supported language', inject(function($location) {
+                            it('fall back to first supported language', inject(function($location, topicMessageDispatcherMock) {
                                 config.supportedLanguages = ['su'];
 
                                 scope.$routeChangeSuccess(null, {params: params});
 
                                 expect($location.path()).toEqual('/su/');
+                                expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual('su');
                             }));
                         });
                     });
@@ -339,12 +342,13 @@ describe('i18n', function () {
                             window.navigator.userLanguage = null;
                         });
 
-                        it('', inject(function($location) {
+                        it('', inject(function($location, topicMessageDispatcherMock) {
                             config.supportedLanguages = ['nl', 'fr', browserLanguage()];
 
                             scope.$routeChangeSuccess(null, {params: params});
 
                             expect($location.path()).toEqual('/' + browserLanguage() + '/');
+                            expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual(browserLanguage());
                         }));
                     });
 
