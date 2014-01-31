@@ -209,12 +209,16 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
 
     function initializeLocaleByConfig() {
         setLocaleToFirstSupportedLanguage();
-        if (isBrowserLanguageSupported()) localStorage.locale = browserLanguage();
+        if (shouldFallbackToBrowserLocale()) localStorage.locale = browserLanguage();
         broadcast(localStorage.locale)
     }
 
     function setLocaleToFirstSupportedLanguage() {
         localStorage.locale = config.supportedLanguages[0];
+    }
+
+    function shouldFallbackToBrowserLocale() {
+        return config.fallbackToBrowserLocale && isBrowserLanguageSupported();
     }
 
     function isBrowserLanguageSupported() {

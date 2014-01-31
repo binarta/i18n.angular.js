@@ -273,6 +273,7 @@ describe('i18n', function () {
                 describe('and no remembered locale or locale in path with configured supported languages', function() {
                     beforeEach(function() {
                         locale.locale = null;
+                        config.fallbackToBrowserLocale = true;
                     });
 
                     describe('and no browser user language or language', function() {
@@ -308,13 +309,23 @@ describe('i18n', function () {
                                 window.navigator.userLanguage = 'fr_FR';
                             });
 
-                            it('', inject(function($location, topicMessageDispatcherMock) {
+                            it('with fallback to browser locale', inject(function($location, topicMessageDispatcherMock) {
                                 config.supportedLanguages = ['nl', 'fr'];
 
                                 scope.$routeChangeSuccess(null, {params: params});
 
                                 expect($location.path()).toEqual('/fr/');
                                 expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual('fr');
+                            }));
+
+                            it('without fallback to browser locale', inject(function($location) {
+                                config.supportedLanguages = ['su', 'en'];
+                                config.fallbackToBrowserLocale = false;
+                                window.navigator.userLanguage = 'en_US';
+
+                                scope.$routeChangeSuccess(null, {params: params});
+
+                                expect($location.path()).toEqual('/su/');
                             }));
                         });
 
@@ -342,13 +353,22 @@ describe('i18n', function () {
                             window.navigator.userLanguage = null;
                         });
 
-                        it('', inject(function($location, topicMessageDispatcherMock) {
+                        it('with fallback to browser locale', inject(function($location, topicMessageDispatcherMock) {
                             config.supportedLanguages = ['nl', 'fr', browserLanguage()];
 
                             scope.$routeChangeSuccess(null, {params: params});
 
                             expect($location.path()).toEqual('/' + browserLanguage() + '/');
                             expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual(browserLanguage());
+                        }));
+
+                        it('without fallback to browser locale', inject(function($location) {
+                            config.supportedLanguages = ['su', browserLanguage()];
+                            config.fallbackToBrowserLocale = false;
+
+                            scope.$routeChangeSuccess(null, {params: params});
+
+                            expect($location.path()).toEqual('/su/');
                         }));
                     });
 
