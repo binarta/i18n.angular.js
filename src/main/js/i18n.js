@@ -185,8 +185,8 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         expose(params.locale);
         if(isNewlySelected(params.locale)) {
             remember(params.locale);
-            broadcast(params.locale);
         }
+        broadcast(params.locale);
     }
 
     function expose(locale) {
@@ -205,10 +205,14 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         topicMessageDispatcher.firePersistently('i18n.locale', locale);
     }
 
-    function redirectToRememberedHomePageOrPortal() {
+    function broadcastDefaultLocale() {
+        broadcast('default');
+    }
+
+    function localeNotInPath() {
         if (shouldInitializeLocaleByConfig()) initializeLocaleByConfig();
         if (isLocaleRemembered()) redirectToLocalizedHomePage();
-        else redirectToHomePage();
+        else broadcastDefaultLocale();
     }
 
     function shouldInitializeLocaleByConfig() {
@@ -249,19 +253,20 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         $location.path('/' + localStorage.locale + '/');
     }
 
-    function redirectToHomePage() {
-        $location.path('/');
-    }
-
     function getUnlocalizedPathPath(locale) {
         return $location.path().replace('/' + locale, '');
     }
 
     topicRegistry.subscribe('config.initialized', function (config) {
         namespace = config.namespace;
+
+        $scope.$on('$routeChangeStart', function () {
+            topicRegistry.persistentMessage('i18n.locale', undefined);
+        });
+
         $scope.$on('$routeChangeSuccess', function (evt, route) {
             $scope.unlocalizedPath = getUnlocalizedPathPath(route.params.locale);
-            isLocaleEncodedInPath(route.params) ? extractLocaleFromPath(route.params) : redirectToRememberedHomePageOrPortal();
+            isLocaleEncodedInPath(route.params) ? extractLocaleFromPath(route.params) : localeNotInPath();
         });
     });
     topicRegistry.subscribe('checkpoint.signout', function () {
@@ -291,8 +296,6 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         };
         i18nMessageWriter(ctx, usecaseAdapterFactory($scope, onSuccess));
     };
-
-    if(isLocaleRemembered()) broadcast(localStorage.locale);
 }
 
 function I18nDefaultDirectiveFactory(localStorage, topicMessageDispatcher) {
@@ -300,7 +303,6 @@ function I18nDefaultDirectiveFactory(localStorage, topicMessageDispatcher) {
         restrict:'C',
         link:function() {
             localStorage.locale = '';
-            topicMessageDispatcher.firePersistently('i18n.locale', 'default');
         }
     };
 }

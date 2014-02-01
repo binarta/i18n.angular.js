@@ -175,17 +175,6 @@ describe('i18n', function () {
             expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
         });
 
-        describe('given a locale has been previously selected', function() {
-            beforeEach(function() {
-                local.locale = 'lang';
-            });
-
-            it('raise i18n.locale notification on construction', inject(function($controller) {
-                $controller(I18nSupportController, {$scope: scope, config: config});
-                expect(dispatcher.persistent['i18n.locale']).toEqual(local.locale);
-            }));
-        });
-
         function expectContextEquals(ctx) {
             expect(writer.calls[0].args[0]).toEqual(ctx);
         }
@@ -213,6 +202,22 @@ describe('i18n', function () {
 
                 it('construct presenter', function() {
                     expectPresenterProvided();
+                });
+            });
+
+            describe('on $routeChangeStart', function () {
+                var params, locale;
+
+                beforeEach(function () {
+                    locale = 'lang';
+                    params = {};
+                });
+
+                it('i18n.locale persistent message is cleared', function() {
+                    dispatcher.persistent['i18n.locale'] = {};
+                    scope.$routeChangeStart(null, {params: params});
+
+                    expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
                 });
             });
 
@@ -254,11 +259,11 @@ describe('i18n', function () {
                     }));
                 });
 
-                it('and remembered locale and locale encoded in path match then no notification is raised', function() {
+                it('and remembered locale and locale encoded in path match then notification is raised', function() {
                     params.locale = locale;
                     local.locale = locale;
                     scope.$routeChangeSuccess(null, {params: params});
-                    expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
+                    expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
                 });
 
                 it('and unlocalized path is on scope', inject(function ($location) {
@@ -286,21 +291,30 @@ describe('i18n', function () {
                             expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual('su');
                         }));
 
-                        it('without configured supported languages', inject(function($location) {
-                            config.supportedLanguages = null;
+                        describe('without configured supported languages', function() {
+                            beforeEach(function () {
+                                config.supportedLanguages = null;
 
-                            scope.$routeChangeSuccess(null, {params: params});
+                                scope.$routeChangeSuccess(null, {params: params});
+                            });
 
-                            expect($location.path()).toEqual('/')
-                        }));
+                            it('should broadcast default locale', function() {
+                                expect(dispatcher.persistent['i18n.locale']).toEqual('default');
+                            });
+                        });
 
-                        it('without supported languages', inject(function($location) {
-                            config.supportedLanguages = [];
+                        describe('without supported languages', function() {
+                            beforeEach(function () {
+                                config.supportedLanguages = [];
 
-                            scope.$routeChangeSuccess(null, {params: params});
+                                scope.$routeChangeSuccess(null, {params: params});
+                            });
 
-                            expect($location.path()).toEqual('/');
-                        }));
+                            it('should broadcast default locale', function() {
+                                expect(dispatcher.persistent['i18n.locale']).toEqual('default');
+                            });
+                        });
+
                     });
 
                     describe('and browser user language', function() {
@@ -504,10 +518,6 @@ describe('i18n', function () {
             it('reset locale to default', inject(function(localStorage) {
                 expect(localStorage.locale).toEqual('');
             }));
-
-            it('fire i18n.locale notification for default locale', function() {
-                expect(dispatcher.persistent['i18n.locale']).toEqual('default');
-            });
         });
     });
 
