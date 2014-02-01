@@ -515,14 +515,18 @@ describe('i18n', function () {
         var directive, scope, resolver, support, registry, permitter, dispatcher, topics;
         var attrs = [];
 
-        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock, topicMessageDispatcher) {
+        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock, topicMessageDispatcher, topicRegistryMock, topicRegistry) {
             permitter = activeUserHasPermissionHelper;
             scope = {
                 $watch: function (expression, callback) {
                     scope.watches[expression] = callback;
                 },
                 watches: {},
-                $apply: function(arg){}
+                $apply: function(arg){},
+                $on: function (event, callback) {
+                    scope.on[event] = callback;
+                },
+                on: {}
             };
             scope.$parent = [];
             resolver = {
@@ -542,15 +546,11 @@ describe('i18n', function () {
                     support.callback = callback;
                 }
             };
-            registry = {
-                subscribe: function (topic, callback) {
-                    registry[topic] = callback;
-                }
-            };
+            registry = topicRegistryMock;
             dispatcher = topicMessageDispatcher;
             topics = topicMessageDispatcherMock;
 
-            directive = i18nDirectiveFactory(resolver, registry, activeUserHasPermission, dispatcher);
+            directive = i18nDirectiveFactory(resolver, topicRegistry, activeUserHasPermission, dispatcher);
 
         }));
 
@@ -588,6 +588,10 @@ describe('i18n', function () {
             it('code and default are available on scope', function () {
                 expect(scope.code).toEqual('code');
                 expect(scope.default).toEqual('default');
+            });
+
+            it('and scope listens to destroy event', function () {
+                expect(scope.on['$destroy']).toBeDefined();
             });
 
             describe('and received edit.mode enabled notification', function () {
@@ -689,7 +693,7 @@ describe('i18n', function () {
                 });
 
                 it('should not install watch yet', function() {
-                    expect(scope.watches['[code, default]']).toBeUndefined();
+                    expect(scope.watches['[code]']).toBeUndefined();
                 });
 
                 describe('and i18n.locale notification received', function () {
@@ -708,7 +712,7 @@ describe('i18n', function () {
                     describe('and code is unknown', function () {
                         beforeEach(function () {
                             scope.code = undefined;
-                            scope.watches['[code, default]']();
+                            scope.watches['[code]']();
                         });
 
                         it('does not trigger message resolution', function () {
@@ -723,7 +727,7 @@ describe('i18n', function () {
 
                         describe('and attribute change watch has triggered', function () {
                             beforeEach(function () {
-                                scope.watches['[code, default]']();
+                                scope.watches['[code]']();
                             });
 
                             it('triggers message resolution', function () {
@@ -780,6 +784,30 @@ describe('i18n', function () {
                     });
                 });
             });
+
+            describe('and scope is destroyed', function () {
+                beforeEach(function () {
+                    registry['i18n.locale'] = {};
+                    scope.on['$destroy']();
+                });
+
+                it('should unsubscribe app.start', function () {
+                    expect(registry['app.start']).toBeUndefined();
+                });
+
+                it('should unsubscribe edit.mode', function () {
+                    expect(registry['edit.mode']).toBeUndefined();
+                });
+
+                it('should unsubscribe i18n.updated', function () {
+                    expect(registry['i18n.updated']).toBeUndefined();
+                });
+
+                it('should unsubscribe i18n.locale', function () {
+                    expect(registry['i18n.locale']).toBeUndefined();
+                });
+            });
+
         });
 
         it('linker exposes resolver translation mode on scope', function () {

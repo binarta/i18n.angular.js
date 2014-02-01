@@ -38,6 +38,7 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topi
 
             scope.code = attrs.code;
             scope.default = attrs.default;
+            scope.translating = false;
 
             scope.translate = function () {
                 support.open(scope.code, scope.var, {
@@ -47,19 +48,6 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topi
                 }, attrs.editor);
             };
 
-            scope.translating = false;
-
-            topicRegistry.subscribe('edit.mode', function (editMode) {
-                activeUserHasPermission({
-                    no: function () {
-                        scope.translating = false;
-                    },
-                    yes: function () {
-                        scope.translating = editMode;
-                        bindClickEvent(editMode);
-                    }
-                }, 'i18n.message.add');
-            });
             function bindClickEvent(editMode) {
                 if (editMode) {
                     element.bind("click", function () {
@@ -70,23 +58,51 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topi
                 }
             }
 
-            topicRegistry.subscribe('app.start', function () {
-                topicRegistry.subscribe('i18n.locale', function () {
-                    initialized ? resolve() : resolveWhenInitialized();
-                });
-            });
-            topicRegistry.subscribe('i18n.updated', function(t) {
+            var toggleEditMode = function (editMode) {
+                activeUserHasPermission({
+                    no: function () {
+                        scope.translating = false;
+                    },
+                    yes: function () {
+                        scope.translating = editMode;
+                        bindClickEvent(editMode);
+                    }
+                }, 'i18n.message.add');
+            };
+
+            var resolve = function () {
+                initialized ? resolveNow() : resolveWhenInitialized();
+            };
+
+            var updated = function(t) {
                 if (scope.code == t.code) updateTranslation(t.translation);
+            };
+
+            var subscribeLocale = function () {
+                topicRegistry.subscribe('i18n.locale', resolve);
+            };
+
+            topicRegistry.subscribe('edit.mode', toggleEditMode);
+            topicRegistry.subscribe('app.start', subscribeLocale);
+            topicRegistry.subscribe('i18n.updated', updated);
+
+            scope.$on('$destroy', function() {
+                topicRegistry.unsubscribe('edit.mode', toggleEditMode);
+                topicRegistry.unsubscribe('i18n.updated', updated);
+                topicRegistry.unsubscribe('i18n.locale', updated);
+                topicRegistry.unsubscribe('app.start', subscribeLocale);
             });
-            function resolve() {
+
+
+            function resolveNow() {
                 i18n.resolve(scope, function (translation) {
                     updateTranslation(translation);
                 });
             }
             function resolveWhenInitialized() {
-                scope.$watch('[code, default]', function () {
+                scope.$watch('[code]', function () {
                     initialized = true;
-                    if (scope.code) resolve();
+                    if (scope.code) resolveNow();
                 }, true);
             }
             function updateTranslation(translation) {
