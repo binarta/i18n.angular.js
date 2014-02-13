@@ -211,7 +211,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
 
     function localeNotInPath() {
         if (shouldInitializeLocaleByConfig()) initializeLocaleByConfig();
-        if (isLocaleRemembered()) redirectToLocalizedHomePage();
+        if (isLocaleRemembered()) redirectToLocalizedPage();
         else broadcastDefaultLocale();
     }
 
@@ -249,8 +249,8 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         return (window.navigator.userLanguage || window.navigator.language).substr(0, 2);
     }
 
-    function redirectToLocalizedHomePage() {
-        $location.path('/' + localStorage.locale + '/');
+    function redirectToLocalizedPage() {
+        $location.path('/' + localStorage.locale + ($scope.unlocalizedPath ? $scope.unlocalizedPath : '/'));
     }
 
     function getUnlocalizedPathPath(locale) {

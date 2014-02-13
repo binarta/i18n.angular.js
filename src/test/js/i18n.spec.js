@@ -249,13 +249,14 @@ describe('i18n', function () {
                 });
 
                 describe('and remembered locale', function () {
-                    beforeEach(function () {
+                    beforeEach(inject(function ($location) {
                         local.locale = locale;
+                        $location.path('/path');
                         scope.$routeChangeSuccess(null, {params: params});
-                    });
+                    }));
 
-                    it('redirects to associated home page', inject(function ($location) {
-                        expect($location.path()).toEqual('/' + locale + '/');
+                    it('redirects to associated page', inject(function ($location) {
+                        expect($location.path()).toEqual('/' + locale + scope.unlocalizedPath);
                     }));
                 });
 
