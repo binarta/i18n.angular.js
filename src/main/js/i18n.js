@@ -254,6 +254,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     }
 
     function getUnlocalizedPathPath(locale) {
+        if (!locale) return $location.path().replace('//', '/');
         return $location.path().replace('/' + locale, '');
     }
 

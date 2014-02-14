@@ -230,10 +230,11 @@ describe('i18n', function () {
                 });
 
                 describe('and locale encoded in location path then', function () {
-                    beforeEach(function () {
+                    beforeEach(inject(function ($location) {
                         params.locale = locale;
+                        $location.path('/' + locale + '/foo/bar');
                         scope.$routeChangeSuccess(null, {params: params});
-                    });
+                    }));
 
                     it('expose locale on scope', function () {
                         expect(scope.locale).toEqual(locale);
@@ -246,6 +247,23 @@ describe('i18n', function () {
                     it('broadcast locale', function() {
                         expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
                     });
+
+                    it('expose unlocalized path on scope', function () {
+                        expect(scope.unlocalizedPath).toEqual('/foo/bar');
+                    });
+                });
+
+                describe('and locale not encoded in location path then', function () {
+                    beforeEach(inject(function ($location) {
+                        locale = '';
+                        params.locale = locale;
+                        $location.path('/' + locale + '/foo/bar');
+                        scope.$routeChangeSuccess(null, {params: params});
+                    }));
+
+                    it('unlocalized path is on scope', function () {
+                        expect(scope.unlocalizedPath).toEqual('/foo/bar');
+                    })
                 });
 
                 describe('and remembered locale', function () {
@@ -266,15 +284,6 @@ describe('i18n', function () {
                     scope.$routeChangeSuccess(null, {params: params});
                     expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
                 });
-
-                it('and unlocalized path is on scope', inject(function ($location) {
-                    params.locale = locale;
-                    $location.path('/' + locale + '/foo/bar');
-
-                    scope.$routeChangeSuccess(null, {params: params});
-
-                    expect(scope.unlocalizedPath).toEqual('/foo/bar');
-                }));
 
                 describe('and no remembered locale or locale in path with configured supported languages', function() {
                     beforeEach(function() {
