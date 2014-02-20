@@ -205,22 +205,6 @@ describe('i18n', function () {
                 });
             });
 
-            describe('on $routeChangeStart', function () {
-                var params, locale;
-
-                beforeEach(function () {
-                    locale = 'lang';
-                    params = {};
-                });
-
-                it('i18n.locale persistent message is cleared', function() {
-                    dispatcher.persistent['i18n.locale'] = {};
-                    scope.$routeChangeStart(null, {params: params});
-
-                    expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
-                });
-            });
-
             describe('on $routeChangeSuccess', function () {
                 var params, locale;
 
@@ -276,13 +260,6 @@ describe('i18n', function () {
                     it('redirects to associated page', inject(function ($location) {
                         expect($location.path()).toEqual('/' + locale + scope.unlocalizedPath);
                     }));
-                });
-
-                it('and remembered locale and locale encoded in path match then notification is raised', function() {
-                    params.locale = locale;
-                    local.locale = locale;
-                    scope.$routeChangeSuccess(null, {params: params});
-                    expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
                 });
 
                 describe('and no remembered locale or locale in path with configured supported languages', function() {
@@ -504,16 +481,16 @@ describe('i18n', function () {
         });
 
         it('controller', function () {
-            expect(directive.controller).toEqual(['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'topicMessageDispatcher', 'localStorage', 'usecaseAdapterFactory', 'config', I18nSupportController]);
+            expect(directive.controller).toEqual(['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]);
         });
     });
 
     describe('i18n-default directive', function() {
         var directive, dispatcher;
 
-        beforeEach(inject(function(localStorage, topicMessageDispatcher, topicMessageDispatcherMock) {
-            dispatcher = topicMessageDispatcherMock;
-            directive = I18nDefaultDirectiveFactory(localStorage, topicMessageDispatcher);
+        beforeEach(inject(function(topicMessageDispatcherMock, localeSwapper) {
+            dispatcher = topicMessageDispatcherMock
+            directive = I18nDefaultDirectiveFactory(localeSwapper);
         }));
 
         it('restrict to class', function() {
@@ -526,7 +503,7 @@ describe('i18n', function () {
             });
 
             it('reset locale to default', inject(function(localStorage) {
-                expect(localStorage.locale).toEqual('');
+                expect(localStorage.locale).toEqual('default');
             }));
         });
     });
@@ -803,11 +780,20 @@ describe('i18n', function () {
 
                     });
                 });
+
+                describe('and scope is destroyed', function() {
+                    beforeEach(function () {
+                        scope.on['$destroy']();
+                    });
+
+                    it('should unsubscribe i18n.locale', function () {
+                        expect(registry['i18n.locale']).toBeUndefined();
+                    });
+                });
             });
 
             describe('and scope is destroyed', function () {
                 beforeEach(function () {
-                    registry['i18n.locale'] = {};
                     scope.on['$destroy']();
                 });
 
@@ -821,10 +807,6 @@ describe('i18n', function () {
 
                 it('should unsubscribe i18n.updated', function () {
                     expect(registry['i18n.updated']).toBeUndefined();
-                });
-
-                it('should unsubscribe i18n.locale', function () {
-                    expect(registry['i18n.locale']).toBeUndefined();
                 });
             });
 
@@ -1024,14 +1006,14 @@ describe('i18n', function () {
     });
 
     describe('SelectLocaleController', function () {
-        var ctrl, scope, params, localStorage, locale, topics;
+        var ctrl, scope, params, local, locale, topics;
 
-        beforeEach(inject(function ($controller, topicMessageDispatcherMock) {
+        beforeEach(inject(function ($controller, topicMessageDispatcherMock, localStorage) {
             scope = {};
             params = {};
-            localStorage = {};
+            local = localStorage;
             topics = topicMessageDispatcherMock;
-            ctrl = $controller(SelectLocaleController, {$scope: scope, $routeParams: params, localStorage: localStorage});
+            ctrl = $controller(SelectLocaleController, {$scope: scope, $routeParams: params});
         }));
 
         describe('when selecting a locale', function () {
@@ -1045,18 +1027,18 @@ describe('i18n', function () {
             });
 
             it('remember the selection', function () {
-                expect(localStorage.locale).toEqual(locale);
+                expect(local.locale).toEqual(locale);
             });
 
             it('broadcast the selection', function () {
-                expect(topics['i18n.locale']).toEqual(locale);
+                expect(topics.persistent['i18n.locale']).toEqual(locale);
             });
         });
 
         describe('given a previous selection', function () {
             beforeEach(function () {
                 locale = 'lang';
-                localStorage.locale = locale;
+                local.locale = locale;
             });
 
             describe('on init', function () {
@@ -1084,6 +1066,70 @@ describe('i18n', function () {
                 it('then expose locale on scope', function () {
                     expect(scope.locale).toEqual(locale);
                 });
+            });
+        });
+    });
+
+    describe('locale resolution', function() {
+        var resolve, swap;
+
+        beforeEach(inject(function(localeResolver, localeSwapper) {
+            resolve = localeResolver;
+            swap = localeSwapper;
+        }));
+
+        it('starts out undefined', function() {
+            expect(resolve()).toEqual(undefined);
+        });
+
+        describe('when locale is specified in local storage', function() {
+            beforeEach(inject(function(localStorage) {
+                localStorage.locale = 'from-local-storage';
+            }));
+
+            it('then resolves from local storage', function() {
+                expect(resolve()).toEqual('from-local-storage');
+            });
+
+            describe('and locale is specified in session storage', function() {
+                beforeEach(inject(function(sessionStorage) {
+                    sessionStorage.locale = 'from-session-storage';
+                }));
+
+                it('then resolves from session storage', function() {
+                    expect(resolve()).toEqual('from-session-storage');
+                });
+            });
+
+            describe('and resolving from local storage', function() {
+                beforeEach(function() {
+                    resolve();
+                });
+
+                it('then local storage locale is promoted to session storage locale', inject(function(sessionStorage, localStorage) {
+                    expect(sessionStorage.locale).toEqual(localStorage.locale);
+                }));
+            });
+        });
+
+        describe('when swapped locale', function() {
+            var topics;
+
+            beforeEach(inject(function(topicMessageDispatcherMock) {
+                topics = topicMessageDispatcherMock;
+                swap('swapped-locale');
+            }));
+
+            it('then locale is saved in local storage', inject(function(localStorage) {
+                expect(localStorage.locale).toEqual('swapped-locale');
+            }));
+
+            it('then locale is saved in session storage', inject(function(sessionStorage) {
+                expect(sessionStorage.locale).toEqual('swapped-locale');
+            }));
+
+            it('then broadcast the swap', function () {
+                expect(topics.persistent['i18n.locale']).toEqual('swapped-locale');
             });
         });
     });

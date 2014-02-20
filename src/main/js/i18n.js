@@ -1,12 +1,11 @@
 angular.module('i18n', ['web.storage'])
-    .factory('i18n', ['i18nMessageReader', 'topicRegistry', 'topicMessageDispatcher', 'activeUserHasPermission', 'localStorage',
-        function (i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localStorage) {
-            return new i18n(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localStorage);
-        }])
+    .factory('i18n', ['i18nMessageReader', 'topicRegistry', 'topicMessageDispatcher', 'activeUserHasPermission', 'localeResolver', I18nFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
-    .controller('SelectLocaleController', ['$scope', '$routeParams', 'localStorage', 'topicMessageDispatcher', SelectLocaleController])
+    .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
+    .factory('localeSwapper', ['localStorage', 'sessionStorage', 'topicMessageDispatcher', LocaleSwapperFactory])
+    .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
     .directive('i18nSupport', i18nSupportDirectiveFactory)
-    .directive('i18nDefault', ['localStorage', 'topicMessageDispatcher', I18nDefaultDirectiveFactory])
+    .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
     .directive('i18nDialog', function (i18n) {
         return {
             restrict: 'E',
@@ -22,10 +21,35 @@ angular.module('i18n', ['web.storage'])
     .directive('i18nTranslate', i18nDirectiveFactory)
     .directive('i18n', ['i18n', 'topicRegistry', 'activeUserHasPermission', 'topicMessageDispatcher', i18nDirectiveFactory]);
 
+function I18nFactory(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver) {
+    return new i18n(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver);
+}
+
+function LocaleResolverFactory(localStorage, sessionStorage) {
+    function promoted(locale) {
+        sessionStorage.locale = locale;
+        return locale;
+    }
+
+    return function () {
+        if (sessionStorage.locale) return sessionStorage.locale;
+        if (localStorage.locale) return promoted(localStorage.locale);
+        return undefined;
+    }
+}
+
+function LocaleSwapperFactory(localStorage, sessionStorage, topicMessageDispatcher) {
+    return function (locale) {
+        sessionStorage.locale = locale;
+        localStorage.locale = locale;
+        topicMessageDispatcher.firePersistently('i18n.locale', locale);
+    }
+}
+
 function i18nSupportDirectiveFactory() {
     return {
         restrict: 'C',
-        controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'topicMessageDispatcher', 'localStorage', 'usecaseAdapterFactory', 'config', I18nSupportController]
+        controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]
     }
 }
 function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topicMessageDispatcher) {
@@ -74,7 +98,7 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topi
                 initialized ? resolveNow() : resolveWhenInitialized();
             };
 
-            var updated = function(t) {
+            var updated = function (t) {
                 if (scope.code == t.code) updateTranslation(t.translation);
             };
 
@@ -86,25 +110,26 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topi
             topicRegistry.subscribe('app.start', subscribeLocale);
             topicRegistry.subscribe('i18n.updated', updated);
 
-            scope.$on('$destroy', function() {
+            scope.$on('$destroy', function () {
                 topicRegistry.unsubscribe('edit.mode', toggleEditMode);
                 topicRegistry.unsubscribe('i18n.updated', updated);
-                topicRegistry.unsubscribe('i18n.locale', updated);
+                topicRegistry.unsubscribe('i18n.locale', resolve);
                 topicRegistry.unsubscribe('app.start', subscribeLocale);
             });
-
 
             function resolveNow() {
                 i18n.resolve(scope, function (translation) {
                     updateTranslation(translation);
                 });
             }
+
             function resolveWhenInitialized() {
                 scope.$watch('[code]', function () {
                     initialized = true;
                     if (scope.code) resolveNow();
                 }, true);
             }
+
             function updateTranslation(translation) {
                 scope.var = translation;
                 if (attrs.var) scope.$parent[attrs.var] = translation;
@@ -113,7 +138,7 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topi
     };
 }
 
-function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localStorage) {
+function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver) {
     var self = this;
 
     topicRegistry.subscribe('config.initialized', function (config) {
@@ -144,12 +169,13 @@ function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeU
         }
 
         function fallbackToDefaultWhenUnknown(translation) {
-            if(!context.default) context.default = 'place your text here';
+            if (!context.default) context.default = 'place your text here';
             return isUnknown(translation) ? context.default : translation;
         }
 
         if (self.namespace) context.namespace = self.namespace;
-        if (localStorage.locale) context.locale = localStorage.locale;
+        if (localeResolver()) context.locale = localeResolver();
+        console.log(context.code + '-' + context.locale);
         i18nMessageGateway(context, function (translation) {
             presenter(fallbackToDefaultWhenUnknown(translation));
         }, function () {
@@ -164,7 +190,7 @@ function I18nResolverFactory(i18n) {
     }
 }
 
-function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, topicMessageDispatcher, localStorage, usecaseAdapterFactory, config) {
+function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config) {
     var self = this;
     var namespace;
     this.dialog = {};
@@ -183,10 +209,9 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
 
     function extractLocaleFromPath(params) {
         expose(params.locale);
-        if(isNewlySelected(params.locale)) {
+        if (isNewlySelected(params.locale)) {
             remember(params.locale);
         }
-        broadcast(params.locale);
     }
 
     function expose(locale) {
@@ -194,25 +219,17 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     }
 
     function isNewlySelected(locale) {
-        return localStorage.locale != locale;
+        return localeResolver() != locale;
     }
 
     function remember(locale) {
-        localStorage.locale = locale;
-    }
-
-    function broadcast(locale) {
-        topicMessageDispatcher.firePersistently('i18n.locale', locale);
-    }
-
-    function broadcastDefaultLocale() {
-        broadcast('default');
+        localeSwapper(locale);
     }
 
     function localeNotInPath() {
         if (shouldInitializeLocaleByConfig()) initializeLocaleByConfig();
         if (isLocaleRemembered()) redirectToLocalizedPage();
-        else broadcastDefaultLocale();
+        else remember('default');
     }
 
     function shouldInitializeLocaleByConfig() {
@@ -220,7 +237,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     }
 
     function isLocaleRemembered() {
-        return localStorage.locale;
+        return localeResolver();
     }
 
     function isLocalizationSupported() {
@@ -228,13 +245,12 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     }
 
     function initializeLocaleByConfig() {
-        setLocaleToFirstSupportedLanguage();
-        if (shouldFallbackToBrowserLocale()) localStorage.locale = browserLanguage();
-        broadcast(localStorage.locale)
+        if (shouldFallbackToBrowserLocale()) remember(browserLanguage());
+        else setLocaleToFirstSupportedLanguage();
     }
 
     function setLocaleToFirstSupportedLanguage() {
-        localStorage.locale = config.supportedLanguages[0];
+        remember(config.supportedLanguages[0]);
     }
 
     function shouldFallbackToBrowserLocale() {
@@ -250,7 +266,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     }
 
     function redirectToLocalizedPage() {
-        $location.path('/' + localStorage.locale + ($scope.unlocalizedPath ? $scope.unlocalizedPath : '/'));
+        $location.path('/' + localeResolver() + ($scope.unlocalizedPath ? $scope.unlocalizedPath : '/'));
     }
 
     function getUnlocalizedPathPath(locale) {
@@ -260,10 +276,6 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
 
     topicRegistry.subscribe('config.initialized', function (config) {
         namespace = config.namespace;
-
-        $scope.$on('$routeChangeStart', function () {
-            topicRegistry.persistentMessage('i18n.locale', undefined);
-        });
 
         $scope.$on('$routeChangeSuccess', function (evt, route) {
             $scope.unlocalizedPath = getUnlocalizedPathPath(route.params.locale);
@@ -290,46 +302,43 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         if (self.editor != undefined) self.dialog.translation = self.editor();
         var ctx = {key: this.dialog.code, message: this.dialog.translation};
         if (namespace) ctx.namespace = namespace;
-        ctx.locale = localStorage.locale || 'default';
+        ctx.locale = localeResolver() || 'default';
         var onSuccess = function () {
             self.presenter.success(self.dialog.translation);
             self.init();
         };
         i18nMessageWriter(ctx, usecaseAdapterFactory($scope, onSuccess));
     };
+
+    if (isLocaleRemembered()) localeSwapper(localeResolver());
 }
 
-function I18nDefaultDirectiveFactory(localStorage, topicMessageDispatcher) {
+function I18nDefaultDirectiveFactory(localeSwapper) {
     return {
-        restrict:'C',
-        link:function() {
-            localStorage.locale = '';
+        restrict: 'C',
+        link: function () {
+            localeSwapper('default');
         }
     };
 }
 
-function SelectLocaleController($scope, $routeParams, localStorage, topicMessageDispatcher) {
+function SelectLocaleController($scope, $routeParams, localeResolver, localeSwapper) {
     function expose(locale) {
         $scope.locale = locale;
     }
 
     function remember(locale) {
-        localStorage.locale = locale;
-    }
-
-    function broadcast(locale) {
-        topicMessageDispatcher.fire('i18n.locale', locale);
+        localeSwapper(locale);
     }
 
     $scope.select = function (locale) {
         expose(locale);
         remember(locale);
-        broadcast(locale);
     };
 
     $scope.init = function () {
-        if (localStorage.locale)
-            expose(localStorage.locale);
+        if (localeResolver())
+            expose(localeResolver());
         else
             expose($routeParams.locale);
     }
