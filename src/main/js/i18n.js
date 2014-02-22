@@ -175,7 +175,6 @@ function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeU
 
         if (self.namespace) context.namespace = self.namespace;
         if (localeResolver()) context.locale = localeResolver();
-        console.log(context.code + '-' + context.locale);
         i18nMessageGateway(context, function (translation) {
             presenter(fallbackToDefaultWhenUnknown(translation));
         }, function () {
