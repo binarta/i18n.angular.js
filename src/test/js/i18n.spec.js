@@ -251,15 +251,24 @@ describe('i18n', function () {
                 });
 
                 describe('and remembered locale', function () {
+                    var redirectsTo;
+
                     beforeEach(inject(function ($location) {
-                        local.locale = locale;
-                        $location.path('/path');
-                        scope.$routeChangeSuccess(null, {params: params});
+                        redirectsTo = function(locale, path) {
+                            local.locale = locale;
+                            $location.path('/path');
+                            scope.$routeChangeSuccess(null, {params: params});
+                            expect($location.path()).toEqual(path + scope.unlocalizedPath);
+                        };
                     }));
 
-                    it('redirects to associated page', inject(function ($location) {
-                        expect($location.path()).toEqual('/' + locale + scope.unlocalizedPath);
-                    }));
+                    it('redirects to localized page', function () {
+                        redirectsTo('lang', '/lang');
+                    });
+
+                    it('except when remembered locale is default', function() {
+                        redirectsTo('default', '');
+                    });
                 });
 
                 describe('and no remembered locale or locale in path with configured supported languages', function() {

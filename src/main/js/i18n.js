@@ -236,7 +236,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     }
 
     function isLocaleRemembered() {
-        return localeResolver();
+        return localeResolver() && localeResolver() != 'default';
     }
 
     function isLocalizationSupported() {
@@ -265,7 +265,9 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     }
 
     function redirectToLocalizedPage() {
-        $location.path('/' + localeResolver() + ($scope.unlocalizedPath ? $scope.unlocalizedPath : '/'));
+        var prefix = '/' + localeResolver();
+        var suffix = $scope.unlocalizedPath ? $scope.unlocalizedPath : '/';
+        $location.path(prefix + suffix);
     }
 
     function getUnlocalizedPathPath(locale) {
