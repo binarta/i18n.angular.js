@@ -286,31 +286,6 @@ describe('i18n', function () {
                             expect($location.path()).toEqual('/su/');
                             expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual('su');
                         }));
-
-                        describe('without configured supported languages', function() {
-                            beforeEach(function () {
-                                config.supportedLanguages = null;
-
-                                scope.$routeChangeSuccess(null, {params: params});
-                            });
-
-                            it('should broadcast default locale', function() {
-                                expect(dispatcher.persistent['i18n.locale']).toEqual('default');
-                            });
-                        });
-
-                        describe('without supported languages', function() {
-                            beforeEach(function () {
-                                config.supportedLanguages = [];
-
-                                scope.$routeChangeSuccess(null, {params: params});
-                            });
-
-                            it('should broadcast default locale', function() {
-                                expect(dispatcher.persistent['i18n.locale']).toEqual('default');
-                            });
-                        });
-
                     });
 
                     describe('and browser user language', function() {

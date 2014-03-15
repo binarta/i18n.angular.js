@@ -228,7 +228,6 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     function localeNotInPath() {
         if (shouldInitializeLocaleByConfig()) initializeLocaleByConfig();
         if (isLocaleRemembered()) redirectToLocalizedPage();
-        else remember('default');
     }
 
     function shouldInitializeLocaleByConfig() {
