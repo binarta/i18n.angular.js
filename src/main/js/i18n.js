@@ -6,18 +6,7 @@ angular.module('i18n', ['web.storage'])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
     .directive('i18nSupport', i18nSupportDirectiveFactory)
     .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
-    .directive('i18nDialog', function (i18n) {
-        return {
-            restrict: 'E',
-            templateUrl: 'app/partials/i18n/dialog.html',
-            require: '^i18nSupport',
-            link: function (scope, element, attrs, controller) {
-                scope.dialog = controller.dialog;
-                scope.close = controller.close;
-                scope.submit = controller.translate;
-            }
-        }
-    })
+    .directive('i18nDialog', ['$rootScope', I18nDialogDirectiveFactory])
     .directive('i18nTranslate', i18nDirectiveFactory)
     .directive('i18n', ['i18n', 'topicRegistry', 'activeUserHasPermission', 'topicMessageDispatcher', i18nDirectiveFactory]);
 
@@ -342,4 +331,19 @@ function SelectLocaleController($scope, $routeParams, localeResolver, localeSwap
         else
             expose($routeParams.locale);
     }
+}
+
+function I18nDialogDirectiveFactory($rootScope) {
+    return {
+        restrict: 'E',
+        templateUrl: function () {
+            return $rootScope.i18nDialogTemplateUrl ? $rootScope.i18nDialogTemplateUrl : 'app/partials/i18n/dialog.html'
+        },
+        require: '^i18nSupport',
+        link: function (scope, element, attrs, controller) {
+            scope.dialog = controller.dialog;
+            scope.close = controller.close;
+            scope.submit = controller.translate;
+        }
+    };
 }

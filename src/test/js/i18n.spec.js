@@ -1117,4 +1117,51 @@ describe('i18n', function () {
             });
         });
     });
+
+    describe('i18n dialog directive', function () {
+        var directive, scope;
+
+        beforeEach(inject(function($rootScope) {
+            scope = $rootScope.$new();
+            directive = I18nDialogDirectiveFactory($rootScope);
+        }));
+
+        it('restrict to element', function() {
+            expect(directive.restrict).toEqual('E');
+        });
+
+        it('template url', function () {
+            expect(directive.templateUrl()).toEqual('app/partials/i18n/dialog.html');
+        });
+
+        it('template url can be overridden by rootScope', inject(function ($rootScope) {
+            $rootScope.i18nDialogTemplateUrl = 'overridden-template.html';
+
+            expect(directive.templateUrl()).toEqual('overridden-template.html');
+        }));
+
+        it('requires i18n support directive', function() {
+            expect(directive.require).toEqual('^i18nSupport');
+        });
+
+        describe('on link', function() {
+            var controllerStub;
+
+            beforeEach(function () {
+                controllerStub = {
+                    dialog: 'dialog',
+                    close: 'close',
+                    translate: 'translate'
+                };
+
+                directive.link(scope, null, null, controllerStub);
+            });
+
+            it('set scope properties', function () {
+                expect(scope.dialog).toEqual(controllerStub.dialog);
+                expect(scope.close).toEqual(controllerStub.close);
+                expect(scope.submit).toEqual(controllerStub.translate);
+            });
+        });
+    });
 });
