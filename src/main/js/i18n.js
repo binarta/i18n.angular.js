@@ -71,14 +71,20 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topi
                 }
             }
 
+            function isTranslatable() {
+                return attrs.readOnly == undefined;
+            }
+
             var toggleEditMode = function (editMode) {
                 activeUserHasPermission({
                     no: function () {
                         scope.translating = false;
                     },
                     yes: function () {
-                        scope.translating = editMode;
-                        bindClickEvent(editMode);
+                        if(isTranslatable()) {
+                            scope.translating = editMode;
+                            bindClickEvent(editMode);
+                        }
                     }
                 }, 'i18n.message.add');
             };

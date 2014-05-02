@@ -558,11 +558,12 @@ describe('i18n', function () {
                 unbind: function(event) {
                     clickEvent = event;
                 }
-            }
+            };
 
             beforeEach(function () {
                 attrs.code = 'code';
                 attrs.default = 'default';
+                attrs.readOnly = undefined;
                 directive.link(scope, element, attrs, support);
             });
 
@@ -603,6 +604,23 @@ describe('i18n', function () {
                             expect(clickEvent).toEqual('click');
                             expect(support.code).toEqual(scope.code);
                             expect(support.var).toEqual(scope.var);
+                        });
+                    });
+
+                    describe('and element is not translatable', function () {
+                        beforeEach(function () {
+                            attrs.readOnly = "";
+                            clickEvent = undefined;
+                            clickHandler = undefined;
+
+                            directive.link(scope, element, attrs, support);
+                            registry['edit.mode'](true);
+                            permitter.yes();
+                        });
+
+                        it('click event is not bound', function () {
+                            expect(clickEvent).toBeUndefined();
+                            expect(clickHandler).toBeUndefined();
                         });
                     });
                 });
