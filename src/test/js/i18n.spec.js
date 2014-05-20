@@ -1182,4 +1182,36 @@ describe('i18n', function () {
             });
         });
     });
+
+    describe('i18nLocation', function() {
+        var location, target, session;
+
+        beforeEach(inject(function(i18nLocation, $location, sessionStorage) {
+            location = i18nLocation;
+            target = $location;
+            session = sessionStorage;
+        }));
+
+        it('search params fall through to $location', function() {
+            location.search({a:'b'});
+            expect(target.search()).toEqual({a:'b'});
+        });
+
+        it('path with no locale', function() {
+            location.path('/');
+            expect(target.path()).toEqual('/');
+        });
+
+        it('path with locale', function() {
+            session.locale = 'en';
+            location.path('/');
+            expect(target.path()).toEqual('/en/');
+        });
+
+        it('path with default locale', function() {
+            session.locale = 'default';
+            location.path('/');
+            expect(target.path()).toEqual('/');
+        });
+    });
 });

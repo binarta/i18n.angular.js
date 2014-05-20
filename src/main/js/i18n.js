@@ -1,5 +1,6 @@
 angular.module('i18n', ['web.storage'])
     .factory('i18n', ['i18nMessageReader', 'topicRegistry', 'topicMessageDispatcher', 'activeUserHasPermission', 'localeResolver', I18nFactory])
+    .factory('i18nLocation', ['$location', 'localeResolver', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
     .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
     .factory('localeSwapper', ['localStorage', 'sessionStorage', 'topicMessageDispatcher', LocaleSwapperFactory])
@@ -12,6 +13,16 @@ angular.module('i18n', ['web.storage'])
 
 function I18nFactory(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver) {
     return new i18n(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver);
+}
+
+function I18nLocationFactory($location, localeResolver) {
+    return {
+        search:function(it) {$location.search(it);},
+        path:function(path) {
+            var locale = localeResolver();
+            $location.path((locale && locale != 'default' ? '/' + locale : '') + path);
+        }
+    }
 }
 
 function LocaleResolverFactory(localStorage, sessionStorage) {
