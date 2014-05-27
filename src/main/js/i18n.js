@@ -9,7 +9,7 @@ angular.module('i18n', ['web.storage'])
     .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
     .directive('i18nDialog', ['$rootScope', I18nDialogDirectiveFactory])
     .directive('i18nTranslate', i18nDirectiveFactory)
-    .directive('i18n', ['i18n', 'topicRegistry', 'activeUserHasPermission', 'topicMessageDispatcher', i18nDirectiveFactory]);
+    .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory]);
 
 function I18nFactory(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver) {
     return new i18n(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver);
@@ -52,17 +52,21 @@ function i18nSupportDirectiveFactory() {
         controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]
     }
 }
-function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topicMessageDispatcher) {
+function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
     return {
         require: '^i18nSupport',
         restrict: ['E', 'A'],
         scope: true,
         link: function (scope, element, attrs, support) {
-            var initialized = false;
-
-            scope.code = attrs.code;
-            scope.default = attrs.default;
-            scope.translating = false;
+            scope.$watch(function () {
+                return [attrs.code, attrs.default, localeResolver()];
+            }, function () {
+                scope.code = attrs.code;
+                scope.default = attrs.default;
+                i18n.resolve(scope, function (translation) {
+                    updateTranslation(translation);
+                });
+            }, true);
 
             scope.translate = function () {
                 support.open(scope.code, scope.var, {
@@ -88,53 +92,16 @@ function i18nDirectiveFactory(i18n, topicRegistry, activeUserHasPermission, topi
 
             var toggleEditMode = function (editMode) {
                 activeUserHasPermission({
-                    no: function () {
-                        scope.translating = false;
-                    },
                     yes: function () {
-                        if(isTranslatable()) {
-                            scope.translating = editMode;
-                            bindClickEvent(editMode);
-                        }
+                        if(isTranslatable()) bindClickEvent(editMode);
                     }
                 }, 'i18n.message.add');
             };
 
-            var resolve = function () {
-                initialized ? resolveNow() : resolveWhenInitialized();
-            };
-
-            var updated = function (t) {
+            ngRegisterTopicHandler(scope, 'edit.mode', toggleEditMode);
+            ngRegisterTopicHandler(scope, 'i18n.updated', function (t) {
                 if (scope.code == t.code) updateTranslation(t.translation);
-            };
-
-            var subscribeLocale = function () {
-                topicRegistry.subscribe('i18n.locale', resolve);
-            };
-
-            topicRegistry.subscribe('edit.mode', toggleEditMode);
-            topicRegistry.subscribe('app.start', subscribeLocale);
-            topicRegistry.subscribe('i18n.updated', updated);
-
-            scope.$on('$destroy', function () {
-                topicRegistry.unsubscribe('edit.mode', toggleEditMode);
-                topicRegistry.unsubscribe('i18n.updated', updated);
-                topicRegistry.unsubscribe('i18n.locale', resolve);
-                topicRegistry.unsubscribe('app.start', subscribeLocale);
             });
-
-            function resolveNow() {
-                i18n.resolve(scope, function (translation) {
-                    updateTranslation(translation);
-                });
-            }
-
-            function resolveWhenInitialized() {
-                scope.$watch('[code]', function () {
-                    initialized = true;
-                    if (scope.code) resolveNow();
-                }, true);
-            }
 
             function updateTranslation(translation) {
                 scope.var = translation;

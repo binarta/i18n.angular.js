@@ -493,22 +493,18 @@ describe('i18n', function () {
     });
 
     describe('i18n directive', function () {
-        var directive, scope, resolver, support, registry, permitter, dispatcher, topics;
+        var directive, scope, resolver, support, registry, permitter, dispatcher, topics, locale;
         var attrs = [];
 
-        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock, topicMessageDispatcher, topicRegistryMock, topicRegistry) {
+        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock,
+                                    topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, $rootScope) {
             permitter = activeUserHasPermissionHelper;
-            scope = {
-                $watch: function (expression, callback) {
-                    scope.watches[expression] = callback;
-                },
-                watches: {},
-                $apply: function(arg){},
-                $on: function (event, callback) {
-                    scope.on[event] = callback;
-                },
-                on: {}
+            scope = $rootScope.$new();
+            scope.$apply = function(arg){};
+            scope.$on = function (event, callback) {
+                scope.on[event] = callback;
             };
+            scope.on = {};
             scope.$parent = [];
             resolver = {
                 resolve: function (args, callback) {
@@ -531,7 +527,11 @@ describe('i18n', function () {
             dispatcher = topicMessageDispatcher;
             topics = topicMessageDispatcherMock;
 
-            directive = i18nDirectiveFactory(resolver, topicRegistry, activeUserHasPermission, dispatcher);
+            var localeResolver = function () {
+                return locale;
+            };
+
+            directive = i18nDirectiveFactory(resolver, ngRegisterTopicHandler, activeUserHasPermission, dispatcher, localeResolver);
 
         }));
 
@@ -567,84 +567,129 @@ describe('i18n', function () {
                 directive.link(scope, element, attrs, support);
             });
 
-            it('code and default are available on scope', function () {
-                expect(scope.code).toEqual('code');
-                expect(scope.default).toEqual('default');
-            });
-
-            it('and scope listens to destroy event', function () {
-                expect(scope.on['$destroy']).toBeDefined();
-            });
-
-            describe('and received edit.mode enabled notification', function () {
+            describe('and attribute watch is triggered', function () {
                 beforeEach(function () {
-                    registry['edit.mode'](true);
+                    scope.$digest();
                 });
 
-                it('the directive should check if the active user has i18n.message.add permission', function () {
-                    expect(permitter.permission).toEqual('i18n.message.add');
+                it('code and default are available on scope', function () {
+                    expect(scope.code).toEqual('code');
+                    expect(scope.default).toEqual('default');
                 });
 
-                describe('and active user has i18n.message.add permission', function () {
+                it('triggers message resolution', function () {
+                    expect(resolver.args).toEqual(scope);
+                });
+
+                describe('and code is changed', function () {
                     beforeEach(function () {
-                        permitter.yes();
+                        resolver.args = {};
+                        attrs.code = 'changed';
+                        scope.$digest();
                     });
 
-                    it('the directive should enter translation mode', function () {
-                        expect(scope.translating).toEqual(true);
+                    it('triggers message resolution', function () {
+                        expect(resolver.args).toEqual(scope);
+                    });
+                });
+
+                describe('and default is changed', function () {
+                    beforeEach(function () {
+                        resolver.args = {};
+                        attrs.default = 'changed';
+                        scope.$digest();
                     });
 
-                    describe('and element receives click event', function () {
-                        it('linker calls translate function', function() {
-                            scope.code = 'code';
-                            scope.var = 'var';
+                    it('triggers message resolution', function () {
+                        expect(resolver.args).toEqual(scope);
+                    });
+                });
 
-                            clickHandler();
-
-                            expect(clickEvent).toEqual('click');
-                            expect(support.code).toEqual(scope.code);
-                            expect(support.var).toEqual(scope.var);
-                        });
+                describe('and locale is changed', function () {
+                    beforeEach(function () {
+                        resolver.args = {};
+                        locale = 'en';
+                        scope.$digest();
                     });
 
-                    describe('and element is not translatable', function () {
+                    it('triggers message resolution', function () {
+                        expect(resolver.args).toEqual(scope);
+                    });
+                });
+
+                describe('and message resolution completes without var defined on attributes', function () {
+                    beforeEach(function () {
+                        resolver.callback('translation');
+                    });
+
+                    it('exposes translation on scope', function () {
+                        expect(scope.var).toEqual('translation');
+                    });
+
+                    it('does not exposes translation on parent scope', function () {
+                        expect(scope.$parent[attrs.var]).toEqual(undefined);
+                    });
+                });
+
+                describe('and message resolution completes with var defined on attributes', function () {
+                    beforeEach(function () {
+                        attrs.var = 'var';
+                        resolver.callback('translation');
+                    });
+
+                    it('exposes translation on scope', function () {
+                        expect(scope.var).toEqual('translation');
+                    });
+
+                    it('exposes translation on parent scope', function () {
+                        expect(scope.$parent[attrs.var]).toEqual('translation');
+                    });
+                });
+
+                describe('and received edit.mode enabled notification', function () {
+                    beforeEach(function () {
+                        registry['edit.mode'](true);
+                    });
+
+                    it('the directive should check if the active user has i18n.message.add permission', function () {
+                        expect(permitter.permission).toEqual('i18n.message.add');
+                    });
+
+                    describe('and active user has i18n.message.add permission', function () {
                         beforeEach(function () {
-                            attrs.readOnly = "";
-                            clickEvent = undefined;
-                            clickHandler = undefined;
-
-                            directive.link(scope, element, attrs, support);
-                            registry['edit.mode'](true);
                             permitter.yes();
                         });
 
-                        it('click event is not bound', function () {
-                            expect(clickEvent).toBeUndefined();
-                            expect(clickHandler).toBeUndefined();
-                        });
-                    });
-                });
+                        describe('and element receives click event', function () {
+                            it('linker calls translate function', function() {
+                                scope.code = 'code';
+                                scope.var = 'var';
 
-                describe('and translation mode active', function () {
-                    beforeEach(function () {
-                        scope.translating = true;
-                    });
+                                clickHandler();
 
-                    describe('and active user does not have i18n.message.add permission', function () {
-                        beforeEach(function () {
-                            permitter.no();
+                                expect(clickEvent).toEqual('click');
+                                expect(support.code).toEqual(scope.code);
+                                expect(support.var).toEqual(scope.var);
+                            });
                         });
 
-                        it('the directive should exit translation mode', function () {
-                            expect(scope.translating).toEqual(false);
+                        describe('and element is not translatable', function () {
+                            beforeEach(function () {
+                                attrs.readOnly = "";
+                                clickEvent = undefined;
+                                clickHandler = undefined;
+
+                                directive.link(scope, element, attrs, support);
+                                registry['edit.mode'](true);
+                                permitter.yes();
+                            });
+
+                            it('click event is not bound', function () {
+                                expect(clickEvent).toBeUndefined();
+                                expect(clickHandler).toBeUndefined();
+                            });
                         });
                     });
-                });
-            });
-
-            describe('and translation mode active', function () {
-                beforeEach(function () {
-                    scope.translating = true;
                 });
 
                 describe('and received edit.mode disabled notification', function () {
@@ -657,166 +702,12 @@ describe('i18n', function () {
                             permitter.yes();
                         });
 
-                        it('the directive should exit translation mode', function () {
-                            expect(scope.translating).toEqual(false);
-                        });
-
                         it('element should unbind click event', function () {
                             expect(clickEvent).toEqual('click');
                         });
                     });
-
-                    describe('and active user does not have i18n.message.add permission', function () {
-                        beforeEach(function () {
-                            permitter.no();
-                        });
-
-                        it('the directive should exit translation mode', function () {
-                            expect(scope.translating).toEqual(false);
-                        });
-                    });
                 });
             });
-
-            it('no attribute change watch should be installed yet', function () {
-                expect(scope.watches).toEqual({});
-            });
-
-            it('registers for app.start notifications', function () {
-                expect(registry['app.start']).toBeDefined();
-            });
-
-            describe('and app.start notification received', function () {
-                beforeEach(function () {
-                    registry['app.start']();
-                });
-
-                it('should not install watch yet', function() {
-                    expect(scope.watches['[code]']).toBeUndefined();
-                });
-
-                describe('and i18n.locale notification received', function () {
-                    var locale;
-
-                    beforeEach(function () {
-                        locale = 'lang';
-                        resolver.args = {};
-                        registry['i18n.locale'](locale);
-                    });
-
-                    it('does not trigger message resolution', function () {
-                        expect(resolver.args).toEqual({});
-                    });
-
-                    describe('and code is unknown', function () {
-                        beforeEach(function () {
-                            scope.code = undefined;
-                            scope.watches['[code]']();
-                        });
-
-                        it('does not trigger message resolution', function () {
-                            expect(resolver.args).toEqual({});
-                        });
-                    });
-
-                    describe('and code is known', function () {
-                        beforeEach(function () {
-                            scope.code = 'code';
-                        });
-
-                        describe('and attribute change watch has triggered', function () {
-                            beforeEach(function () {
-                                scope.watches['[code]']();
-                            });
-
-                            it('triggers message resolution', function () {
-                                expect(resolver.args).toEqual(scope);
-                            });
-
-                            describe('and message resolution completes without var defined on attributes', function () {
-                                beforeEach(function () {
-                                    resolver.callback('translation');
-                                });
-
-                                it('exposes translation on scope', function () {
-                                    expect(scope.var).toEqual('translation');
-                                });
-
-                                it('does not exposes translation on parent scope', function () {
-                                    expect(scope.$parent[attrs.var]).toEqual(undefined);
-                                });
-                            });
-
-                            describe('and message resolution completes with var defined on attributes', function () {
-                                beforeEach(function () {
-                                    attrs.var = 'var';
-                                    resolver.callback('translation');
-                                });
-
-                                it('exposes translation on scope', function () {
-                                    expect(scope.var).toEqual('translation');
-                                });
-
-                                it('exposes translation on parent scope', function () {
-                                    expect(scope.$parent[attrs.var]).toEqual('translation');
-                                });
-                            });
-
-                            describe('and any subsequent i18n.locale notifications', function () {
-                                beforeEach(function () {
-                                    locale = 'lang';
-                                    resolver.args = {};
-                                    scope.watches = {};
-                                    registry['i18n.locale'](locale);
-                                });
-
-                                it('trigger message resolution', function () {
-                                    expect(resolver.args).toEqual(scope);
-                                });
-
-                                it('should not re-install watches', function() {
-                                    expect(scope.watches).toEqual({});
-                                });
-                            });
-                        });
-
-                    });
-                });
-
-                describe('and scope is destroyed', function() {
-                    beforeEach(function () {
-                        scope.on['$destroy']();
-                    });
-
-                    it('should unsubscribe i18n.locale', function () {
-                        expect(registry['i18n.locale']).toBeUndefined();
-                    });
-                });
-            });
-
-            describe('and scope is destroyed', function () {
-                beforeEach(function () {
-                    scope.on['$destroy']();
-                });
-
-                it('should unsubscribe app.start', function () {
-                    expect(registry['app.start']).toBeUndefined();
-                });
-
-                it('should unsubscribe edit.mode', function () {
-                    expect(registry['edit.mode']).toBeUndefined();
-                });
-
-                it('should unsubscribe i18n.updated', function () {
-                    expect(registry['i18n.updated']).toBeUndefined();
-                });
-            });
-
-        });
-
-        it('linker exposes resolver translation mode on scope', function () {
-            directive.link(scope, null, attrs);
-            expect(scope.translating).toEqual(resolver.translationMode);
         });
 
         it('linker registers a translate function', function () {
@@ -829,30 +720,17 @@ describe('i18n', function () {
         });
 
         describe('on translation success', function () {
-
-            describe('and var is defined on attributes', function () {
-                beforeEach(function () {
-                    attrs.var = 'var';
-                    directive.link(scope, null, attrs, support);
-                    scope.translate();
-                    support.callback.success('translation');
-                });
-
+            beforeEach(function () {
+                directive.link(scope, null, attrs, support);
+                scope.$digest();
+                scope.translate();
+                support.callback.success('translation');
             });
 
-            describe('and var is not defined on attributes', function () {
-                beforeEach(function () {
-                    attrs.var = undefined;
-                    directive.link(scope, null, attrs, support);
-                    scope.translate();
-                    support.callback.success('translation');
-                });
-
-                it('raises i18n.updated notification', function () {
-                    expect(topics['i18n.updated']).toEqual({
-                        code: 'code',
-                        translation: 'translation'
-                    });
+            it('raises i18n.updated notification', function () {
+                expect(topics['i18n.updated']).toEqual({
+                    code: 'code',
+                    translation: 'translation'
                 });
             });
 
@@ -924,7 +802,6 @@ describe('i18n', function () {
                             expect(scope.$parent[attrs.var]).toEqual(undefined);
                         });
                     });
-
                 });
             });
         });
