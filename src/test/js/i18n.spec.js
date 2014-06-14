@@ -92,6 +92,13 @@ describe('i18n', function () {
                 expect(receivedTranslation).toEqual(defaultTranslation);
             });
 
+            it('resolution fallback to empty default', function () {
+                context.code = code;
+                context.default = '';
+                resolveTo(unknownCode);
+                expect(receivedTranslation).toEqual(' ');
+            });
+
             it('resolution without fallback to default available', function () {
                 context.code = code;
                 resolver.resolve(context, presenter);

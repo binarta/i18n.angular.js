@@ -142,6 +142,7 @@ function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeU
         }
 
         function fallbackToDefaultWhenUnknown(translation) {
+            if (context.default == '') context.default = ' ';
             if (!context.default) context.default = 'place your text here';
             return isUnknown(translation) ? context.default : translation;
         }
