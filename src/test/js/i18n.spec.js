@@ -571,7 +571,18 @@ describe('i18n', function () {
                 attrs.code = 'code';
                 attrs.default = 'default';
                 attrs.readOnly = undefined;
+
+                scope.var = 'var';
+                scope.code = 'code';
+                scope.default = 'default';
+
                 directive.link(scope, element, attrs, support);
+            });
+
+            it('initialize scope values', function () {
+                expect(scope.var).toBeUndefined();
+                expect(scope.code).toBeUndefined();
+                expect(scope.default).toBeUndefined();
             });
 
             describe('and attribute watch is triggered', function () {
@@ -743,71 +754,30 @@ describe('i18n', function () {
 
             describe('and received i18n.updated notification', function () {
                 describe('and code matches', function () {
-                    describe('and var is defined on attributes', function () {
-                        beforeEach(function () {
-                            scope.code = 'code';
-                            scope.var = 'translation';
-                            attrs.var = 'var';
-                            directive.link(scope, null, attrs, support);
+                    beforeEach(function () {
+                        directive.link(scope, null, attrs, support);
+                        scope.code = 'code';
 
-                            registry['i18n.updated']({code: 'code', translation: 'foo'});
-                        });
-
-                        it('update translation', function() {
-                            expect(scope.var).toEqual('foo');
-                            expect(scope.$parent[attrs.var]).toEqual('foo');
-                        });
+                        registry['i18n.updated']({code: 'code', translation: 'foo'});
                     });
 
-                    describe('and var is not defined on attributes', function () {
-                        beforeEach(function () {
-                            scope.code = 'code';
-                            scope.var = 'translation';
-                            attrs.var = undefined;
-                            directive.link(scope, null, attrs, support);
-
-                            registry['i18n.updated']({code: 'code', translation: 'foo'});
-                        });
-
-                        it('update translation', function() {
-                            expect(scope.var).toEqual('foo');
-                            expect(scope.$parent[attrs.var]).toEqual(undefined);
-                        });
+                    it('update translation', function() {
+                        expect(scope.var).toEqual('foo');
                     });
                 });
 
                 describe('and code is different', function () {
-                    describe('and var is defined on attributes', function () {
-                        beforeEach(function () {
-                            scope.code = 'code';
-                            scope.var = 'translation';
-                            attrs.var = 'var';
-                            scope.$parent[attrs.var] = scope.var;
-                            directive.link(scope, null, attrs, support);
+                    beforeEach(function () {
+                        attrs.code = 'code';
+                        attrs.var = 'var';
+                        directive.link(scope, null, attrs, support);
+                        scope.var = 'translation';
 
-                            registry['i18n.updated']({code: 'other.code', translation: 'foo'});
-                        });
-
-                        it('translation should not be altered', function() {
-                            expect(scope.var).toEqual(scope.var);
-                            expect(scope.$parent[attrs.var]).toEqual(scope.var);
-                        });
+                        registry['i18n.updated']({code: 'other.code', translation: 'foo'});
                     });
 
-                    describe('and var is defined on attributes', function () {
-                        beforeEach(function () {
-                            scope.code = 'code';
-                            scope.var = 'translation';
-                            attrs.var = undefined;
-                            directive.link(scope, null, attrs, support);
-
-                            registry['i18n.updated']({code: 'other.code', translation: 'foo'});
-                        });
-
-                        it('translation should not be altered', function() {
-                            expect(scope.var).toEqual(scope.var);
-                            expect(scope.$parent[attrs.var]).toEqual(undefined);
-                        });
+                    it('translation should not be altered', function() {
+                        expect(scope.var).toEqual('translation');
                     });
                 });
             });

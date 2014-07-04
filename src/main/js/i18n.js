@@ -58,6 +58,10 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
         restrict: ['E', 'A'],
         scope: true,
         link: function (scope, element, attrs, support) {
+            scope.var = undefined;
+            scope.code = undefined;
+            scope.default = undefined;
+
             scope.$watch(function () {
                 return [attrs.code, attrs.default, localeResolver()];
             }, function () {
