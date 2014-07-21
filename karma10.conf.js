@@ -10,6 +10,7 @@ module.exports = function(config) {
             {pattern:'bower_components/thk-config-mock/src/config.mock.js'},
             {pattern:'bower_components/thk-notifications-mock/src/notifications.mock.js'},
             {pattern:'bower_components/thk-web-storage-mock/src/web.storage.mock.js'},
+            {pattern:'bower_components/angular-bootstrap/ui-bootstrap.js'},
             {pattern:'src/main/**/*.js'},
             {pattern:'src/test/**/*.js'}
         ],

@@ -129,7 +129,7 @@ describe('i18n', function () {
     });
 
     describe('I18nSupportController', function () {
-        var scope, ctrl, registry, dispatcher, local;
+        var scope, ctrl, registry, dispatcher, local, modal, modalInstance, modalClosedSpy, modalDismissedSpy;
         var code = 'message.code';
         var translation = 'message translation';
         var presenter = {success: function (translation) {
@@ -140,6 +140,7 @@ describe('i18n', function () {
         var config = {
             namespace: 'namespace'
         };
+        var route = {};
 
         beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, localStorage, i18nMessageWriter) {
             writer = i18nMessageWriter;
@@ -151,20 +152,80 @@ describe('i18n', function () {
             };
             registry = topicRegistryMock;
             dispatcher = topicMessageDispatcherMock;
-            ctrl = $controller(I18nSupportController, {$scope: scope, config: config});
+            modal = {
+                open: {}
+            };
+            modalInstance = {
+                result: {
+                    then: function (result, dismissed) {
+                        modalClosedSpy = result;
+                        modalDismissedSpy = dismissed;
+                    }
+                }
+            };
+            spyOn(modal, 'open').andReturn(modalInstance);
+            route.routes = [];
+            route.routes['/template/i18n-modal'] = {
+                templateUrl: 'i18n-modal.html'
+            };
+            ctrl = $controller(I18nSupportController, {$scope: scope, config: config, $modal: modal, $route: route});
         }));
 
-        it('on init', function () {
-            expect(ctrl.dialog.visibilityClass).toEqual('hide');
+        describe('open dialog modal', function (){
+            beforeEach(function () {
+                ctrl.open(code, translation, presenter, editor);
+            });
+
+            it('dialog variables are set', function () {
+                expect(scope.dialog.code).toEqual(code);
+                expect(scope.dialog.translation).toEqual(translation);
+                expect(scope.dialog.editor).toEqual(editor);
+                expect(scope.presenter).toEqual(presenter);
+            });
+
+            it('modal is opened', function () {
+                expect(modal.open).toHaveBeenCalled();
+            });
+
+            it('modal is opened with scope setting', function () {
+                expect(modal.open.mostRecentCall.args[0].scope).toEqual(scope);
+            });
+
+            it('modal is opened with controller setting', function () {
+                expect(modal.open.mostRecentCall.args[0].controller).toEqual(I18nModalInstanceController);
+            });
+
+            it('modal is opened with default templateUrl setting', function () {
+                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('i18n-modal.html');
+            });
+
+            describe('modal is submitted', function () {
+                beforeEach(function () {
+                    spyOn(ctrl, 'translate');
+                    modalClosedSpy('translated value');
+                });
+
+                it('translation is modified', function () {
+                    expect(scope.dialog.translation).toEqual('translated value');
+                });
+
+                it('translate function is called', function () {
+                    expect(ctrl.translate).toHaveBeenCalled();
+                });
+            });
+
+            describe('modal is canceled', function () {
+                beforeEach(function () {
+                    spyOn(ctrl, 'init');
+                    modalDismissedSpy();
+                });
+
+                it('init is called', function () {
+                    expect(ctrl.init).toHaveBeenCalled();
+                });
+            });
         });
-        it('open dialog for editing', function () {
-            ctrl.open(code, translation, presenter, editor);
-            expect(ctrl.dialog.visibilityClass).toEqual('show');
-            expect(ctrl.dialog.code).toEqual(code);
-            expect(ctrl.dialog.translation).toEqual(translation);
-            expect(ctrl.presenter).toEqual(presenter);
-            expect(ctrl.dialog.editor).toEqual(editor);
-        });
+
         it('on open dialog a renderer can be notified', function () {
             var valueToRender;
             ctrl.renderer = function (value) {
@@ -197,8 +258,10 @@ describe('i18n', function () {
 
             describe('on translate with namespace', function() {
                 beforeEach(function() {
-                    ctrl.dialog.code = code;
-                    ctrl.dialog.translation = translation;
+                    scope.dialog = {
+                        code: code,
+                        translation: translation
+                    };
                     ctrl.presenter = presenter;
                     ctrl.translate();
                 });
@@ -373,10 +436,11 @@ describe('i18n', function () {
 
             beforeEach(inject(function(usecaseAdapterFactory) {
                 adapterFactory = usecaseAdapterFactory;
-                ctrl.dialog.visibilityClass = '';
-                ctrl.dialog.code = code;
-                ctrl.dialog.translation = translation;
-                ctrl.presenter = presenter;
+                scope.dialog = {
+                    code: code,
+                    translation: translation
+                };
+                scope.presenter = presenter;
                 ctrl.translate();
             }));
 
@@ -394,10 +458,9 @@ describe('i18n', function () {
                 });
 
                 it('reset', function () {
-                    expect(ctrl.dialog.visibilityClass).toEqual('hide');
-                    expect(ctrl.dialog.code).toEqual('');
-                    expect(ctrl.dialog.translation).toEqual('');
-                    expect(ctrl.presenter).toEqual(null);
+                    expect(scope.dialog.code).toEqual('');
+                    expect(scope.dialog.translation).toEqual('');
+                    expect(scope.presenter).toEqual(null);
                 });
 
                 it('pass translation to presenter', function () {
@@ -411,8 +474,8 @@ describe('i18n', function () {
                 ctrl.editor = function () {
                     return translation;
                 };
-                ctrl.dialog.code = code;
-                ctrl.presenter = presenter;
+                scope.dialog.code = code;
+                scope.presenter = presenter;
                 ctrl.translate();
             });
 
@@ -422,25 +485,21 @@ describe('i18n', function () {
         });
 
         it('close dialog', function () {
-            ctrl.dialog.visibilityClass = '';
-            ctrl.dialog.code = code;
-            ctrl.dialog.translation = translation;
+            scope.dialog.code = code;
+            scope.dialog.translation = translation;
             ctrl.close();
-            expect(ctrl.dialog.visibilityClass).toEqual('hide');
-            expect(ctrl.dialog.code).toEqual('');
-            expect(ctrl.dialog.translation).toEqual('');
-            expect(ctrl.presenter).toEqual(null);
+            expect(scope.dialog.code).toEqual('');
+            expect(scope.dialog.translation).toEqual('');
+            expect(scope.presenter).toEqual(null);
         });
 
         it('on checkpoint.signout notification close dialog', function () {
-            ctrl.dialog.visibilityClass = '';
-            ctrl.dialog.code = code;
-            ctrl.dialog.translation = translation;
+            scope.dialog.code = code;
+            scope.dialog.translation = translation;
             registry['checkpoint.signout']();
-            expect(ctrl.dialog.visibilityClass).toEqual('hide');
-            expect(ctrl.dialog.code).toEqual('');
-            expect(ctrl.dialog.translation).toEqual('');
-            expect(ctrl.presenter).toEqual(null);
+            expect(scope.dialog.code).toEqual('');
+            expect(scope.dialog.translation).toEqual('');
+            expect(scope.presenter).toEqual(null);
         });
 
         describe('given a previously selected locale', function () {
@@ -459,6 +518,47 @@ describe('i18n', function () {
         });
     });
 
+    describe('I18nModalInstanceController', function () {
+        var modalInstance, modalInstanceCtrl, resultSpy, modalDismissed, scope;
+
+        beforeEach(inject(function ($rootScope) {
+            scope = $rootScope.$new();
+            modalInstance = {
+                close: function (result) {
+                    resultSpy = result;
+                },
+                dismiss: function (reason) {
+                    modalDismissed = reason;
+                }
+            };
+
+            modalInstanceCtrl = new I18nModalInstanceController(scope, modalInstance);
+        }));
+
+        describe('modal is submitted', function () {
+            beforeEach(function () {
+                scope.dialog = {
+                    translation: 'value'
+                };
+                scope.submit();
+            });
+
+            it('modal is closed', function () {
+                expect(resultSpy).toEqual('value');
+            });
+        });
+
+        describe('modal is closed', function () {
+            beforeEach(function () {
+                scope.close();
+            });
+
+            it('modal is dismissed', function () {
+                expect(modalDismissed).toEqual('cancel');
+            });
+        });
+    });
+
     describe('i18n support directive', function () {
         var directive, scope, resolver, support;
 
@@ -472,7 +572,8 @@ describe('i18n', function () {
         });
 
         it('controller', function () {
-            expect(directive.controller).toEqual(['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]);
+            expect(directive.controller).toEqual(['$scope', '$location', 'i18nMessageWriter', 'topicRegistry',
+                'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', '$modal', '$route', I18nSupportController]);
         });
     });
 
@@ -986,53 +1087,6 @@ describe('i18n', function () {
 
             it('then broadcast the swap', function () {
                 expect(topics.persistent['i18n.locale']).toEqual('swapped-locale');
-            });
-        });
-    });
-
-    describe('i18n dialog directive', function () {
-        var directive, scope;
-
-        beforeEach(inject(function($rootScope) {
-            scope = $rootScope.$new();
-            directive = I18nDialogDirectiveFactory($rootScope);
-        }));
-
-        it('restrict to element', function() {
-            expect(directive.restrict).toEqual('E');
-        });
-
-        it('template url', function () {
-            expect(directive.templateUrl()).toEqual('app/partials/i18n/dialog.html');
-        });
-
-        it('template url can be overridden by rootScope', inject(function ($rootScope) {
-            $rootScope.i18nDialogTemplateUrl = 'overridden-template.html';
-
-            expect(directive.templateUrl()).toEqual('overridden-template.html');
-        }));
-
-        it('requires i18n support directive', function() {
-            expect(directive.require).toEqual('^i18nSupport');
-        });
-
-        describe('on link', function() {
-            var controllerStub;
-
-            beforeEach(function () {
-                controllerStub = {
-                    dialog: 'dialog',
-                    close: 'close',
-                    translate: 'translate'
-                };
-
-                directive.link(scope, null, null, controllerStub);
-            });
-
-            it('set scope properties', function () {
-                expect(scope.dialog).toEqual(controllerStub.dialog);
-                expect(scope.close).toEqual(controllerStub.close);
-                expect(scope.submit).toEqual(controllerStub.translate);
             });
         });
     });

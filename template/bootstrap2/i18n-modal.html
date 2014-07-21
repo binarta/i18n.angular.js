@@ -1,0 +1,44 @@
+<div class="modal-body">
+    <div ng-switch on="dialog.editor">
+        <div ng-switch-when="full">
+            <textarea ui-tinymce="{
+                        plugins: ['link fullscreen textcolor paste table'],
+                        toolbar: 'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | link | fullscreen',
+                        theme_advanced_resizing: true,
+                        theme_advanced_resizing_use_cookie : false,
+                        height:'180',
+                        menubar:false}"
+                      ng-model="dialog.translation">
+            </textarea>
+        </div>
+        <div ng-switch-when="media">
+            <textarea ui-tinymce="{
+                        plugins: ['fullscreen media paste'],
+                        toolbar: 'undo redo | media | fullscreen',
+                        theme_advanced_resizing: true,
+                        theme_advanced_resizing_use_cookie : false,
+                        height:'180',
+                        menubar:false}"
+                      ng-model="dialog.translation">
+            </textarea>
+        </div>
+        <div ng-switch-when="full-media">
+            <textarea ui-tinymce="{
+                        plugins: ['link fullscreen media image textcolor paste table'],
+                        toolbar: 'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | link | image media | fullscreen',
+                        theme_advanced_resizing: true,
+                        theme_advanced_resizing_use_cookie : false,
+                        height:'180',
+                        menubar:false}"
+                      ng-model="dialog.translation">
+            </textarea>
+        </div>
+        <div ng-switch-default style="margin-right:14px;">
+            <textarea rows="14" ng-model="dialog.translation" style="width:100%;height:250px;resize:none;"></textarea>
+        </div>
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="submit" class="btn btn-success" ng-click="submit()"><i class="fa fa-check fa-fw"></i> Save</button>
+    <button type="reset" class="btn" ng-click="close()"><i class="fa fa-times fa-fw"></i> Close</button>
+</div>

@@ -1,4 +1,4 @@
-angular.module('i18n', ['web.storage'])
+angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .factory('i18n', ['i18nMessageReader', 'topicRegistry', 'topicMessageDispatcher', 'activeUserHasPermission', 'localeResolver', I18nFactory])
     .factory('i18nLocation', ['$location', 'localeResolver', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
@@ -7,7 +7,6 @@ angular.module('i18n', ['web.storage'])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
     .directive('i18nSupport', i18nSupportDirectiveFactory)
     .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
-    .directive('i18nDialog', ['$rootScope', I18nDialogDirectiveFactory])
     .directive('i18nTranslate', i18nDirectiveFactory)
     .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory]);
 
@@ -49,7 +48,8 @@ function LocaleSwapperFactory(localStorage, sessionStorage, topicMessageDispatch
 function i18nSupportDirectiveFactory() {
     return {
         restrict: 'C',
-        controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]
+        controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver',
+            'localeSwapper', 'config', '$modal', '$route', I18nSupportController]
     }
 }
 function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
@@ -167,16 +167,16 @@ function I18nResolverFactory(i18n) {
     }
 }
 
-function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config) {
+function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config, $modal, $route) {
     var self = this;
     var namespace;
-    this.dialog = {};
 
     this.init = function () {
-        self.dialog.visibilityClass = 'hide';
-        self.dialog.code = '';
-        self.dialog.translation = '';
-        this.presenter = null;
+        $scope.dialog = {
+            code: '',
+            translation: ''
+        };
+        $scope.presenter = null;
     };
     this.init();
 
@@ -265,30 +265,56 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     });
 
     this.open = function (code, translation, presenter, editor) {
-        this.dialog.visibilityClass = 'show';
-        this.dialog.code = code;
-        this.dialog.translation = translation;
-        this.presenter = presenter;
-        this.dialog.editor = editor;
         if (this.renderer) this.renderer(translation);
+
+        $scope.presenter = presenter;
+        $scope.dialog = {
+            code: code,
+            translation: translation,
+            editor: editor
+        };
+
+        var modalInstance = $modal.open({
+            scope: $scope,
+            controller: I18nModalInstanceController,
+            templateUrl: $route.routes['/template/i18n-modal'].templateUrl
+        });
+
+        modalInstance.result.then(function (translation) {
+            $scope.dialog.translation = translation;
+            self.translate();
+        }, function () {
+            self.init();
+        });
     };
+
     this.close = function () {
         self.init();
     };
 
     this.translate = function () {
-        if (self.editor != undefined) self.dialog.translation = self.editor();
-        var ctx = {key: this.dialog.code, message: this.dialog.translation};
+        if (self.editor != undefined) $scope.dialog.translation = self.editor();
+        var ctx = {key: $scope.dialog.code, message: $scope.dialog.translation};
         if (namespace) ctx.namespace = namespace;
         ctx.locale = localeResolver() || 'default';
         var onSuccess = function () {
-            self.presenter.success(self.dialog.translation);
+            $scope.presenter.success($scope.dialog.translation);
             self.init();
         };
         i18nMessageWriter(ctx, usecaseAdapterFactory($scope, onSuccess));
     };
 
     if (isLocaleRemembered()) localeSwapper(localeResolver());
+}
+
+function I18nModalInstanceController($scope, $modalInstance) {
+        $scope.submit = function () {
+            $modalInstance.close($scope.dialog.translation);
+        };
+
+        $scope.close = function () {
+            $modalInstance.dismiss('cancel');
+        };
 }
 
 function I18nDefaultDirectiveFactory(localeSwapper) {
@@ -320,19 +346,4 @@ function SelectLocaleController($scope, $routeParams, localeResolver, localeSwap
         else
             expose($routeParams.locale);
     }
-}
-
-function I18nDialogDirectiveFactory($rootScope) {
-    return {
-        restrict: 'E',
-        templateUrl: function () {
-            return $rootScope.i18nDialogTemplateUrl ? $rootScope.i18nDialogTemplateUrl : 'app/partials/i18n/dialog.html'
-        },
-        require: '^i18nSupport',
-        link: function (scope, element, attrs, controller) {
-            scope.dialog = controller.dialog;
-            scope.close = controller.close;
-            scope.submit = controller.translate;
-        }
-    };
 }

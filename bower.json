@@ -3,6 +3,7 @@
   "main": "./src/main/js/i18n.js",
   "dependencies": {
     "angular": "1.2.5",
+    "angular-bootstrap": ">=0",
     "binarta.config.angular": "0.0.*",
     "binarta.web.storage.angular": "0.0.*",
     "binarta.notifications.angular": "0.0.*",
