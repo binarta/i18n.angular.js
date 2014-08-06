@@ -1,10 +1,22 @@
 describe('i18n', function () {
+    var cache;
+
     beforeEach(module('i18n'));
     beforeEach(module('i18n.gateways'));
     beforeEach(module('angular.usecase.adapter'));
     beforeEach(module('notifications'));
     beforeEach(module('permissions'));
     beforeEach(module('web.storage'));
+
+    beforeEach(inject(function($cacheFactory) {
+        cache = $cacheFactory.get('i18n');
+    }));
+
+    describe('on module loaded', function() {
+        it('cache for i18n is created', inject(function($cacheFactory) {
+            expect($cacheFactory.get('i18n')).toBeDefined();
+        }))
+    });
 
     describe('resolver', function () {
         var resolver, registry, permitter, local;
@@ -19,14 +31,14 @@ describe('i18n', function () {
         var context;
         var reader;
 
-        beforeEach(inject(function(i18nMessageReader) {
+        beforeEach(inject(function(i18nMessageReader, $cacheFactory) {
             reader = i18nMessageReader;
         }));
         beforeEach(inject(function (i18n, localStorage, topicRegistryMock, i18nMessageReader, topicMessageDispatcher, activeUserHasPermission, activeUserHasPermissionHelper) {
             receivedTranslation = '';
             context = {};
             local = localStorage;
-            registry = topicRegistryMock
+            registry = topicRegistryMock;
             permitter = activeUserHasPermissionHelper;
             resolver = i18n;
         }));
@@ -65,31 +77,34 @@ describe('i18n', function () {
             });
         });
 
+        function resolveTo(translation) {
+            resolver.resolve(context, presenter);
+            reader.calls[0].args[1](translation);
+        }
+
+        function failed() {
+            resolver.resolve(context, presenter);
+            reader.calls[0].args[2]();
+        }
+
         describe('given translation code', function() {
             beforeEach(function() {
                 context.code = code;
             });
 
-            function resolveTo(translation) {
-                resolver.resolve(context, presenter);
-                reader.calls[0].args[1](translation);
-            }
 
-            function failed() {
-                resolver.resolve(context, presenter);
-                reader.calls[0].args[2]();
-            }
-
-            it('resolve to translation', function () {
+            it('resolve to translation', inject(function () {
                 resolveTo(translation);
                 expect(receivedTranslation).toEqual(translation);
-            });
+                expect(cache.get('default:default:translation.code')).toEqual(translation);
+            }));
 
             it('resolution fallback to default', function () {
                 context.code = code;
                 context.default = defaultTranslation;
                 resolveTo(unknownCode);
                 expect(receivedTranslation).toEqual(defaultTranslation);
+                expect(cache.get('default:default:translation.code')).toEqual(defaultTranslation);
             });
 
             it('resolution fallback to empty default', function () {
@@ -97,6 +112,7 @@ describe('i18n', function () {
                 context.default = '';
                 resolveTo(unknownCode);
                 expect(receivedTranslation).toEqual(' ');
+                expect(cache.get('default:default:translation.code')).toEqual(' ');
             });
 
             it('resolution without fallback to default available', function () {
@@ -104,6 +120,7 @@ describe('i18n', function () {
                 resolver.resolve(context, presenter);
                 resolveTo(unknownCode);
                 expect(receivedTranslation).toEqual('place your text here');
+                expect(cache.get('default:default:translation.code')).toEqual('place your text here');
             });
 
             it('failed resolution fallback to default', function () {
@@ -124,6 +141,36 @@ describe('i18n', function () {
             it('resolution includes the locale on context', function () {
                 resolver.resolve(context, presenter);
                 expectContextEquals({locale:locale});
+            });
+        });
+
+        describe('with namespace and locale', function() {
+            beforeEach(function() {
+                local.locale = 'L';
+                registry['config.initialized']({namespace:'N'});
+                context.code = 'C';
+            });
+
+            describe('when resolving a message for the first time', function() {
+                beforeEach(function() {
+                    resolveTo(translation);
+                });
+
+                it('then namespace locale and code are embedded in cache key', function() {
+                    expect(cache.get('N:L:C')).toEqual(translation);
+                });
+
+                describe('and subsequent calls', function() {
+                    beforeEach(function() {
+                        reader.reset();
+                        resolver.resolve(context, presenter);
+                    });
+
+                    it('then no gateway calls are done', function() {
+                        expect(reader.calls[0]).toBeUndefined();
+                    })
+                });
+
             });
         });
     });
@@ -466,6 +513,10 @@ describe('i18n', function () {
                 it('pass translation to presenter', function () {
                     expect(presenter.translation).toEqual(translation);
                 });
+
+                it('store message in cache', function() {
+                    expect(cache.get('default:default:message.code')).toEqual(translation);
+                })
             });
         });
 
@@ -910,14 +961,14 @@ describe('i18n', function () {
     describe('i18n notifications', function () {
         var registry, notifications, resolver, permitter;
 
-        beforeEach(inject(function (i18nMessageReader, topicMessageDispatcher, topicMessageDispatcherMock, activeUserHasPermission, activeUserHasPermissionHelper) {
+        beforeEach(inject(function (i18nMessageReader, topicMessageDispatcher, topicMessageDispatcherMock, activeUserHasPermission, activeUserHasPermissionHelper, localeResolver, $cacheFactory) {
             permitter = activeUserHasPermissionHelper;
             registry = {
                 subscribe: function (topic, callback) {
                     registry[topic] = callback;
                 }
             };
-            resolver = new i18n(i18nMessageReader, registry, topicMessageDispatcher, activeUserHasPermission);
+            resolver = new i18n(i18nMessageReader, registry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory);
             notifications = topicMessageDispatcherMock;
         }));
 

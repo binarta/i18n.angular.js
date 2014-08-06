@@ -1,5 +1,5 @@
 angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
-    .factory('i18n', ['i18nMessageReader', 'topicRegistry', 'topicMessageDispatcher', 'activeUserHasPermission', 'localeResolver', I18nFactory])
+    .factory('i18n', ['i18nMessageReader', 'topicRegistry', 'topicMessageDispatcher', 'activeUserHasPermission', 'localeResolver', '$cacheFactory', I18nFactory])
     .factory('i18nLocation', ['$location', 'localeResolver', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
     .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
@@ -8,10 +8,13 @@ angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .directive('i18nSupport', i18nSupportDirectiveFactory)
     .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
     .directive('i18nTranslate', i18nDirectiveFactory)
-    .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory]);
+    .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .run(function($cacheFactory) {
+        $cacheFactory('i18n');
+    });
 
-function I18nFactory(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver) {
-    return new i18n(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver);
+function I18nFactory(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory) {
+    return new i18n(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory);
 }
 
 function I18nLocationFactory($location, localeResolver) {
@@ -49,7 +52,7 @@ function i18nSupportDirectiveFactory() {
     return {
         restrict: 'C',
         controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver',
-            'localeSwapper', 'config', '$modal', '$route', I18nSupportController]
+            'localeSwapper', 'config', '$modal', '$route', '$cacheFactory', I18nSupportController]
     }
 }
 function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
@@ -115,7 +118,8 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
     };
 }
 
-function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver) {
+function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory) {
+    var cache = $cacheFactory.get('i18n');
     var self = this;
 
     topicRegistry.subscribe('config.initialized', function (config) {
@@ -153,11 +157,35 @@ function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeU
 
         if (self.namespace) context.namespace = self.namespace;
         if (localeResolver()) context.locale = localeResolver();
-        i18nMessageGateway(context, function (translation) {
-            presenter(fallbackToDefaultWhenUnknown(translation));
-        }, function () {
-            presenter(context.default);
-        });
+        if (isCached())
+            presenter(getFromCache());
+        else
+            getFromGateway();
+
+        function isCached() {
+            return getFromCache() != undefined;
+        }
+
+        function getFromCache() {
+            return cache.get(toKey());
+        }
+
+        function toKey() {
+            return (context.namespace || 'default') + ':' + (context.locale || 'default') + ':' + context.code;
+        }
+
+        function getFromGateway() {
+            i18nMessageGateway(context, function (translation) {
+                presenter(fallbackToDefaultWhenUnknown(translation));
+                storeInCache(fallbackToDefaultWhenUnknown(translation));
+            }, function () {
+                presenter(context.default);
+            });
+        }
+
+        function storeInCache(msg) {
+            cache.put(toKey(), msg);
+        }
     };
 }
 
@@ -167,9 +195,10 @@ function I18nResolverFactory(i18n) {
     }
 }
 
-function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config, $modal, $route) {
+function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config, $modal, $route, $cacheFactory) {
     var self = this;
     var namespace;
+    var cache = $cacheFactory.get('i18n');
 
     this.init = function () {
         $scope.dialog = {
@@ -300,8 +329,13 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         var onSuccess = function () {
             $scope.presenter.success($scope.dialog.translation);
             self.init();
+            cache.put(toKey(), ctx.message);
         };
         i18nMessageWriter(ctx, usecaseAdapterFactory($scope, onSuccess));
+
+        function toKey() {
+            return (ctx.namespace || 'default') + ':' + (ctx.locale || 'default') + ':' + ctx.key;
+        }
     };
 
     if (isLocaleRemembered()) localeSwapper(localeResolver());
