@@ -193,7 +193,6 @@ function I18nResolverFactory(i18n) {
 
 function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config, $modal, $cacheFactory) {
     var self = this;
-    var namespace;
     var cache = $cacheFactory.get('i18n');
 
     this.init = function () {
@@ -277,14 +276,11 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         return $location.path().replace('/' + locale, '');
     }
 
-    topicRegistry.subscribe('config.initialized', function (config) {
-        namespace = config.namespace;
-
-        $scope.$on('$routeChangeSuccess', function (evt, route) {
-            $scope.unlocalizedPath = getUnlocalizedPathPath(route.params.locale);
-            isLocaleEncodedInPath(route.params) ? extractLocaleFromPath(route.params) : localeNotInPath();
-        });
+    $scope.$on('$routeChangeSuccess', function (evt, route) {
+        $scope.unlocalizedPath = getUnlocalizedPathPath(route.params.locale);
+        isLocaleEncodedInPath(route.params) ? extractLocaleFromPath(route.params) : localeNotInPath();
     });
+
     topicRegistry.subscribe('checkpoint.signout', function () {
         self.init();
     });
@@ -323,7 +319,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     this.translate = function () {
         if (self.editor != undefined) $scope.dialog.translation = self.editor();
         var ctx = {key: $scope.dialog.code, message: $scope.dialog.translation};
-        if (namespace) ctx.namespace = namespace;
+        if (config.namespace) ctx.namespace = config.namespace;
         ctx.locale = localeResolver() || 'default';
         var onSuccess = function () {
             $scope.presenter.success($scope.dialog.translation);
