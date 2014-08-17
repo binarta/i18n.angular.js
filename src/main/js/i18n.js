@@ -1,5 +1,5 @@
 angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
-    .factory('i18n', ['i18nMessageReader', 'topicRegistry', 'topicMessageDispatcher', 'activeUserHasPermission', 'localeResolver', '$cacheFactory', I18nFactory])
+    .service('i18n', ['i18nMessageReader', 'topicRegistry', 'topicMessageDispatcher', 'activeUserHasPermission', 'localeResolver', '$cacheFactory', 'config', I18nService])
     .factory('i18nLocation', ['$location', 'localeResolver', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
     .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
@@ -12,10 +12,6 @@ angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .run(function($cacheFactory) {
         $cacheFactory('i18n');
     });
-
-function I18nFactory(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory) {
-    return new i18n(i18nMessageReader, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory);
-}
 
 function I18nLocationFactory($location, localeResolver) {
     return {
@@ -52,7 +48,7 @@ function i18nSupportDirectiveFactory() {
     return {
         restrict: 'C',
         controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver',
-            'localeSwapper', 'config', '$modal', '$route', '$cacheFactory', I18nSupportController]
+            'localeSwapper', 'config', '$modal', '$cacheFactory', I18nSupportController]
     }
 }
 function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
@@ -99,9 +95,13 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
 
             var toggleEditMode = function (editMode) {
                 activeUserHasPermission({
+                    no: function() {
+                        if(isTranslatable()) bindClickEvent(false);
+                    },
                     yes: function () {
                         if(isTranslatable()) bindClickEvent(editMode);
-                    }
+                    },
+                    scope: scope
                 }, 'i18n.message.add');
             };
 
@@ -118,13 +118,9 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
     };
 }
 
-function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory) {
+function I18nService(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory, config) {
     var cache = $cacheFactory.get('i18n');
-    var self = this;
 
-    topicRegistry.subscribe('config.initialized', function (config) {
-        self.namespace = config.namespace;
-    });
     topicRegistry.subscribe('edit.mode', function (editMode) {
         activeUserHasPermission({
             yes: function () {
@@ -155,7 +151,7 @@ function i18n(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeU
             return isUnknown(translation) ? context.default : translation;
         }
 
-        if (self.namespace) context.namespace = self.namespace;
+        if (config.namespace) context.namespace = config.namespace;
         if (localeResolver()) context.locale = localeResolver();
         if (isCached())
             presenter(getFromCache());
@@ -195,7 +191,7 @@ function I18nResolverFactory(i18n) {
     }
 }
 
-function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config, $modal, $route, $cacheFactory) {
+function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config, $modal, $cacheFactory) {
     var self = this;
     var namespace;
     var cache = $cacheFactory.get('i18n');
@@ -303,10 +299,13 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
             editor: editor
         };
 
+        var componentsDir = config.componentsDir || 'bower_components';
+        var styling = config.styling ? config.styling + '/' : '';
+
         var modalInstance = $modal.open({
             scope: $scope,
             controller: I18nModalInstanceController,
-            templateUrl: $route.routes['/template/i18n-modal'].templateUrl
+            templateUrl: componentsDir + '/binarta.i18n.angular/template/' + styling + 'i18n-modal.html'
         });
 
         modalInstance.result.then(function (translation) {

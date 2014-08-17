@@ -7,6 +7,7 @@ describe('i18n', function () {
     beforeEach(module('notifications'));
     beforeEach(module('permissions'));
     beforeEach(module('web.storage'));
+    beforeEach(module('config'));
 
     beforeEach(inject(function($cacheFactory) {
         cache = $cacheFactory.get('i18n');
@@ -30,11 +31,13 @@ describe('i18n', function () {
         };
         var context;
         var reader;
+        var config;
 
-        beforeEach(inject(function(i18nMessageReader, $cacheFactory) {
+        beforeEach(inject(function(i18nMessageReader) {
             reader = i18nMessageReader;
         }));
-        beforeEach(inject(function (i18n, localStorage, topicRegistryMock, i18nMessageReader, topicMessageDispatcher, activeUserHasPermission, activeUserHasPermissionHelper) {
+        beforeEach(inject(function (i18n, localStorage, topicRegistryMock, activeUserHasPermissionHelper, _config_) {
+            config = _config_;
             receivedTranslation = '';
             context = {};
             local = localStorage;
@@ -47,34 +50,14 @@ describe('i18n', function () {
             expect(resolver).toBeDefined();
         });
 
-        it('subscribes for config.initialized notifications', function () {
-            expect(registry['config.initialized']).toBeDefined();
-        });
-
         function expectContextEquals(ctx) {
             expect(reader.calls[0].args[0]).toEqual(ctx);
         }
 
-        it('on resolve construct context without namespace', function () {
+        it('on resolve construct context with namespace', function () {
             context.code = code;
             resolver.resolve(context, presenter);
-            expectContextEquals({code:code});
-        });
-
-        describe('with config.initialized notification received', function () {
-            var config = {
-                namespace: 'namespace'
-            };
-
-            beforeEach(function () {
-                registry['config.initialized'](config);
-            });
-
-            it('on resolve construct context with namespace', function () {
-                context.code = code;
-                resolver.resolve(context, presenter);
-                expectContextEquals({code:code, namespace:config.namespace});
-            });
+            expectContextEquals({code:code, namespace:config.namespace});
         });
 
         function resolveTo(translation) {
@@ -91,7 +74,6 @@ describe('i18n', function () {
             beforeEach(function() {
                 context.code = code;
             });
-
 
             it('resolve to translation', inject(function () {
                 resolveTo(translation);
@@ -147,7 +129,7 @@ describe('i18n', function () {
         describe('with namespace and locale', function() {
             beforeEach(function() {
                 local.locale = 'L';
-                registry['config.initialized']({namespace:'N'});
+                config.namespace = 'N';
                 context.code = 'C';
             });
 
@@ -243,7 +225,22 @@ describe('i18n', function () {
             });
 
             it('modal is opened with default templateUrl setting', function () {
-                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('i18n-modal.html');
+                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/i18n-modal.html');
+            });
+
+            it('template url with specific styling', function () {
+                config.styling = 'bootstrap3';
+                ctrl.open(code, translation, presenter, editor);
+
+                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
+            });
+
+            it('template url with specific components directory', function () {
+                config.styling = 'bootstrap3';
+                config.componentsDir = 'components';
+                ctrl.open(code, translation, presenter, editor);
+
+                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
             });
 
             describe('modal is submitted', function () {
@@ -624,7 +621,7 @@ describe('i18n', function () {
 
         it('controller', function () {
             expect(directive.controller).toEqual(['$scope', '$location', 'i18nMessageWriter', 'topicRegistry',
-                'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', '$modal', '$route', I18nSupportController]);
+                'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', '$modal', '$cacheFactory', I18nSupportController]);
         });
     });
 
@@ -707,15 +704,16 @@ describe('i18n', function () {
         });
 
         describe('when linked', function () {
-            var clickEvent;
+            var bindClickEvent;
+            var unbindClickEvent;
             var clickHandler;
             var element = {
                 bind: function(event, handler){
-                    clickEvent = event;
+                    bindClickEvent = event;
                     clickHandler = handler;
                 },
                 unbind: function(event) {
-                    clickEvent = event;
+                    unbindClickEvent = event;
                 }
             };
 
@@ -821,6 +819,10 @@ describe('i18n', function () {
                         registry['edit.mode'](true);
                     });
 
+                    it('current scope should be passed to the permission check', function () {
+                        expect(permitter.scope).toEqual(scope);
+                    });
+
                     it('the directive should check if the active user has i18n.message.add permission', function () {
                         expect(permitter.permission).toEqual('i18n.message.add');
                     });
@@ -837,7 +839,7 @@ describe('i18n', function () {
 
                                 clickHandler();
 
-                                expect(clickEvent).toEqual('click');
+                                expect(bindClickEvent).toEqual('click');
                                 expect(support.code).toEqual(scope.code);
                                 expect(support.var).toEqual(scope.var);
                             });
@@ -846,7 +848,8 @@ describe('i18n', function () {
                         describe('and element is not translatable', function () {
                             beforeEach(function () {
                                 attrs.readOnly = "";
-                                clickEvent = undefined;
+                                bindClickEvent = undefined;
+                                unbindClickEvent = undefined;
                                 clickHandler = undefined;
 
                                 directive.link(scope, element, attrs, support);
@@ -855,8 +858,37 @@ describe('i18n', function () {
                             });
 
                             it('click event is not bound', function () {
-                                expect(clickEvent).toBeUndefined();
+                                expect(bindClickEvent).toBeUndefined();
                                 expect(clickHandler).toBeUndefined();
+                            });
+                        });
+                    });
+
+                    describe('and active user does not has i18n.message.add permission', function () {
+                        beforeEach(function () {
+                            permitter.no();
+                        });
+
+                        describe('and element is translatable', function () {
+                            it('click event is unbound', function () {
+                                expect(unbindClickEvent).toEqual('click');
+                            });
+                        });
+
+                        describe('and element is not translatable', function () {
+                            beforeEach(function () {
+                                attrs.readOnly = "";
+                                bindClickEvent = undefined;
+                                unbindClickEvent = undefined;
+                                clickHandler = undefined;
+
+                                directive.link(scope, element, attrs, support);
+                                registry['edit.mode'](true);
+                                permitter.no();
+                            });
+
+                            it('should do nothing', function () {
+                                expect(unbindClickEvent).toBeUndefined();
                             });
                         });
                     });
@@ -873,7 +905,7 @@ describe('i18n', function () {
                         });
 
                         it('element should unbind click event', function () {
-                            expect(clickEvent).toEqual('click');
+                            expect(unbindClickEvent).toEqual('click');
                         });
                     });
                 });
@@ -961,14 +993,14 @@ describe('i18n', function () {
     describe('i18n notifications', function () {
         var registry, notifications, resolver, permitter;
 
-        beforeEach(inject(function (i18nMessageReader, topicMessageDispatcher, topicMessageDispatcherMock, activeUserHasPermission, activeUserHasPermissionHelper, localeResolver, $cacheFactory) {
+        beforeEach(inject(function (i18nMessageReader, topicMessageDispatcher, topicMessageDispatcherMock, activeUserHasPermission, activeUserHasPermissionHelper, localeResolver, $cacheFactory, config) {
             permitter = activeUserHasPermissionHelper;
             registry = {
                 subscribe: function (topic, callback) {
                     registry[topic] = callback;
                 }
             };
-            resolver = new i18n(i18nMessageReader, registry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory);
+            resolver = new I18nService(i18nMessageReader, registry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory, config);
             notifications = topicMessageDispatcherMock;
         }));
 
