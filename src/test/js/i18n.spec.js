@@ -981,61 +981,6 @@ describe('i18n', function () {
         });
     });
 
-    describe('i18n notifications', function () {
-        var registry, notifications, resolver, permitter;
-
-        beforeEach(inject(function (i18nMessageReader, topicMessageDispatcher, topicMessageDispatcherMock, activeUserHasPermission, activeUserHasPermissionHelper, localeResolver, $cacheFactory, config) {
-            permitter = activeUserHasPermissionHelper;
-            registry = {
-                subscribe: function (topic, callback) {
-                    registry[topic] = callback;
-                }
-            };
-            resolver = new I18nService(i18nMessageReader, registry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory, config);
-            notifications = topicMessageDispatcherMock;
-        }));
-
-        it('raise warning notification when edit mode true', function () {
-            registry['edit.mode'](true);
-            permitter.yes();
-
-            expect(notifications['system.warning']).toEqual({
-                code: 'i18n.active.warning',
-                default: 'Edit mode enabled. Editable links are disabled.'
-            });
-            expect(permitter.permission).toEqual('i18n.message.add');
-        });
-
-        it('raise warning notification when edit mode true and permission is i18n.message.add', function () {
-            registry['edit.mode'](true);
-            permitter.yes();
-
-            expect(notifications['system.warning']).toEqual({
-                code: 'i18n.active.warning',
-                default: 'Edit mode enabled. Editable links are disabled.'
-            });
-            expect(permitter.permission).toEqual('i18n.message.add');
-        });
-
-        it('raise info notification when edit mode false', function () {
-            resolver.translationMode = true;
-
-            registry['edit.mode'](false);
-            permitter.yes();
-
-            expect(notifications['system.info']).toEqual({
-                code: 'i18n.inactive.info',
-                default: 'Edit mode disabled.'
-            });
-        });
-
-        it('on edit mode true and active user has no permission do nothing', function () {
-            registry['edit.mode'](true);
-
-            expect(notifications['system.warning']).toEqual(undefined);
-        });
-    });
-
     describe('SelectLocaleController', function () {
         var ctrl, scope, params, local, locale, topics;
 

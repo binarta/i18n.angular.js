@@ -1,5 +1,5 @@
 angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
-    .service('i18n', ['i18nMessageReader', 'topicRegistry', 'topicMessageDispatcher', 'activeUserHasPermission', 'localeResolver', '$cacheFactory', 'config', I18nService])
+    .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', I18nService])
     .factory('i18nLocation', ['$location', 'localeResolver', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
     .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
@@ -118,27 +118,8 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
     };
 }
 
-function I18nService(i18nMessageGateway, topicRegistry, topicMessageDispatcher, activeUserHasPermission, localeResolver, $cacheFactory, config) {
+function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config) {
     var cache = $cacheFactory.get('i18n');
-
-    topicRegistry.subscribe('edit.mode', function (editMode) {
-        activeUserHasPermission({
-            yes: function () {
-                if (editMode) {
-                    topicMessageDispatcher.fire('system.warning', {
-                        code: 'i18n.active.warning',
-                        default: 'Edit mode enabled. Editable links are disabled.'
-                    })
-                }
-                else {
-                    topicMessageDispatcher.fire('system.info', {
-                        code: 'i18n.inactive.info',
-                        default: 'Edit mode disabled.'
-                    })
-                }
-            }
-        }, 'i18n.message.add');
-    });
 
     this.resolve = function (context, presenter) {
         function isUnknown(translation) {
