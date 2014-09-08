@@ -8,7 +8,7 @@ angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .directive('i18nSupport', i18nSupportDirectiveFactory)
     .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
     .directive('i18nTranslate', i18nDirectiveFactory)
-    .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', '$q', i18nDirectiveFactory])
     .run(function($cacheFactory) {
         $cacheFactory('i18n');
     });
@@ -51,7 +51,7 @@ function i18nSupportDirectiveFactory() {
             'localeSwapper', 'config', '$modal', '$cacheFactory', I18nSupportController]
     }
 }
-function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
+function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver, $q) {
     return {
         require: '^i18nSupport',
         restrict: ['E', 'A'],
@@ -66,9 +66,9 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
             }, function () {
                 scope.code = attrs.code;
                 scope.default = attrs.default;
-                i18n.resolve(scope, function (translation) {
-                    updateTranslation(translation);
-                });
+                var deferred = $q.defer();
+                i18n.resolve(scope, deferred.resolve);
+                deferred.promise.then(updateTranslation);
             }, true);
 
             scope.translate = function () {

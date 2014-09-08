@@ -642,9 +642,10 @@ describe('i18n', function () {
     describe('i18n directive', function () {
         var directive, scope, resolver, support, registry, permitter, dispatcher, topics, locale;
         var attrs = [];
+        var $qWrapper, deferred;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock,
-                                    topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, $rootScope) {
+                                    topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, $rootScope, $q) {
             permitter = activeUserHasPermissionHelper;
             scope = $rootScope.$new();
             scope.$apply = function(arg){};
@@ -677,8 +678,13 @@ describe('i18n', function () {
             var localeResolver = function () {
                 return locale;
             };
-
-            directive = i18nDirectiveFactory(resolver, ngRegisterTopicHandler, activeUserHasPermission, dispatcher, localeResolver);
+            $qWrapper = {
+                defer: function() {
+                    deferred = $q.defer();
+                    return  deferred;
+                }
+            };
+            directive = i18nDirectiveFactory(resolver, ngRegisterTopicHandler, activeUserHasPermission, dispatcher, localeResolver, $qWrapper);
 
         }));
 
@@ -740,6 +746,10 @@ describe('i18n', function () {
                     expect(resolver.args).toEqual(scope);
                 });
 
+                it('a deferred callback was initialized', function() {
+                    expect(deferred).toBeDefined();
+                });
+
                 describe('and code is changed', function () {
                     beforeEach(function () {
                         resolver.args = {};
@@ -782,6 +792,7 @@ describe('i18n', function () {
                     });
 
                     it('exposes translation on scope', function () {
+                        scope.$digest();
                         expect(scope.var).toEqual('translation');
                     });
 
@@ -797,10 +808,12 @@ describe('i18n', function () {
                     });
 
                     it('exposes translation on scope', function () {
+                        scope.$digest();
                         expect(scope.var).toEqual('translation');
                     });
 
                     it('exposes translation on parent scope', function () {
+                        scope.$digest();
                         expect(scope.$parent[attrs.var]).toEqual('translation');
                     });
                 });
