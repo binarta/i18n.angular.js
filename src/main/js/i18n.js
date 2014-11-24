@@ -189,6 +189,15 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         return params.locale
     }
 
+    function isLocaleSupported(locale) {
+        if(config.supportedLanguages.indexOf(locale) == -1) redirectToDefaultLocalePageNotFound();
+        return true;
+    }
+
+    function redirectToDefaultLocalePageNotFound() {
+        $location.path('/' + config.supportedLanguages[0] + '/404');
+    }
+
     function extractLocaleFromPath(params) {
         expose(params.locale);
         if (isNewlySelected(params.locale)) {
@@ -259,7 +268,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
 
     $scope.$on('$routeChangeSuccess', function (evt, route) {
         $scope.unlocalizedPath = getUnlocalizedPathPath(route.params.locale);
-        isLocaleEncodedInPath(route.params) ? extractLocaleFromPath(route.params) : localeNotInPath();
+        isLocaleEncodedInPath(route.params) && isLocaleSupported(route.params.locale) ? extractLocaleFromPath(route.params) : localeNotInPath();
     });
 
     topicRegistry.subscribe('checkpoint.signout', function () {

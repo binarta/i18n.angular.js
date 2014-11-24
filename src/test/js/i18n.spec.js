@@ -319,26 +319,44 @@ describe('i18n', function () {
             });
 
             describe('and locale encoded in location path then', function () {
-                beforeEach(inject(function ($location) {
-                    params.locale = locale;
-                    $location.path('/' + locale + '/foo/bar');
-                    scope.$routeChangeSuccess(null, {params: params});
-                }));
-
-                it('expose locale on scope', function () {
-                    expect(scope.locale).toEqual(locale);
+                beforeEach(function () {
+                    config.supportedLanguages = ['lang'];
                 });
 
-                it('remember locale', function () {
-                    expect(local.locale).toEqual(locale);
+                describe('and locale is supported', function () {
+                    beforeEach(inject(function ($location) {
+                        params.locale = locale;
+                        $location.path('/' + locale + '/foo/bar');
+                        scope.$routeChangeSuccess(null, {params: params});
+                    }));
+
+                    it('expose locale on scope', function () {
+                        expect(scope.locale).toEqual(locale);
+                    });
+
+                    it('remember locale', function () {
+                        expect(local.locale).toEqual(locale);
+                    });
+
+                    it('broadcast locale', function() {
+                        expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
+                    });
+
+                    it('expose unlocalized path on scope', function () {
+                        expect(scope.unlocalizedPath).toEqual('/foo/bar');
+                    });
                 });
 
-                it('broadcast locale', function() {
-                    expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
-                });
+                describe('and locale is not supported', function () {
+                    beforeEach(inject(function ($location) {
+                        params.locale = 'unsupported';
+                        $location.path('/unsupported' + '/foo/bar');
+                        scope.$routeChangeSuccess(null, {params: params});
+                    }));
 
-                it('expose unlocalized path on scope', function () {
-                    expect(scope.unlocalizedPath).toEqual('/foo/bar');
+                    it('redirect to default 404 page', inject(function ($location) {
+                        expect($location.path()).toEqual('/lang/404');
+                    }));
                 });
             });
 
@@ -359,6 +377,8 @@ describe('i18n', function () {
                 var redirectsTo;
 
                 beforeEach(inject(function ($location) {
+                    config.supportedLanguages = null;
+
                     redirectsTo = function(locale, path) {
                         local.locale = locale;
                         $location.path('/path');
