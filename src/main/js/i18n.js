@@ -7,11 +7,11 @@ angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
     .directive('i18nSupport', i18nSupportDirectiveFactory)
     .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
-    .directive('i18nTranslate', i18nDirectiveFactory)
+    .directive('i18nTranslate', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', '$q', i18nDirectiveFactory])
     .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', '$q', i18nDirectiveFactory])
-    .run(function($cacheFactory) {
+    .run(['$cacheFactory', function($cacheFactory) {
         $cacheFactory('i18n');
-    });
+    }]);
 
 function I18nLocationFactory($location, localeResolver) {
     return {
