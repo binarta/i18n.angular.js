@@ -281,7 +281,7 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         $scope.presenter = presenter;
         $scope.dialog = {
             code: code,
-            translation: translation,
+           translation: angular.copy(translation),
             editor: editor
         };
 

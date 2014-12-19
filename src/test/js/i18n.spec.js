@@ -201,71 +201,92 @@ describe('i18n', function () {
         }));
 
         describe('open dialog modal', function (){
-            beforeEach(function () {
-                ctrl.open(code, translation, presenter, editor);
-            });
-
-            it('dialog variables are set', function () {
-                expect(scope.dialog.code).toEqual(code);
-                expect(scope.dialog.translation).toEqual(translation);
-                expect(scope.dialog.editor).toEqual(editor);
-                expect(scope.presenter).toEqual(presenter);
-            });
-
-            it('modal is opened', function () {
-                expect(modal.open).toHaveBeenCalled();
-            });
-
-            it('modal is opened with scope setting', function () {
-                expect(modal.open.mostRecentCall.args[0].scope).toEqual(scope);
-            });
-
-            it('modal is opened with controller setting', function () {
-                expect(modal.open.mostRecentCall.args[0].controller).toEqual(I18nModalInstanceController);
-            });
-
-            it('modal is opened with default templateUrl setting', function () {
-                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/i18n-modal.html');
-            });
-
-            it('template url with specific styling', function () {
-                config.styling = 'bootstrap3';
-                ctrl.open(code, translation, presenter, editor);
-
-                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
-            });
-
-            it('template url with specific components directory', function () {
-                config.styling = 'bootstrap3';
-                config.componentsDir = 'components';
-                ctrl.open(code, translation, presenter, editor);
-
-                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
-            });
-
-            describe('modal is submitted', function () {
+            describe('when translation is a string', function () {
                 beforeEach(function () {
-                    spyOn(ctrl, 'translate');
-                    modalClosedSpy('translated value');
+                    ctrl.open(code, translation, presenter, editor);
                 });
 
-                it('translation is modified', function () {
-                    expect(scope.dialog.translation).toEqual('translated value');
+                it('dialog variables are set', function () {
+                    expect(scope.dialog.code).toEqual(code);
+                    expect(scope.dialog.translation).toEqual(translation);
+                    expect(scope.dialog.editor).toEqual(editor);
+                    expect(scope.presenter).toEqual(presenter);
                 });
 
-                it('translate function is called', function () {
-                    expect(ctrl.translate).toHaveBeenCalled();
+                it('dialog translation should be a copy', function () {
+                    translation = 'modified translation';
+                    expect(scope.dialog.translation).not.toEqual('modified translation');
+                });
+
+                it('modal is opened', function () {
+                    expect(modal.open).toHaveBeenCalled();
+                });
+
+                it('modal is opened with scope setting', function () {
+                    expect(modal.open.mostRecentCall.args[0].scope).toEqual(scope);
+                });
+
+                it('modal is opened with controller setting', function () {
+                    expect(modal.open.mostRecentCall.args[0].controller).toEqual(I18nModalInstanceController);
+                });
+
+                it('modal is opened with default templateUrl setting', function () {
+                    expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/i18n-modal.html');
+                });
+
+                it('template url with specific styling', function () {
+                    config.styling = 'bootstrap3';
+                    ctrl.open(code, translation, presenter, editor);
+
+                    expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
+                });
+
+                it('template url with specific components directory', function () {
+                    config.styling = 'bootstrap3';
+                    config.componentsDir = 'components';
+                    ctrl.open(code, translation, presenter, editor);
+
+                    expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
+                });
+
+                describe('modal is submitted', function () {
+                    beforeEach(function () {
+                        spyOn(ctrl, 'translate');
+                        modalClosedSpy('translated value');
+                    });
+
+                    it('translation is modified', function () {
+                        expect(scope.dialog.translation).toEqual('translated value');
+                    });
+
+                    it('translate function is called', function () {
+                        expect(ctrl.translate).toHaveBeenCalled();
+                    });
+                });
+
+                describe('modal is canceled', function () {
+                    beforeEach(function () {
+                        spyOn(ctrl, 'init');
+                        modalDismissedSpy();
+                    });
+
+                    it('init is called', function () {
+                        expect(ctrl.init).toHaveBeenCalled();
+                    });
                 });
             });
 
-            describe('modal is canceled', function () {
+            describe('when translation is an object', function () {
                 beforeEach(function () {
-                    spyOn(ctrl, 'init');
-                    modalDismissedSpy();
+                    translation = {
+                        test: 'value'
+                    };
+                    ctrl.open(code, translation, presenter, editor);
                 });
 
-                it('init is called', function () {
-                    expect(ctrl.init).toHaveBeenCalled();
+                it('translation should be a copy', function () {
+                    translation.test = 'modified';
+                    expect(scope.dialog.translation).not.toEqual(translation);
                 });
             });
         });
