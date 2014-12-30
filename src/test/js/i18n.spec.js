@@ -53,11 +53,13 @@ describe('i18n', function () {
         var context;
         var reader;
         var config;
+        var $rootScope;
 
         beforeEach(inject(function(i18nMessageReader) {
             reader = i18nMessageReader;
         }));
-        beforeEach(inject(function (i18n, localStorage, topicRegistryMock, activeUserHasPermissionHelper, _config_) {
+        beforeEach(inject(function (i18n, localStorage, topicRegistryMock, activeUserHasPermissionHelper, _config_, _$rootScope_) {
+            $rootScope = _$rootScope_;
             config = _config_;
             receivedTranslation = '';
             context = {};
@@ -77,18 +79,20 @@ describe('i18n', function () {
 
         it('on resolve construct context with namespace', function () {
             context.code = code;
-            resolver.resolve(context, presenter);
+            resolver.resolve(context).then(presenter);
             expectContextEquals({code:code, namespace:config.namespace});
         });
 
         function resolveTo(translation) {
-            resolver.resolve(context, presenter);
+            resolver.resolve(context).then(presenter);
             reader.calls[0].args[1](translation);
+            $rootScope.$digest();
         }
 
         function failed() {
-            resolver.resolve(context, presenter);
+            resolver.resolve(context).then(presenter);
             reader.calls[0].args[2]();
+            $rootScope.$digest();
         }
 
         describe('given translation code', function() {
@@ -120,7 +124,7 @@ describe('i18n', function () {
 
             it('resolution without fallback to default available', function () {
                 context.code = code;
-                resolver.resolve(context, presenter);
+                resolver.resolve(context).then(presenter);
                 resolveTo(unknownCode);
                 expect(receivedTranslation).toEqual('place your text here');
                 expect(cache.get('default:default:translation.code')).toEqual('place your text here');
@@ -637,14 +641,14 @@ describe('i18n', function () {
     });
 
     describe('i18n directive', function () {
-        var directive, scope, resolver, support, registry, permitter, dispatcher, topics, locale;
+        var directive, $rootScope, scope, resolver, support, registry, permitter, dispatcher, topics, locale;
         var attrs;
-        var $qWrapper, deferred;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock,
-                                    topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, $rootScope, $q) {
+                                    topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, _$rootScope_, $q) {
             attrs = {};
             permitter = activeUserHasPermissionHelper;
+            $rootScope = _$rootScope_;
             scope = $rootScope.$new();
             scope.$apply = function(arg){};
             scope.$on = function (event, callback) {
@@ -653,9 +657,11 @@ describe('i18n', function () {
             scope.on = {};
             scope.$parent = [];
             resolver = {
-                resolve: function (args, callback) {
+                resolve: function (args) {
+                    var deferred = $q.defer();
                     resolver.args = args;
-                    resolver.callback = callback;
+                    deferred.resolve('translation');
+                    return deferred.promise;
                 },
                 translationMode: false,
                 addListener: function (callback) {
@@ -676,13 +682,7 @@ describe('i18n', function () {
             var localeResolver = function () {
                 return locale;
             };
-            $qWrapper = {
-                defer: function() {
-                    deferred = $q.defer();
-                    return  deferred;
-                }
-            };
-            directive = i18nDirectiveFactory(resolver, ngRegisterTopicHandler, activeUserHasPermission, dispatcher, localeResolver, $qWrapper);
+            directive = i18nDirectiveFactory(resolver, ngRegisterTopicHandler, activeUserHasPermission, dispatcher, localeResolver);
 
         }));
 
@@ -744,10 +744,6 @@ describe('i18n', function () {
                     expect(resolver.args).toEqual(scope);
                 });
 
-                it('a deferred callback was initialized', function() {
-                    expect(deferred).toBeDefined();
-                });
-
                 describe('and code is changed', function () {
                     beforeEach(function () {
                         resolver.args = {};
@@ -785,10 +781,6 @@ describe('i18n', function () {
                 });
 
                 describe('and message resolution completes without var defined on attributes', function () {
-                    beforeEach(function () {
-                        resolver.callback('translation');
-                    });
-
                     it('exposes translation on scope', function () {
                         scope.$digest();
                         expect(scope.var).toEqual('translation');
@@ -802,16 +794,15 @@ describe('i18n', function () {
                 describe('and message resolution completes with var defined on attributes', function () {
                     beforeEach(function () {
                         attrs.var = 'var';
-                        resolver.callback('translation');
+                        directive.link(scope, element, attrs, support);
+                        scope.$digest();
                     });
 
                     it('exposes translation on scope', function () {
-                        scope.$digest();
                         expect(scope.var).toEqual('translation');
                     });
 
                     it('exposes translation on parent scope', function () {
-                        scope.$digest();
                         expect(scope.$parent[attrs.var]).toEqual('translation');
                     });
                 });
@@ -972,22 +963,28 @@ describe('i18n', function () {
     });
 
     describe('i18n resolver', function () {
-        var resolver, i18n, presenter, msg;
+        var resolver, i18n, presenter, msg, $rootScope;
 
-        beforeEach(function () {
+        beforeEach(inject(function ($q, _$rootScope_) {
+            $rootScope = _$rootScope_;
             presenter = function (it) {
                 msg = it;
             };
-            i18n = {resolve: function (ctx, presenter) {
-                i18n.ctx = ctx;
-                i18n.presenter = presenter;
-            }};
+            i18n = {
+                resolve: function (ctx) {
+                    var deferred = $q.defer();
+                    i18n.ctx = ctx;
+                    deferred.resolve('message');
+                    return deferred.promise;
+                }
+            };
             resolver = I18nResolverFactory(i18n);
-        });
+        }));
 
         it('resolve', function () {
             resolver('context', presenter);
-            i18n.presenter('message');
+            $rootScope.$digest();
+
             expect(i18n.ctx).toEqual('context');
             expect(msg).toEqual('message');
         });

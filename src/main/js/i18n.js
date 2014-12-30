@@ -1,5 +1,5 @@
 angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
-    .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', I18nService])
+    .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', '$q', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -10,8 +10,8 @@ angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
     .directive('i18nSupport', i18nSupportDirectiveFactory)
     .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
-    .directive('i18nTranslate', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', '$q', i18nDirectiveFactory])
-    .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', '$q', i18nDirectiveFactory])
+    .directive('i18nTranslate', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .run(['$cacheFactory', function($cacheFactory) {
         $cacheFactory('i18n');
     }]);
@@ -54,7 +54,8 @@ function i18nSupportDirectiveFactory() {
             'localeSwapper', 'config', '$cacheFactory', 'i18nRenderer', I18nSupportController]
     }
 }
-function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver, $q) {
+
+function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
     return {
         require: '^i18nSupport',
         restrict: ['E', 'A'],
@@ -69,9 +70,8 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
             }, function () {
                 scope.code = attrs.code;
                 scope.default = attrs.default;
-                var deferred = $q.defer();
-                i18n.resolve(scope, deferred.resolve);
-                deferred.promise.then(updateTranslation);
+                var promise = i18n.resolve(scope);
+                promise.then(updateTranslation);
             }, true);
 
             scope.translate = function () {
@@ -121,10 +121,12 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
     };
 }
 
-function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config) {
+function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, $q) {
     var cache = $cacheFactory.get('i18n');
 
-    this.resolve = function (context, presenter) {
+    this.resolve = function (context) {
+        var deferred = $q.defer();
+
         function isUnknown(translation) {
             return context.default && translation == '???' + context.code + '???';
         }
@@ -138,7 +140,7 @@ function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config) 
         if (config.namespace) context.namespace = config.namespace;
         if (localeResolver()) context.locale = localeResolver();
         if (isCached())
-            presenter(getFromCache());
+            deferred.resolve(getFromCache());
         else
             getFromGateway();
 
@@ -156,23 +158,26 @@ function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config) 
 
         function getFromGateway() {
             i18nMessageGateway(context, function (translation) {
-                presenter(fallbackToDefaultWhenUnknown(translation));
+                deferred.resolve(fallbackToDefaultWhenUnknown(translation));
                 storeInCache(fallbackToDefaultWhenUnknown(translation));
             }, function () {
-                presenter(context.default);
+                deferred.resolve(context.default);
             });
         }
 
         function storeInCache(msg) {
             cache.put(toKey(), msg);
         }
+
+        return deferred.promise;
     };
 }
 
 function I18nResolverFactory(i18n) {
     return function (ctx, presenter) {
-        i18n.resolve(ctx, presenter);
-    }
+        var promise = i18n.resolve(ctx);
+        promise.then(presenter);
+    };
 }
 
 function I18nRendererInstallerFactory(i18nRenderer) {
