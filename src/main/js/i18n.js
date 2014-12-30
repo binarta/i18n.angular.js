@@ -1,5 +1,8 @@
 angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', I18nService])
+    .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
+    .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
+    .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
     .factory('i18nLocation', ['$location', 'localeResolver', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
     .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
@@ -48,7 +51,7 @@ function i18nSupportDirectiveFactory() {
     return {
         restrict: 'C',
         controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver',
-            'localeSwapper', 'config', '$modal', '$cacheFactory', I18nSupportController]
+            'localeSwapper', 'config', '$cacheFactory', 'i18nRenderer', I18nSupportController]
     }
 }
 function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver, $q) {
@@ -172,7 +175,48 @@ function I18nResolverFactory(i18n) {
     }
 }
 
-function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config, $modal, $cacheFactory) {
+function I18nRendererInstallerFactory(i18nRenderer) {
+    return function (renderer) {
+        i18nRenderer.open = renderer.open;
+    }
+}
+
+function I18nDefaultRendererService(config, $modal, $rootScope) {
+    this.open = function (args) {
+        var componentsDir = config.componentsDir || 'bower_components';
+        var styling = config.styling ? config.styling + '/' : '';
+
+        var scope = $rootScope.$new();
+        scope.dialog = {
+            translation: args.translation,
+            editor: args.editor
+        };
+
+        var modalInstance = $modal.open({
+            scope: scope,
+            controller: I18nModalInstanceController,
+            templateUrl: componentsDir + '/binarta.i18n.angular/template/' + styling + 'i18n-modal.html'
+        });
+
+        modalInstance.result.then(args.submit, args.cancel);
+    };
+
+    function I18nModalInstanceController($scope, $modalInstance) {
+        $scope.submit = function () {
+            $modalInstance.close($scope.dialog.translation);
+        };
+
+        $scope.close = function () {
+            $modalInstance.dismiss('cancel');
+        };
+    }
+}
+
+function I18nRendererService(i18nDefaultRenderer) {
+    this.open = i18nDefaultRenderer.open;
+}
+
+function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config, $cacheFactory, i18nRenderer) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
 
@@ -275,31 +319,25 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         self.init();
     });
 
-    this.open = function (code, translation, presenter, editor) {
-        if (this.renderer) this.renderer(translation);
+    var updateTranslation = function(translation) {
+        $scope.dialog.translation = translation;
+        self.translate();
+    };
 
+    var cancel = function () {
+        self.init();
+    };
+
+    this.open = function (code, translation, presenter, editor) {
         $scope.presenter = presenter;
+
         $scope.dialog = {
             code: code,
-           translation: angular.copy(translation),
+            translation: angular.copy(translation),
             editor: editor
         };
 
-        var componentsDir = config.componentsDir || 'bower_components';
-        var styling = config.styling ? config.styling + '/' : '';
-
-        var modalInstance = $modal.open({
-            scope: $scope,
-            controller: I18nModalInstanceController,
-            templateUrl: componentsDir + '/binarta.i18n.angular/template/' + styling + 'i18n-modal.html'
-        });
-
-        modalInstance.result.then(function (translation) {
-            $scope.dialog.translation = translation;
-            self.translate();
-        }, function () {
-            self.init();
-        });
+        i18nRenderer.open({translation: $scope.dialog.translation, editor: editor, submit: updateTranslation, cancel: cancel});
     };
 
     this.close = function () {
@@ -307,7 +345,6 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     };
 
     this.translate = function () {
-        if (self.editor != undefined) $scope.dialog.translation = self.editor();
         var ctx = {key: $scope.dialog.code, message: $scope.dialog.translation};
         if (config.namespace) ctx.namespace = config.namespace;
         ctx.locale = localeResolver() || 'default';
@@ -324,16 +361,6 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
     };
 
     if (isLocaleRemembered()) localeSwapper(localeResolver());
-}
-
-function I18nModalInstanceController($scope, $modalInstance) {
-        $scope.submit = function () {
-            $modalInstance.close($scope.dialog.translation);
-        };
-
-        $scope.close = function () {
-            $modalInstance.dismiss('cancel');
-        };
 }
 
 function I18nDefaultDirectiveFactory(localeSwapper) {

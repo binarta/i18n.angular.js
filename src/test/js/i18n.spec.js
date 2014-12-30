@@ -9,6 +9,27 @@ describe('i18n', function () {
     beforeEach(module('web.storage'));
     beforeEach(module('config'));
 
+    var modal, modalInstance, submitModalSpy, cancelModalSpy;
+
+    beforeEach(function () {
+        modal = {
+            open: {}
+        };
+        modalInstance = {
+            result: {
+                then: function (result, dismissed) {
+                    submitModalSpy = result;
+                    cancelModalSpy = dismissed;
+                }
+            }
+        };
+        spyOn(modal, 'open').andReturn(modalInstance);
+
+        module(function ($provide) {
+            $provide.value('$modal', modal);
+        });
+    });
+
     beforeEach(inject(function($cacheFactory) {
         cache = $cacheFactory.get('i18n');
     }));
@@ -157,8 +178,80 @@ describe('i18n', function () {
         });
     });
 
+    describe('I18nDefaultRendererService', function () {
+        var service, config;
+
+        beforeEach(inject(function (i18nDefaultRenderer, _config_) {
+            service = i18nDefaultRenderer;
+            config = _config_;
+        }));
+
+        describe('open dialog modal', function (){
+            var submittedValue, canceled;
+
+            beforeEach(function () {
+                submittedValue = {};
+                canceled = false;
+
+                service.open({
+                    translation: 'translation',
+                    editor: 'editor',
+                    submit: function (value) {
+                        submittedValue = value;
+                    },
+                    cancel: function () {
+                        canceled = true;
+                    }
+                });
+            });
+
+            it('modal is opened', function () {
+                expect(modal.open).toHaveBeenCalled();
+            });
+
+            it('modal is opened with scope setting', function () {
+                expect(modal.open.mostRecentCall.args[0].scope).toBeDefined();
+            });
+
+            it('modal is opened with controller setting', function () {
+                expect(modal.open.mostRecentCall.args[0].controller).toEqual(jasmine.any(Function));
+            });
+
+            it('modal is opened with default templateUrl setting', function () {
+                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/i18n-modal.html');
+            });
+
+            it('template url with specific styling', function () {
+                config.styling = 'bootstrap3';
+                service.open({});
+
+                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
+            });
+
+            it('template url with specific components directory', function () {
+                config.styling = 'bootstrap3';
+                config.componentsDir = 'components';
+                service.open({});
+
+                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
+            });
+
+            it('modal is submitted', function () {
+                submitModalSpy('translated value');
+
+                expect(submittedValue).toEqual('translated value');
+            });
+
+            it('modal is canceled', function () {
+                cancelModalSpy();
+
+                expect(canceled).toBeTruthy();
+            });
+        });
+    });
+
     describe('I18nSupportController', function () {
-        var scope, ctrl, registry, dispatcher, local, modal, modalInstance, modalClosedSpy, modalDismissedSpy;
+        var scope, ctrl, registry, dispatcher, local;
         var code = 'message.code';
         var translation = 'message translation';
         var presenter = {success: function (translation) {
@@ -181,123 +274,42 @@ describe('i18n', function () {
             };
             registry = topicRegistryMock;
             dispatcher = topicMessageDispatcherMock;
-            modal = {
-                open: {}
-            };
-            modalInstance = {
-                result: {
-                    then: function (result, dismissed) {
-                        modalClosedSpy = result;
-                        modalDismissedSpy = dismissed;
-                    }
-                }
-            };
-            spyOn(modal, 'open').andReturn(modalInstance);
+
             route.routes = [];
             route.routes['/template/i18n-modal'] = {
                 templateUrl: 'i18n-modal.html'
             };
-            ctrl = $controller(I18nSupportController, {$scope: scope, config: config, $modal: modal, $route: route});
+
+            ctrl = $controller(I18nSupportController, {$scope: scope, config: config, $route: route});
         }));
 
-        describe('open dialog modal', function (){
-            describe('when translation is a string', function () {
-                beforeEach(function () {
-                    ctrl.open(code, translation, presenter, editor);
-                });
+        describe('on open', function () {
+            var rendererOpenCalled;
+            var rendererArgs;
 
-                it('dialog variables are set', function () {
-                    expect(scope.dialog.code).toEqual(code);
-                    expect(scope.dialog.translation).toEqual(translation);
-                    expect(scope.dialog.editor).toEqual(editor);
-                    expect(scope.presenter).toEqual(presenter);
-                });
+            beforeEach(inject(function (i18nRendererInstaller) {
+                rendererOpenCalled = false;
+                rendererArgs = {};
+                var renderer = {
+                    open: function (args) {
+                        rendererOpenCalled = true;
+                        rendererArgs = args;
+                    }
+                };
 
-                it('dialog translation should be a copy', function () {
-                    translation = 'modified translation';
-                    expect(scope.dialog.translation).not.toEqual('modified translation');
-                });
+                i18nRendererInstaller(renderer);
 
-                it('modal is opened', function () {
-                    expect(modal.open).toHaveBeenCalled();
-                });
+                ctrl.open(code, translation, presenter, editor);
+            }));
 
-                it('modal is opened with scope setting', function () {
-                    expect(modal.open.mostRecentCall.args[0].scope).toEqual(scope);
-                });
-
-                it('modal is opened with controller setting', function () {
-                    expect(modal.open.mostRecentCall.args[0].controller).toEqual(I18nModalInstanceController);
-                });
-
-                it('modal is opened with default templateUrl setting', function () {
-                    expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/i18n-modal.html');
-                });
-
-                it('template url with specific styling', function () {
-                    config.styling = 'bootstrap3';
-                    ctrl.open(code, translation, presenter, editor);
-
-                    expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
-                });
-
-                it('template url with specific components directory', function () {
-                    config.styling = 'bootstrap3';
-                    config.componentsDir = 'components';
-                    ctrl.open(code, translation, presenter, editor);
-
-                    expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
-                });
-
-                describe('modal is submitted', function () {
-                    beforeEach(function () {
-                        spyOn(ctrl, 'translate');
-                        modalClosedSpy('translated value');
-                    });
-
-                    it('translation is modified', function () {
-                        expect(scope.dialog.translation).toEqual('translated value');
-                    });
-
-                    it('translate function is called', function () {
-                        expect(ctrl.translate).toHaveBeenCalled();
-                    });
-                });
-
-                describe('modal is canceled', function () {
-                    beforeEach(function () {
-                        spyOn(ctrl, 'init');
-                        modalDismissedSpy();
-                    });
-
-                    it('init is called', function () {
-                        expect(ctrl.init).toHaveBeenCalled();
-                    });
-                });
+            it('i18nRenderer.open is called', function () {
+                 expect(rendererOpenCalled).toEqual(true);
             });
 
-            describe('when translation is an object', function () {
-                beforeEach(function () {
-                    translation = {
-                        test: 'value'
-                    };
-                    ctrl.open(code, translation, presenter, editor);
-                });
-
-                it('translation should be a copy', function () {
-                    translation.test = 'modified';
-                    expect(scope.dialog.translation).not.toEqual(translation);
-                });
+            it('args are passed to i18nRenderer', function () {
+                expect(rendererArgs.translation).toEqual(translation);
+                expect(rendererArgs.editor).toEqual(editor);
             });
-        });
-
-        it('on open dialog a renderer can be notified', function () {
-            var valueToRender;
-            ctrl.renderer = function (value) {
-                valueToRender = value;
-            };
-            ctrl.open(code, translation, presenter);
-            expect(valueToRender).toEqual(translation);
         });
 
         it('no i18n.locale notification should be raised yet', function() {
@@ -549,21 +561,6 @@ describe('i18n', function () {
             });
         });
 
-        describe('on translate with editor', function() {
-            beforeEach(function() {
-                ctrl.editor = function () {
-                    return translation;
-                };
-                scope.dialog.code = code;
-                scope.presenter = presenter;
-                ctrl.translate();
-            });
-
-            it('construct context', function () {
-                expectContextEquals({key:code, message:translation, locale:'default'});
-            });
-        });
-
         it('close dialog', function () {
             scope.dialog.code = code;
             scope.dialog.translation = translation;
@@ -598,47 +595,6 @@ describe('i18n', function () {
         });
     });
 
-    describe('I18nModalInstanceController', function () {
-        var modalInstance, modalInstanceCtrl, resultSpy, modalDismissed, scope;
-
-        beforeEach(inject(function ($rootScope) {
-            scope = $rootScope.$new();
-            modalInstance = {
-                close: function (result) {
-                    resultSpy = result;
-                },
-                dismiss: function (reason) {
-                    modalDismissed = reason;
-                }
-            };
-
-            modalInstanceCtrl = new I18nModalInstanceController(scope, modalInstance);
-        }));
-
-        describe('modal is submitted', function () {
-            beforeEach(function () {
-                scope.dialog = {
-                    translation: 'value'
-                };
-                scope.submit();
-            });
-
-            it('modal is closed', function () {
-                expect(resultSpy).toEqual('value');
-            });
-        });
-
-        describe('modal is closed', function () {
-            beforeEach(function () {
-                scope.close();
-            });
-
-            it('modal is dismissed', function () {
-                expect(modalDismissed).toEqual('cancel');
-            });
-        });
-    });
-
     describe('i18n support directive', function () {
         var directive, scope, resolver, support;
 
@@ -653,7 +609,7 @@ describe('i18n', function () {
 
         it('controller', function () {
             expect(directive.controller).toEqual(['$scope', '$location', 'i18nMessageWriter', 'topicRegistry',
-                'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', '$modal', '$cacheFactory', I18nSupportController]);
+                'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', '$cacheFactory', 'i18nRenderer', I18nSupportController]);
         });
     });
 
@@ -682,11 +638,12 @@ describe('i18n', function () {
 
     describe('i18n directive', function () {
         var directive, scope, resolver, support, registry, permitter, dispatcher, topics, locale;
-        var attrs = [];
+        var attrs;
         var $qWrapper, deferred;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock,
                                     topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, $rootScope, $q) {
+            attrs = {};
             permitter = activeUserHasPermissionHelper;
             scope = $rootScope.$new();
             scope.$apply = function(arg){};
@@ -968,6 +925,7 @@ describe('i18n', function () {
 
         describe('on translation success', function () {
             beforeEach(function () {
+                attrs.code = 'code';
                 directive.link(scope, null, attrs, support);
                 scope.$digest();
                 scope.translate();
