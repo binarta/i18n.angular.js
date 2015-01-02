@@ -1,5 +1,5 @@
 angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
-    .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', '$q', I18nService])
+    .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', '$q', 'i18nMessageWriter', 'usecaseAdapterFactory', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -12,6 +12,7 @@ angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
     .directive('i18nTranslate', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .run(['$cacheFactory', function($cacheFactory) {
         $cacheFactory('i18n');
     }]);
@@ -53,6 +54,100 @@ function i18nSupportDirectiveFactory() {
         controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver',
             'localeSwapper', 'config', '$cacheFactory', 'i18nRenderer', I18nSupportController]
     }
+}
+
+function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, activeUserHasPermission, i18nRenderer, topicMessageDispatcher) {
+    return {
+        restrict: ['E', 'A'],
+        scope: true,
+        link: function (scope, element, attrs) {
+
+            scope.$watch(function () {
+                return localeResolver();
+            }, function () {
+                scope.code = attrs.code;
+                var promise = i18n.resolve(scope);
+                promise.then(updateTranslation);
+            });
+
+            scope.open = function () {
+                var link = angular.copy(scope.link);
+                link.url = link.url.replace('http://', '');
+
+                i18nRenderer.open({
+                    code: scope.code,
+                    translation: link,
+                    editor: 'bin-link',
+                    submit: translate
+                });
+            };
+
+            ngRegisterTopicHandler(scope, 'edit.mode', toggleEditMode);
+            ngRegisterTopicHandler(scope, 'link.updated', function (args) {
+                if (scope.code == args.code) updateTranslation(args.translation);
+            });
+
+            function toggleEditMode(editMode) {
+                activeUserHasPermission({
+                    no: function() {
+                        if(isTranslatable()) bindClickEvent(false);
+                    },
+                    yes: function () {
+                        if(isTranslatable()) bindClickEvent(editMode);
+                    },
+                    scope: scope
+                }, 'i18n.message.add');
+            }
+
+            function isTranslatable() {
+                return attrs.readOnly == undefined;
+            }
+
+            function translate(link) {
+                link.url = link.url.replace('http://', '');
+                link.url = 'http://' + link.url;
+                var translationString = JSON.stringify(link);
+
+                var promise = i18n.translate({
+                    code: scope.code,
+                    translation: translationString
+                });
+                promise.then(function () {
+                    topicMessageDispatcher.fire('link.updated', {code: scope.code, translation: translationString});
+                });
+            }
+
+            function bindClickEvent(editMode) {
+                if (editMode) {
+                    element.bind("click", function () {
+                        scope.$apply(scope.open());
+                    });
+                } else {
+                    element.unbind("click");
+                }
+            }
+
+            function updateTranslation(translation) {
+                try {
+                    scope.link = JSON.parse(translation);
+                } catch (e) {
+                    scope.link = getDefaultLink();
+                }
+            }
+
+            function getDefaultLink() {
+                var defaultName = 'link';
+                if (attrs.defaultName) defaultName = attrs.defaultName;
+                var defaultUrl = '';
+                if (attrs.defaultUrl) defaultUrl = attrs.defaultUrl;
+
+                return {
+                    name: defaultName,
+                    url: defaultUrl
+                };
+            }
+        }
+    };
 }
 
 function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
@@ -121,7 +216,7 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
     };
 }
 
-function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, $q) {
+function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, $q, i18nMessageWriter, usecaseAdapterFactory) {
     var cache = $cacheFactory.get('i18n');
 
     this.resolve = function (context) {
@@ -167,6 +262,24 @@ function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, 
 
         function storeInCache(msg) {
             cache.put(toKey(), msg);
+        }
+
+        return deferred.promise;
+    };
+
+    this.translate = function (context) {
+        var deferred = $q.defer();
+
+        var ctx = {key: context.code, message: context.translation};
+        if (config.namespace) ctx.namespace = config.namespace;
+        ctx.locale = localeResolver() || 'default';
+        var onSuccess = function () {
+            deferred.resolve(cache.put(toKey(), ctx.message));
+        };
+        i18nMessageWriter(ctx, usecaseAdapterFactory(context, onSuccess));
+
+        function toKey() {
+            return (ctx.namespace || 'default') + ':' + (ctx.locale || 'default') + ':' + ctx.key;
         }
 
         return deferred.promise;

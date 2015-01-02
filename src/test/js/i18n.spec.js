@@ -40,146 +40,240 @@ describe('i18n', function () {
         }))
     });
 
-    describe('resolver', function () {
-        var resolver, registry, permitter, local;
-        var code = 'translation.code';
-        var translation = 'translation message';
-        var defaultTranslation = 'default translation';
-        var unknownCode = '???' + code + '???';
-        var receivedTranslation;
-        var presenter = function (translation) {
-            receivedTranslation = translation;
-        };
-        var context;
-        var reader;
-        var config;
-        var $rootScope;
+    describe('i18n service', function () {
+        var $rootScope, config, i18n, localStorage;
 
-        beforeEach(inject(function(i18nMessageReader) {
-            reader = i18nMessageReader;
-        }));
-        beforeEach(inject(function (i18n, localStorage, topicRegistryMock, activeUserHasPermissionHelper, _config_, _$rootScope_) {
+        beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_) {
             $rootScope = _$rootScope_;
             config = _config_;
-            receivedTranslation = '';
-            context = {};
-            local = localStorage;
-            registry = topicRegistryMock;
-            permitter = activeUserHasPermissionHelper;
-            resolver = i18n;
+            i18n = _i18n_;
+            localStorage = _localStorage_;
         }));
 
         it('i18n service should be defined', function () {
-            expect(resolver).toBeDefined();
+            expect(i18n).toBeDefined();
         });
 
-        function expectContextEquals(ctx) {
-            expect(reader.calls[0].args[0]).toEqual(ctx);
-        }
+        describe('on translate', function () {
+            var writer, context, usecaseAdapter;
 
-        it('on resolve construct context with namespace', function () {
-            context.code = code;
-            resolver.resolve(context).then(presenter);
-            expectContextEquals({code:code, namespace:config.namespace});
-        });
-
-        function resolveTo(translation) {
-            resolver.resolve(context).then(presenter);
-            reader.calls[0].args[1](translation);
-            $rootScope.$digest();
-        }
-
-        function failed() {
-            resolver.resolve(context).then(presenter);
-            reader.calls[0].args[2]();
-            $rootScope.$digest();
-        }
-
-        describe('given translation code', function() {
-            beforeEach(function() {
-                context.code = code;
-            });
-
-            it('resolve to translation', inject(function () {
-                resolveTo(translation);
-                expect(receivedTranslation).toEqual(translation);
-                expect(cache.get('default:default:translation.code')).toEqual(translation);
+            beforeEach(inject(function (i18nMessageWriter, usecaseAdapterFactory) {
+                writer = i18nMessageWriter;
+                usecaseAdapter = usecaseAdapterFactory;
+                context = {
+                    code: 'code',
+                    translation: 'translation'
+                };
             }));
 
-            it('resolution fallback to default', function () {
-                context.code = code;
-                context.default = defaultTranslation;
-                resolveTo(unknownCode);
-                expect(receivedTranslation).toEqual(defaultTranslation);
-                expect(cache.get('default:default:translation.code')).toEqual(defaultTranslation);
+            function expectContextEquals(ctx) {
+                expect(writer.calls[0].args[0]).toEqual(ctx);
+            }
+
+            describe('construct context', function () {
+                it('default', function () {
+                    i18n.translate(context);
+
+                    expectContextEquals({
+                        key: 'code',
+                        message: 'translation',
+                        locale: 'default'
+                    });
+                });
+
+                it('with namespace', function () {
+                    config.namespace = 'test';
+
+                    i18n.translate(context);
+
+                    expectContextEquals({
+                        key: 'code',
+                        message: 'translation',
+                        namespace: 'test',
+                        locale: 'default'
+                    });
+                });
+
+                it('with locale', function () {
+                    localStorage.locale = 'nl';
+
+                    i18n.translate(context);
+
+                    expectContextEquals({
+                        key: 'code',
+                        message: 'translation',
+                        locale: 'nl'
+                    });
+                });
             });
 
-            it('resolution fallback to empty default', function () {
-                context.code = code;
-                context.default = '';
-                resolveTo(unknownCode);
-                expect(receivedTranslation).toEqual(' ');
-                expect(cache.get('default:default:translation.code')).toEqual(' ');
+            it('context is passed to usecaseAdapter', function () {
+                i18n.translate(context);
+
+                expect(usecaseAdapter.calls[0].args[0]).toEqual(context);
             });
 
-            it('resolution without fallback to default available', function () {
-                context.code = code;
-                resolver.resolve(context).then(presenter);
-                resolveTo(unknownCode);
-                expect(receivedTranslation).toEqual('place your text here');
-                expect(cache.get('default:default:translation.code')).toEqual('place your text here');
-            });
+            describe('on success', function () {
+                it('default', function () {
+                    i18n.translate(context);
+                    usecaseAdapter.calls[0].args[1]();
 
-            it('failed resolution fallback to default', function () {
-                context.default = defaultTranslation;
-                failed();
-                expect(receivedTranslation).toEqual(defaultTranslation);
+                    expect(cache.get('default:default:code')).toEqual('translation');
+                });
+
+                it('with namespace', function () {
+                    config.namespace = 'N';
+
+                    i18n.translate(context);
+                    usecaseAdapter.calls[0].args[1]();
+
+                    expect(cache.get('N:default:code')).toEqual('translation');
+                });
+
+                it('with locale', function () {
+                    localStorage.locale = 'L';
+
+                    i18n.translate(context);
+                    usecaseAdapter.calls[0].args[1]();
+
+                    expect(cache.get('default:L:code')).toEqual('translation');
+                });
             });
         });
 
-        describe('given a previously selected locale', function () {
-            var locale;
+        describe('on resolve', function () {
+            var registry, permitter;
+            var code = 'translation.code';
+            var translation = 'translation message';
+            var defaultTranslation = 'default translation';
+            var unknownCode = '???' + code + '???';
+            var receivedTranslation;
+            var presenter = function (translation) {
+                receivedTranslation = translation;
+            };
+            var context;
+            var reader;
 
-            beforeEach(function () {
-                locale = 'lang';
-                local.locale = locale;
+            beforeEach(inject(function(i18nMessageReader) {
+                reader = i18nMessageReader;
+            }));
+            beforeEach(inject(function (localStorage, topicRegistryMock, activeUserHasPermissionHelper) {
+                receivedTranslation = '';
+                context = {};
+                registry = topicRegistryMock;
+                permitter = activeUserHasPermissionHelper;
+            }));
+
+            function expectContextEquals(ctx) {
+                expect(reader.calls[0].args[0]).toEqual(ctx);
+            }
+
+            it('on resolve construct context with namespace', function () {
+                context.code = code;
+                i18n.resolve(context).then(presenter);
+                expectContextEquals({code:code, namespace:config.namespace});
             });
 
-            it('resolution includes the locale on context', function () {
-                resolver.resolve(context, presenter);
-                expectContextEquals({locale:locale});
-            });
-        });
+            function resolveTo(translation) {
+                i18n.resolve(context).then(presenter);
+                reader.calls[0].args[1](translation);
+                $rootScope.$digest();
+            }
 
-        describe('with namespace and locale', function() {
-            beforeEach(function() {
-                local.locale = 'L';
-                config.namespace = 'N';
-                context.code = 'C';
-            });
+            function failed() {
+                i18n.resolve(context).then(presenter);
+                reader.calls[0].args[2]();
+                $rootScope.$digest();
+            }
 
-            describe('when resolving a message for the first time', function() {
+            describe('given translation code', function() {
                 beforeEach(function() {
+                    context.code = code;
+                });
+
+                it('resolve to translation', inject(function () {
                     resolveTo(translation);
+                    expect(receivedTranslation).toEqual(translation);
+                    expect(cache.get('default:default:translation.code')).toEqual(translation);
+                }));
+
+                it('resolution fallback to default', function () {
+                    context.code = code;
+                    context.default = defaultTranslation;
+                    resolveTo(unknownCode);
+                    expect(receivedTranslation).toEqual(defaultTranslation);
+                    expect(cache.get('default:default:translation.code')).toEqual(defaultTranslation);
                 });
 
-                it('then namespace locale and code are embedded in cache key', function() {
-                    expect(cache.get('N:L:C')).toEqual(translation);
+                it('resolution fallback to empty default', function () {
+                    context.code = code;
+                    context.default = '';
+                    resolveTo(unknownCode);
+                    expect(receivedTranslation).toEqual(' ');
+                    expect(cache.get('default:default:translation.code')).toEqual(' ');
                 });
 
-                describe('and subsequent calls', function() {
+                it('resolution without fallback to default available', function () {
+                    context.code = code;
+                    i18n.resolve(context).then(presenter);
+                    resolveTo(unknownCode);
+                    expect(receivedTranslation).toEqual('place your text here');
+                    expect(cache.get('default:default:translation.code')).toEqual('place your text here');
+                });
+
+                it('failed resolution fallback to default', function () {
+                    context.default = defaultTranslation;
+                    failed();
+                    expect(receivedTranslation).toEqual(defaultTranslation);
+                });
+            });
+
+            describe('given a previously selected locale', function () {
+                var locale;
+
+                beforeEach(function () {
+                    locale = 'lang';
+                    localStorage.locale = locale;
+                });
+
+                it('resolution includes the locale on context', function () {
+                    i18n.resolve(context, presenter);
+                    expectContextEquals({locale:locale});
+                });
+            });
+
+            describe('with namespace and locale', function() {
+                beforeEach(function() {
+                    localStorage.locale = 'L';
+                    config.namespace = 'N';
+                    context.code = 'C';
+                });
+
+                describe('when resolving a message for the first time', function() {
                     beforeEach(function() {
-                        reader.reset();
-                        resolver.resolve(context, presenter);
+                        resolveTo(translation);
                     });
 
-                    it('then no gateway calls are done', function() {
-                        expect(reader.calls[0]).toBeUndefined();
-                    })
-                });
+                    it('then namespace locale and code are embedded in cache key', function() {
+                        expect(cache.get('N:L:C')).toEqual(translation);
+                    });
 
+                    describe('and subsequent calls', function() {
+                        beforeEach(function() {
+                            reader.reset();
+                            i18n.resolve(context, presenter);
+                        });
+
+                        it('then no gateway calls are done', function() {
+                            expect(reader.calls[0]).toBeUndefined();
+                        })
+                    });
+
+                });
             });
         });
+
+
     });
 
     describe('I18nDefaultRendererService', function () {
@@ -637,6 +731,264 @@ describe('i18n', function () {
             it('reset locale to default', inject(function(localStorage) {
                 expect(localStorage.locale).toEqual('default');
             }));
+        });
+    });
+
+    describe('bin-link directive', function () {
+        var element, scope, $rootScope, i18n, link, registry, topics, permitter, $compile, $q;
+        var rendererOpenCalled, rendererArgs;
+
+        beforeEach(inject(function (_$rootScope_, _i18n_, topicRegistryMock, topicMessageDispatcherMock,
+                                    activeUserHasPermissionHelper, _$compile_, _$q_, i18nRendererInstaller) {
+            i18n = _i18n_;
+            i18n.resolve = function (args) {
+                i18n.resolveArgsSpy = args;
+                var deferred = $q.defer();
+                deferred.resolve(args.default);
+                return deferred.promise;
+            };
+
+            i18n.translate = function (args) {
+                i18n.translateArgsSpy = args;
+                var deferred = $q.defer();
+                deferred.resolve('success');
+                return deferred.promise;
+            };
+
+            $rootScope = _$rootScope_;
+            registry = topicRegistryMock;
+            topics = topicMessageDispatcherMock;
+            permitter = activeUserHasPermissionHelper;
+            $compile = _$compile_;
+            $q = _$q_;
+
+            link = {
+                name: 'link',
+                url: ''
+            };
+
+            rendererOpenCalled = false;
+            rendererArgs = {};
+            var renderer = {
+                open: function (args) {
+                    rendererOpenCalled = true;
+                    rendererArgs = args;
+                }
+            };
+
+            i18nRendererInstaller(renderer);
+        }));
+
+        function createElement(html) {
+            element = angular.element(html);
+            $compile(element)($rootScope);
+            scope = element.scope();
+            $rootScope.$digest();
+        }
+
+        describe('when no translation exists', function () {
+            describe('and no default is given', function () {
+                beforeEach(function () {
+                    createElement('<bin-link code="code"></bin-link>');
+                });
+
+                it('get empty values', function () {
+                    $rootScope.$digest();
+
+                    expect(scope.link).toEqual(link);
+                });
+            });
+
+            describe('and default is given', function () {
+                beforeEach(function () {
+                    link = {
+                        name: 'default-name',
+                        url: 'default-url'
+                    };
+                    createElement('<bin-link code="code" default-name="' + link.name + '" default-url="' + link.url + '"></bin-link>')
+                });
+
+                it('get empty values', function () {
+                    $rootScope.$digest();
+
+                    expect(scope.link).toEqual(link);
+                });
+            });
+        });
+
+        describe('when translation exists', function () {
+            beforeEach(inject(function ($compile, $q) {
+                link = {
+                    name: 'link-name',
+                    url: 'link-url'
+                };
+
+                i18n.resolve = function (scope) {
+                    i18n.resolveArgsSpy = scope;
+                    var deferred = $q.defer();
+                    deferred.resolve(JSON.stringify(link));
+                    return deferred.promise;
+                };
+
+                createElement('<bin-link code="code"></bin-link>');
+                $rootScope.$digest();
+            }));
+
+            it('scope is passed to i18n service', function () {
+                expect(i18n.resolveArgsSpy.code).toEqual('code');
+            });
+
+            it('get values', function () {
+                expect(scope.link).toEqual(link);
+            });
+
+            describe('and locale is changed', function () {
+                beforeEach(inject(function (sessionStorage) {
+                    link = {
+                        name: 'link-name-nl',
+                        url: 'link-url-nl'
+                    };
+                    sessionStorage.locale = 'nl';
+                    $rootScope.$digest();
+                }));
+
+                it('link is translated', function () {
+                    expect(scope.link).toEqual(link);
+                });
+            });
+        });
+
+        describe('when translatable', function () {
+            var openedLink;
+
+            beforeEach(function () {
+                link = {
+                    name: 'link',
+                    url: 'http://binarta.com'
+                };
+
+                openedLink = {
+                    name: 'link',
+                    url: 'binarta.com'
+                };
+
+                createElement('<bin-link code="code"  default-url="http://binarta.com"></bin-link>');
+            });
+
+            describe('when edit.mode topic received', function () {
+                beforeEach(function () {
+                    registry['edit.mode'](true);
+                });
+
+                describe('and user has permission', function () {
+                    beforeEach(function () {
+                        permitter.yes();
+                    });
+
+                    it('with permission', function () {
+                        expect(permitter.permission).toEqual('i18n.message.add');
+                    });
+
+                    describe('and element is clicked', function () {
+                        beforeEach(function () {
+                            element.triggerHandler('click');
+                        });
+
+                        it('renderer is opened', function () {
+                            expect(rendererOpenCalled).toBeTruthy();
+                            expect(rendererArgs).toEqual({
+                                code: 'code',
+                                translation: openedLink,
+                                editor: 'bin-link',
+                                submit: jasmine.any(Function)
+                            });
+                        });
+
+                        it('strip http:// from url', function () {
+                            expect(rendererArgs.translation.url).toEqual('binarta.com');
+                        });
+
+                        it('translation is a copy', function () {
+                            scope.link.name = 'updated name';
+
+                            expect(rendererArgs.translation.name).toEqual('link');
+                        });
+
+                        it('on submit', function () {
+                            rendererArgs.submit(openedLink);
+
+                            expect(i18n.translateArgsSpy).toEqual({
+                                code: 'code',
+                                translation: JSON.stringify(link)
+                            });
+                        });
+
+                        it('notification is sent', function () {var promise = rendererArgs.submit(link);
+                            $rootScope.$digest();
+
+                            expect(topics['link.updated']).toEqual({
+                                code: 'code',
+                                translation: JSON.stringify(link)
+                            });
+                        });
+                    });
+                });
+            });
+        });
+
+        describe('when not translatable', function () {
+            beforeEach(function () {
+                createElement('<bin-link code="code" read-only></bin-link>');
+            });
+
+            describe('when edit.mode topic received', function () {
+                beforeEach(function () {
+                    registry['edit.mode'](true);
+                });
+
+                describe('and user has permission', function () {
+                    beforeEach(function () {
+                        permitter.yes();
+                    });
+
+                    it('with permission', function () {
+                        expect(permitter.permission).toEqual('i18n.message.add');
+                    });
+
+                    describe('and element is clicked', function () {
+                        beforeEach(function () {
+                            element.triggerHandler('click');
+                        });
+
+                        it('renderer is not opened', function () {
+                            expect(rendererOpenCalled).toBeFalsy();
+                        });
+                    });
+                });
+            });
+        });
+
+        describe('when link.updated topic received', function () {
+            var updatedLink = {
+                code: 'code',
+                translation: JSON.stringify({
+                    name: 'updated name',
+                    url: 'updated url'
+                })
+            };
+
+            beforeEach(function () {
+                createElement('<bin-link code="code"></bin-link>');
+
+                registry['link.updated']({
+                    code: 'code',
+                    translation: JSON.stringify(updatedLink)
+                });
+            });
+
+            it('link is translated', function () {
+                expect(scope.link).toEqual(updatedLink);
+            });
         });
     });
 
