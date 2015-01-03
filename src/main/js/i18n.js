@@ -10,8 +10,8 @@ angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
     .directive('i18nSupport', i18nSupportDirectiveFactory)
     .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
-    .directive('i18nTranslate', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
-    .directive('i18n', ['i18n', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('i18nTranslate', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('i18n', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .run(['$cacheFactory', function($cacheFactory) {
         $cacheFactory('i18n');
@@ -51,8 +51,7 @@ function LocaleSwapperFactory(localStorage, sessionStorage, topicMessageDispatch
 function i18nSupportDirectiveFactory() {
     return {
         restrict: 'C',
-        controller: ['$scope', '$location', 'i18nMessageWriter', 'topicRegistry', 'usecaseAdapterFactory', 'localeResolver',
-            'localeSwapper', 'config', '$cacheFactory', 'i18nRenderer', I18nSupportController]
+        controller: ['$scope', '$location', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]
     }
 }
 
@@ -145,12 +144,11 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, a
     };
 }
 
-function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
+function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
     return {
-        require: '^i18nSupport',
         restrict: ['E', 'A'],
         scope: true,
-        link: function (scope, element, attrs, support) {
+        link: function (scope, element, attrs) {
             scope.var = undefined;
             scope.code = undefined;
             scope.default = undefined;
@@ -164,18 +162,29 @@ function i18nDirectiveFactory(i18n, ngRegisterTopicHandler, activeUserHasPermiss
                 promise.then(updateTranslation);
             }, true);
 
-            scope.translate = function () {
-                support.open(scope.code, scope.var, {
-                    success: function (translation) {
-                        topicMessageDispatcher.fire('i18n.updated', {code: scope.code, translation: translation});
-                    }
-                }, attrs.editor);
+            scope.open = function () {
+                i18nRenderer.open({
+                    code: scope.code,
+                    translation: angular.copy(scope.var),
+                    editor: attrs.editor,
+                    submit: translate
+                });
             };
+
+            function translate(translation) {
+                var promise = i18n.translate({
+                    code: scope.code,
+                    translation: translation
+                });
+                promise.then(function () {
+                    topicMessageDispatcher.fire('i18n.updated', {code: scope.code, translation: translation});
+                });
+            }
 
             function bindClickEvent(editMode) {
                 if (editMode) {
                     element.bind("click", function () {
-                        scope.$apply(scope.translate());
+                        scope.$apply(scope.open());
                     });
                 } else {
                     element.unbind("click");
@@ -329,19 +338,7 @@ function I18nRendererService(i18nDefaultRenderer) {
     this.open = i18nDefaultRenderer.open;
 }
 
-function I18nSupportController($scope, $location, i18nMessageWriter, topicRegistry, usecaseAdapterFactory, localeResolver, localeSwapper, config, $cacheFactory, i18nRenderer) {
-    var self = this;
-    var cache = $cacheFactory.get('i18n');
-
-    this.init = function () {
-        $scope.dialog = {
-            code: '',
-            translation: ''
-        };
-        $scope.presenter = null;
-    };
-    this.init();
-
+function I18nSupportController($scope, $location, localeResolver, localeSwapper, config) {
     function isLocaleEncodedInPath(params) {
         return params.locale
     }
@@ -427,51 +424,6 @@ function I18nSupportController($scope, $location, i18nMessageWriter, topicRegist
         $scope.unlocalizedPath = getUnlocalizedPathPath(route.params.locale);
         isLocaleEncodedInPath(route.params) && isLocaleSupported(route.params.locale) ? extractLocaleFromPath(route.params) : localeNotInPath();
     });
-
-    topicRegistry.subscribe('checkpoint.signout', function () {
-        self.init();
-    });
-
-    var updateTranslation = function(translation) {
-        $scope.dialog.translation = translation;
-        self.translate();
-    };
-
-    var cancel = function () {
-        self.init();
-    };
-
-    this.open = function (code, translation, presenter, editor) {
-        $scope.presenter = presenter;
-
-        $scope.dialog = {
-            code: code,
-            translation: angular.copy(translation),
-            editor: editor
-        };
-
-        i18nRenderer.open({translation: $scope.dialog.translation, editor: editor, submit: updateTranslation, cancel: cancel});
-    };
-
-    this.close = function () {
-        self.init();
-    };
-
-    this.translate = function () {
-        var ctx = {key: $scope.dialog.code, message: $scope.dialog.translation};
-        if (config.namespace) ctx.namespace = config.namespace;
-        ctx.locale = localeResolver() || 'default';
-        var onSuccess = function () {
-            $scope.presenter.success($scope.dialog.translation);
-            self.init();
-            cache.put(toKey(), ctx.message);
-        };
-        i18nMessageWriter(ctx, usecaseAdapterFactory($scope, onSuccess));
-
-        function toKey() {
-            return (ctx.namespace || 'default') + ':' + (ctx.locale || 'default') + ':' + ctx.key;
-        }
-    };
 
     if (isLocaleRemembered()) localeSwapper(localeResolver());
 }

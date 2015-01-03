@@ -352,18 +352,12 @@ describe('i18n', function () {
         var scope, ctrl, registry, dispatcher, local;
         var code = 'message.code';
         var translation = 'message translation';
-        var presenter = {success: function (translation) {
-            this.translation = translation
-        }};
-        var editor = 'basic';
-        var writer;
         var config = {
             namespace: 'namespace'
         };
         var route = {};
 
-        beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, localStorage, i18nMessageWriter) {
-            writer = i18nMessageWriter;
+        beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, localStorage) {
             local = localStorage;
             scope = {
                 $on: function (evt, cb) {
@@ -381,64 +375,8 @@ describe('i18n', function () {
             ctrl = $controller(I18nSupportController, {$scope: scope, config: config, $route: route});
         }));
 
-        describe('on open', function () {
-            var rendererOpenCalled;
-            var rendererArgs;
-
-            beforeEach(inject(function (i18nRendererInstaller) {
-                rendererOpenCalled = false;
-                rendererArgs = {};
-                var renderer = {
-                    open: function (args) {
-                        rendererOpenCalled = true;
-                        rendererArgs = args;
-                    }
-                };
-
-                i18nRendererInstaller(renderer);
-
-                ctrl.open(code, translation, presenter, editor);
-            }));
-
-            it('i18nRenderer.open is called', function () {
-                 expect(rendererOpenCalled).toEqual(true);
-            });
-
-            it('args are passed to i18nRenderer', function () {
-                expect(rendererArgs.translation).toEqual(translation);
-                expect(rendererArgs.editor).toEqual(editor);
-            });
-        });
-
         it('no i18n.locale notification should be raised yet', function() {
             expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
-        });
-
-        function expectContextEquals(ctx) {
-            expect(writer.calls[0].args[0]).toEqual(ctx);
-        }
-
-        function expectPresenterProvided() {
-            expect(writer.calls[0].args[1]).toEqual('presenter');
-        }
-
-        describe('on translate with namespace', function() {
-            beforeEach(function() {
-                scope.dialog = {
-                    code: code,
-                    translation: translation
-                };
-                ctrl.presenter = presenter;
-                ctrl.translate();
-            });
-
-            it('construct context', function () {
-                expectContextEquals({key:code, message:translation, namespace:config.namespace, locale:'default'});
-            });
-
-            it('construct presenter', function() {
-                expectPresenterProvided();
-            });
         });
 
         describe('on $routeChangeSuccess', function () {
@@ -615,82 +553,6 @@ describe('i18n', function () {
 
             });
         });
-
-        describe('on translate without namespace', function() {
-            var adapterFactory;
-
-            beforeEach(inject(function(usecaseAdapterFactory) {
-                config.namespace = undefined;
-                adapterFactory = usecaseAdapterFactory;
-                scope.dialog = {
-                    code: code,
-                    translation: translation
-                };
-                scope.presenter = presenter;
-                ctrl.translate();
-            }));
-
-            it('pass scope to usecase adapter factory', function() {
-                expect(adapterFactory.calls[0].args[0]).toEqual(scope);
-            });
-
-            it('construct context', function () {
-                expectContextEquals({key:code, message:translation, locale:'default'});
-            });
-
-            describe('accepted', function() {
-                beforeEach(function() {
-                    adapterFactory.calls[0].args[1]();
-                });
-
-                it('reset', function () {
-                    expect(scope.dialog.code).toEqual('');
-                    expect(scope.dialog.translation).toEqual('');
-                    expect(scope.presenter).toEqual(null);
-                });
-
-                it('pass translation to presenter', function () {
-                    expect(presenter.translation).toEqual(translation);
-                });
-
-                it('store message in cache', function() {
-                    expect(cache.get('default:default:message.code')).toEqual(translation);
-                })
-            });
-        });
-
-        it('close dialog', function () {
-            scope.dialog.code = code;
-            scope.dialog.translation = translation;
-            ctrl.close();
-            expect(scope.dialog.code).toEqual('');
-            expect(scope.dialog.translation).toEqual('');
-            expect(scope.presenter).toEqual(null);
-        });
-
-        it('on checkpoint.signout notification close dialog', function () {
-            scope.dialog.code = code;
-            scope.dialog.translation = translation;
-            registry['checkpoint.signout']();
-            expect(scope.dialog.code).toEqual('');
-            expect(scope.dialog.translation).toEqual('');
-            expect(scope.presenter).toEqual(null);
-        });
-
-        describe('given a previously selected locale', function () {
-            var locale;
-
-            beforeEach(function () {
-                locale = 'lang';
-                local.locale = locale;
-            });
-
-            it('pass locale on context to writer', function () {
-                ctrl.presenter = presenter;
-                ctrl.translate();
-                expectContextEquals({key:'', message:'', locale:locale});
-            });
-        });
     });
 
     describe('i18n support directive', function () {
@@ -706,8 +568,7 @@ describe('i18n', function () {
         });
 
         it('controller', function () {
-            expect(directive.controller).toEqual(['$scope', '$location', 'i18nMessageWriter', 'topicRegistry',
-                'usecaseAdapterFactory', 'localeResolver', 'localeSwapper', 'config', '$cacheFactory', 'i18nRenderer', I18nSupportController]);
+            expect(directive.controller).toEqual(['$scope', '$location', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]);
         });
     });
 
@@ -982,8 +843,8 @@ describe('i18n', function () {
     });
 
     describe('i18n directive', function () {
-        var directive, $rootScope, scope, resolver, support, registry, permitter, dispatcher, topics, locale;
-        var attrs;
+        var directive, $rootScope, scope, resolver, registry, permitter, dispatcher, topics, locale;
+        var attrs, rendererOpenCalled, rendererArgs;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock,
                                     topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, _$rootScope_, $q) {
@@ -1007,13 +868,12 @@ describe('i18n', function () {
                 translationMode: false,
                 addListener: function (callback) {
                     resolver.listener = callback;
-                }
-            };
-            support = {
-                open: function (code, target, callback) {
-                    support.code = code;
-                    support.var = target;
-                    support.callback = callback;
+                },
+                translate: function (args) {
+                    resolver.translateArgsSpy = args;
+                    var deferred = $q.defer();
+                    deferred.resolve('success');
+                    return deferred.promise;
                 }
             };
             registry = topicRegistryMock;
@@ -1023,13 +883,19 @@ describe('i18n', function () {
             var localeResolver = function () {
                 return locale;
             };
-            directive = i18nDirectiveFactory(resolver, ngRegisterTopicHandler, activeUserHasPermission, dispatcher, localeResolver);
+
+            rendererOpenCalled = false;
+            rendererArgs = {};
+            var renderer = {
+                open: function (args) {
+                    rendererOpenCalled = true;
+                    rendererArgs = args;
+                }
+            };
+
+            directive = i18nDirectiveFactory(resolver, renderer, ngRegisterTopicHandler, activeUserHasPermission, dispatcher, localeResolver);
 
         }));
-
-        it('require', function () {
-            expect(directive.require).toEqual('^i18nSupport');
-        });
 
         it('restricted to', function () {
             expect(directive.restrict).toEqual(['E', 'A']);
@@ -1062,7 +928,7 @@ describe('i18n', function () {
                 scope.code = 'code';
                 scope.default = 'default';
 
-                directive.link(scope, element, attrs, support);
+                directive.link(scope, element, attrs);
             });
 
             it('initialize scope values', function () {
@@ -1135,7 +1001,7 @@ describe('i18n', function () {
                 describe('and message resolution completes with var defined on attributes', function () {
                     beforeEach(function () {
                         attrs.var = 'var';
-                        directive.link(scope, element, attrs, support);
+                        directive.link(scope, element, attrs);
                         scope.$digest();
                     });
 
@@ -1167,15 +1033,15 @@ describe('i18n', function () {
                         });
 
                         describe('and element receives click event', function () {
-                            it('linker calls translate function', function() {
+                            it('linker calls open function', function() {
                                 scope.code = 'code';
                                 scope.var = 'var';
 
                                 clickHandler();
 
                                 expect(bindClickEvent).toEqual('click');
-                                expect(support.code).toEqual(scope.code);
-                                expect(support.var).toEqual(scope.var);
+                                expect(rendererArgs.code).toEqual(scope.code);
+                                expect(rendererArgs.translation).toEqual(scope.var);
                             });
                         });
 
@@ -1186,7 +1052,7 @@ describe('i18n', function () {
                                 unbindClickEvent = undefined;
                                 clickHandler = undefined;
 
-                                directive.link(scope, element, attrs, support);
+                                directive.link(scope, element, attrs);
                                 registry['edit.mode'](true);
                                 permitter.yes();
                             });
@@ -1216,7 +1082,7 @@ describe('i18n', function () {
                                 unbindClickEvent = undefined;
                                 clickHandler = undefined;
 
-                                directive.link(scope, element, attrs, support);
+                                directive.link(scope, element, attrs);
                                 registry['edit.mode'](true);
                                 permitter.no();
                             });
@@ -1246,25 +1112,27 @@ describe('i18n', function () {
             });
         });
 
-        it('linker registers a translate function', function () {
-            directive.link(scope, null, attrs, support);
+        it('linker registers an open function', function () {
+            directive.link(scope, null, attrs);
             scope.code = 'code';
             scope.var = 'var';
-            scope.translate();
-            expect(support.code).toEqual(scope.code);
-            expect(support.var).toEqual(scope.var);
+            scope.open();
+            expect(rendererArgs.code).toEqual(scope.code);
+            expect(rendererArgs.translation).toEqual(scope.var);
         });
 
         describe('on translation success', function () {
             beforeEach(function () {
                 attrs.code = 'code';
-                directive.link(scope, null, attrs, support);
+                directive.link(scope, null, attrs);
                 scope.$digest();
-                scope.translate();
-                support.callback.success('translation');
+                scope.open();
+                rendererArgs.submit('translation');
             });
 
             it('raises i18n.updated notification', function () {
+                scope.$digest();
+
                 expect(topics['i18n.updated']).toEqual({
                     code: 'code',
                     translation: 'translation'
@@ -1274,7 +1142,7 @@ describe('i18n', function () {
             describe('and received i18n.updated notification', function () {
                 describe('and code matches', function () {
                     beforeEach(function () {
-                        directive.link(scope, null, attrs, support);
+                        directive.link(scope, null, attrs);
                         scope.code = 'code';
 
                         registry['i18n.updated']({code: 'code', translation: 'foo'});
@@ -1289,7 +1157,7 @@ describe('i18n', function () {
                     beforeEach(function () {
                         attrs.code = 'code';
                         attrs.var = 'var';
-                        directive.link(scope, null, attrs, support);
+                        directive.link(scope, null, attrs);
                         scope.var = 'translation';
 
                         registry['i18n.updated']({code: 'other.code', translation: 'foo'});
