@@ -859,17 +859,10 @@ describe('i18n', function () {
         });
 
         describe('when translatable', function () {
-            var openedLink;
-
             beforeEach(function () {
                 link = {
                     name: 'link',
                     url: 'http://binarta.com'
-                };
-
-                openedLink = {
-                    name: 'link',
-                    url: 'binarta.com'
                 };
 
                 createElement('<bin-link code="code"  default-url="http://binarta.com"></bin-link>');
@@ -898,14 +891,10 @@ describe('i18n', function () {
                             expect(rendererOpenCalled).toBeTruthy();
                             expect(rendererArgs).toEqual({
                                 code: 'code',
-                                translation: openedLink,
+                                translation: link,
                                 editor: 'bin-link',
                                 submit: jasmine.any(Function)
                             });
-                        });
-
-                        it('strip http:// from url', function () {
-                            expect(rendererArgs.translation.url).toEqual('binarta.com');
                         });
 
                         it('translation is a copy', function () {
@@ -915,7 +904,7 @@ describe('i18n', function () {
                         });
 
                         it('on submit', function () {
-                            rendererArgs.submit(openedLink);
+                            rendererArgs.submit(link);
 
                             expect(i18n.translateArgsSpy).toEqual({
                                 code: 'code',

@@ -71,12 +71,9 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, a
             });
 
             scope.open = function () {
-                var link = angular.copy(scope.link);
-                link.url = link.url.replace('http://', '');
-
                 i18nRenderer.open({
                     code: scope.code,
-                    translation: link,
+                    translation: angular.copy(scope.link),
                     editor: 'bin-link',
                     submit: translate
                 });
@@ -104,8 +101,6 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, a
             }
 
             function translate(link) {
-                link.url = link.url.replace('http://', '');
-                link.url = 'http://' + link.url;
                 var translationString = JSON.stringify(link);
 
                 var promise = i18n.translate({
