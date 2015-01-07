@@ -33,6 +33,22 @@
                       ng-model="dialog.translation">
             </textarea>
         </div>
+        <div ng-switch-when="bin-link" style="margin-right:14px;">
+            <form class="form-horizontal">
+                <div class="control-group">
+                    <label class="control-label" for="linkName">Label:</label>
+                    <div class="controls">
+                        <input type="text" class="input-xlarge" id="linkName" ng-model="dialog.translation.name">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="linkUrl">Link:</label>
+                    <div class="controls">
+                        <input type="text" class="input-xlarge" id="linkUrl" ng-model="dialog.translation.url">
+                    </div>
+                </div>
+            </form>
+        </div>
         <div ng-switch-default style="margin-right:14px;">
             <textarea rows="14" ng-model="dialog.translation" style="width:100%;height:250px;resize:none;"></textarea>
         </div>
