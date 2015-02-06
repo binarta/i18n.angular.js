@@ -754,7 +754,8 @@ describe('i18n', function () {
                                 code: 'code',
                                 translation: link,
                                 editor: 'bin-link',
-                                submit: jasmine.any(Function)
+                                submit: jasmine.any(Function),
+                                template: jasmine.any(String)
                             });
                         });
 
