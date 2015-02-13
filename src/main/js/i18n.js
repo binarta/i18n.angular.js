@@ -53,7 +53,7 @@ function LocaleSwapperFactory(localStorage, sessionStorage, topicMessageDispatch
 function i18nSupportDirectiveFactory() {
     return {
         restrict: 'C',
-        controller: ['$scope', '$location', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]
+        controller: ['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]
     }
 }
 
@@ -355,7 +355,7 @@ function I18nRendererService(i18nDefaultRenderer) {
     this.open = i18nDefaultRenderer.open;
 }
 
-function I18nSupportController($scope, $location, localeResolver, localeSwapper, config) {
+function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config) {
     function isLocaleEncodedInPath(params) {
         return params.locale
     }
@@ -377,7 +377,8 @@ function I18nSupportController($scope, $location, localeResolver, localeSwapper,
     }
 
     function expose(locale) {
-        $scope.locale = locale;
+        $rootScope.locale = locale;
+        $rootScope.localePrefix = locale == 'default' ? '' : '/' + locale;
     }
 
     function isNewlySelected(locale) {
@@ -428,7 +429,7 @@ function I18nSupportController($scope, $location, localeResolver, localeSwapper,
 
     function redirectToLocalizedPage() {
         var prefix = '/' + localeResolver();
-        var suffix = $scope.unlocalizedPath ? $scope.unlocalizedPath : '/';
+        var suffix = $rootScope.unlocalizedPath ? $rootScope.unlocalizedPath : '/';
         $location.path(prefix + suffix);
     }
 
@@ -437,8 +438,8 @@ function I18nSupportController($scope, $location, localeResolver, localeSwapper,
         return $location.path().replace('/' + locale, '');
     }
 
-    $scope.$on('$routeChangeSuccess', function (evt, route) {
-        $scope.unlocalizedPath = getUnlocalizedPathPath(route.params.locale);
+    $rootScope.$on('$routeChangeSuccess', function (evt, route) {
+        $rootScope.unlocalizedPath = getUnlocalizedPathPath(route.params.locale);
         isLocaleEncodedInPath(route.params) && isLocaleSupported(route.params.locale) ? extractLocaleFromPath(route.params) : localeNotInPath();
     });
 
