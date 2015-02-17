@@ -131,6 +131,7 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, a
                 if (editMode) {
                     element.bind("click", function () {
                         scope.$apply(scope.open());
+                        return false;
                     });
                 } else {
                     element.unbind("click");
@@ -202,6 +203,7 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
                 if (editMode) {
                     element.bind("click", function () {
                         scope.$apply(scope.open());
+                        return false;
                     });
                 } else {
                     element.unbind("click");

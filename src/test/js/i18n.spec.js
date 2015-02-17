@@ -762,7 +762,7 @@ describe('i18n', function () {
 
                     describe('and element is clicked', function () {
                         beforeEach(function () {
-                            element.triggerHandler('click');
+                             element.triggerHandler('click');
                         });
 
                         it('renderer is opened', function () {
@@ -1055,8 +1055,9 @@ describe('i18n', function () {
                                 scope.code = 'code';
                                 scope.var = 'var';
 
-                                clickHandler();
+                                var clickResponse = clickHandler();
 
+                                expect(clickResponse).toEqual(false);
                                 expect(bindClickEvent).toEqual('click');
                                 expect(rendererArgs.code).toEqual(scope.code);
                                 expect(rendererArgs.translation).toEqual(scope.var);
