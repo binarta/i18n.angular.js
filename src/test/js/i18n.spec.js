@@ -312,7 +312,7 @@ describe('i18n', function () {
             });
 
             it('modal is opened with controller setting', function () {
-                expect(modal.open.mostRecentCall.args[0].controller).toEqual(jasmine.any(Function));
+                expect(modal.open.mostRecentCall.args[0].controller).toEqual('i18nDefaultModalController');
             });
 
             it('modal is opened with default templateUrl setting', function () {

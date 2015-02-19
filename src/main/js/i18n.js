@@ -13,6 +13,7 @@ angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
     .directive('i18nTranslate', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('i18n', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
+    .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
     }]);
@@ -335,22 +336,23 @@ function I18nDefaultRendererService(config, $modal, $rootScope) {
 
         var modalInstance = $modal.open({
             scope: scope,
-            controller: I18nModalInstanceController,
+            controller: 'i18nDefaultModalController',
             templateUrl: componentsDir + '/binarta.i18n.angular/template/' + styling + 'i18n-modal.html'
         });
 
         modalInstance.result.then(args.submit, args.cancel);
     };
 
-    function I18nModalInstanceController($scope, $modalInstance) {
-        $scope.submit = function () {
-            $modalInstance.close($scope.dialog.translation);
-        };
+}
 
-        $scope.close = function () {
-            $modalInstance.dismiss('cancel');
-        };
-    }
+function I18nDefaultModalController($scope, $modalInstance) {
+    $scope.submit = function () {
+        $modalInstance.close($scope.dialog.translation);
+    };
+
+    $scope.close = function () {
+        $modalInstance.dismiss('cancel');
+    };
 }
 
 function I18nRendererService(i18nDefaultRenderer) {
