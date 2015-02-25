@@ -518,10 +518,11 @@ function i18nDirectiveTemplate(editor) {
         case 'full-media':
             return '<form>' +
                 '<textarea ui-tinymce=\"{' +
-                'plugins: [\'link fullscreen media image textcolor paste table\'],' +
-                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | link | image media | fullscreen\',' +
+                'plugins: [\'link fullscreen media binartax.img textcolor paste table\'],' +
+                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | link | binartax.img media | fullscreen\',' +
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
+                'extended_valid_elements : \'img[src|alt|title|width|height|bin-image]\',' +
                 'height:\'180\',' +
                 'menubar:false}\"' +
                 'ng-model=\"translation\">' +
