@@ -523,6 +523,7 @@ function i18nDirectiveTemplate(editor) {
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
                 'extended_valid_elements : \'img[src|alt|title|width|height|bin-image]\',' +
+                'media_poster: false,' +
                 'height:\'180\',' +
                 'menubar:false}\"' +
                 'ng-model=\"translation\">' +
