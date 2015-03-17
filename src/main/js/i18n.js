@@ -1,4 +1,4 @@
-angular.module('i18n', ['web.storage', 'ui.bootstrap.modal'])
+angular.module('i18n', ['i18n.gateways', 'config', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint'])
     .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', '$q', 'i18nMessageWriter', 'usecaseAdapterFactory', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])

@@ -1,6 +1,8 @@
 describe('i18n', function () {
     var cache;
 
+    angular.module('checkpoint', []);
+
     beforeEach(module('i18n'));
     beforeEach(module('i18n.gateways'));
     beforeEach(module('angular.usecase.adapter'));
