@@ -16,6 +16,11 @@ angular.module('i18n', ['i18n.gateways', 'config', 'angular.usecase.adapter', 'w
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
+    }])
+    .filter('trust', ['$sce', function ($sce) {
+        return function (val) {
+            return $sce.trustAsHtml(val);
+        };
     }]);
 
 function I18nLocationFactory($location, localeResolver) {
