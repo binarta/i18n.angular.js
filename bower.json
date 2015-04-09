@@ -12,7 +12,8 @@
     "binarta.usecase.adapter.angular": "0.*.*",
     "binarta.web.storage.angular": "0.*.*",
     "binarta.notifications.angular": "1.*.*",
-    "binarta.checkpoint.angular": "0.*.*"
+    "binarta.checkpoint.angular": "0.*.*",
+    "binarta.angularx": "0.*.*"
   },
   "devDependencies": {
     "angular-mocks": "1.3.*",
