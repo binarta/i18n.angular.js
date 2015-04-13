@@ -384,7 +384,7 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
     }
 
     function redirectToDefaultLocalePageNotFound() {
-        $location.path('/' + config.supportedLanguages[0] + '/404');
+        $location.path('/' + getDefaultLocaleFromSupportedLanguages() + '/404');
     }
 
     function extractLocaleFromPath(params) {
@@ -426,11 +426,20 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
 
     function initializeLocaleByConfig() {
         if (shouldFallbackToBrowserLocale()) remember(browserLanguage());
-        else setLocaleToFirstSupportedLanguage();
+        else if (shouldFallbackToDefaultLocale()) setLocaleToFirstSupportedLanguage();
+        else $location.path('/');
+    }
+
+    function shouldFallbackToDefaultLocale() {
+        return config.fallbackToDefaultLocale != false;
     }
 
     function setLocaleToFirstSupportedLanguage() {
-        remember(config.supportedLanguages[0]);
+        remember(getDefaultLocaleFromSupportedLanguages());
+    }
+
+    function getDefaultLocaleFromSupportedLanguages() {
+       return config.supportedLanguages[0];
     }
 
     function shouldFallbackToBrowserLocale() {

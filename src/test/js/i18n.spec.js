@@ -601,7 +601,20 @@ describe('i18n', function () {
                         expect($location.path()).toEqual('/su/');
                     });
                 });
+            });
 
+            describe('and no remembered locale or locale in path with configured supported languages and no fallback to default locale', function() {
+                beforeEach(function() {
+                    config.supportedLanguages = ['su'];
+                    locale.locale = null;
+                    config.fallbackToDefaultLocale = false;
+                });
+
+                it('go to root', function () {
+                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+
+                    expect($location.path()).toEqual('/');
+                });
             });
         });
     });
