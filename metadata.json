@@ -1,0 +1,16 @@
+{
+  "msgs":{
+    "default":{
+      "i18n.menu.save.button": "Opslaan",
+      "i18n.menu.cancel.button": "Annuleren"
+    },
+    "nl":{
+      "i18n.menu.save.button": "Opslaan",
+      "i18n.menu.cancel.button": "Annuleren"
+    },
+    "en":{
+      "i18n.menu.save.button": "Save",
+      "i18n.menu.cancel.button": "Cancel"
+    }
+  }
+}
