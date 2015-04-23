@@ -103,8 +103,8 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, a
                     '</div>' +
                     '</form>' +
                     '<div class=\"dropdown-menu-buttons\">' +
-                    '<button type=\"submit\" class=\"btn btn-primary\" ng-click=\"submit(translation)\">Opslaan</button>' +
-                    '<button type=\"reset\" class=\"btn btn-default\" ng-click=\"cancel()\">Annuleren</button>' +
+                    '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
+                    '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                     '</div>'
                 });
             };
@@ -519,8 +519,8 @@ function i18nDirectiveTemplate(editor) {
                 '</textarea>' +
                 '</form>' +
                 '<div class=\"dropdown-menu-buttons\">' +
-                '<button type=\"submit\" class=\"btn btn-primary\" ng-click=\"submit(translation)\">Opslaan</button>' +
-                '<button type=\"reset\" class=\"btn btn-default\" ng-click=\"cancel()\">Annuleren</button>' +
+                '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
+                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                 '</div>';
         case 'media':
             return '<form>' +
@@ -535,8 +535,8 @@ function i18nDirectiveTemplate(editor) {
                 '</textarea>' +
                 '</form>' +
                 '<div class=\"dropdown-menu-buttons\">' +
-                '<button type=\"submit\" class=\"btn btn-primary\" ng-click=\"submit(translation)\">Opslaan</button>' +
-                '<button type=\"reset\" class=\"btn btn-default\" ng-click=\"cancel()\">Annuleren</button>' +
+                '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
+                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                 '</div>';
         case 'full-media':
             return '<form>' +
@@ -553,8 +553,8 @@ function i18nDirectiveTemplate(editor) {
                 '</textarea>' +
                 '</form>' +
                 '<div class=\"dropdown-menu-buttons\">' +
-                '<button type=\"submit\" class=\"btn btn-primary\" ng-click=\"submit(translation)\">Opslaan</button>' +
-                '<button type=\"reset\" class=\"btn btn-default\" ng-click=\"cancel()\">Annuleren</button>' +
+                '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
+                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                 '</div>';
         case 'icon':
             var icons = ['', 'adjust', 'anchor', 'archive', 'area-chart', 'arrows', 'arrows-h', 'arrows-v', 'asterisk', 'at', 'ban', 'bar-chart', 'barcode', 'bars', 'beer', 'bell',
@@ -584,7 +584,7 @@ function i18nDirectiveTemplate(editor) {
                 '<i class="fa fa-' + icons[i] + ' fa-fw"></i></button>';
             }
             iconTemplate += '</div></form>' +
-            '<div class="dropdown-menu-buttons"><button type="reset" class="btn btn-default" ng-click="cancel()">Annuleren</button>' +
+            '<div class="dropdown-menu-buttons"><button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
             '</div>';
             return iconTemplate;
         default:
@@ -592,8 +592,8 @@ function i18nDirectiveTemplate(editor) {
                 '<textarea rows=\"12\" ng-model=\"translation\"></textarea>' +
                 '</form>' +
                 '<div class=\"dropdown-menu-buttons\">' +
-                '<button type=\"submit\" class=\"btn btn-primary\" ng-click=\"submit(translation)\">Opslaan</button>' +
-                '<button type=\"reset\" class=\"btn btn-default\" ng-click=\"cancel()\">Annuleren</button>' +
+                '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
+                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                 '</div>';
     }
 }

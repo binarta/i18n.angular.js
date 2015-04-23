@@ -2,7 +2,8 @@
   "name": "binarta.i18n.angular",
   "main": [
     "./src/main/js/i18n.js",
-    "./less/i18n.less"
+    "./less/i18n.less",
+    "./metadata.json"
   ],
   "dependencies": {
     "angular": "1.3.*",
