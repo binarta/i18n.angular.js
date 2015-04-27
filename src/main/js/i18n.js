@@ -461,8 +461,9 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
     }
 
     function getUnlocalizedPathPath(locale) {
-        if (!locale) return $location.path().replace('//', '/');
-        return $location.path().replace('/' + locale, '');
+        var path = $location.path();
+        if (!locale) return path.replace('//', '/').replace(/^\/[^\/]+\/$/, path.slice(0,-1));
+        return path.replace('/' + locale, '');
     }
 
     $rootScope.$on('$routeChangeSuccess', function (evt, route) {

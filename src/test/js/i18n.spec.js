@@ -480,16 +480,34 @@ describe('i18n', function () {
                 beforeEach(function () {
                     locale = '';
                     params.locale = locale;
-                    $location.path('/' + locale + '/foo/bar');
-                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
                 });
 
                 it('unlocalized path is on scope', function () {
+                    $location.path('/' + locale + '/foo/bar');
+                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+
                     expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
                 });
 
                 it('localePrefix is undefined', function () {
+                    $location.path('/' + locale + '/foo/bar');
+                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+
                     expect($rootScope.localePrefix).toBeUndefined();
+                });
+
+                it('and one path param, remove trailing slash', function () {
+                    $location.path('/foo/');
+                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+
+                    expect($rootScope.unlocalizedPath).toEqual('/foo');
+                });
+
+                it('and more than one path param, do not remove trailing slash', function () {
+                    $location.path('/foo/bar/');
+                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+
+                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar/');
                 });
             });
 
