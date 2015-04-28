@@ -139,6 +139,19 @@ describe('i18n', function () {
                         locale: 'nl'
                     });
                 });
+
+                it('with custom locale on context', function () {
+                    localStorage.locale = 'nl';
+                    context.locale = 'custom';
+
+                    i18n.translate(context);
+
+                    expectContextEquals({
+                        key: 'code',
+                        message: 'translation',
+                        locale: 'custom'
+                    });
+                });
             });
 
             it('context is passed to usecaseAdapter', function () {
@@ -171,6 +184,16 @@ describe('i18n', function () {
                     usecaseAdapter.calls[0].args[1]();
 
                     expect(cache.get('default:L:code')).toEqual('translation');
+                });
+
+                it('with custom locale on context', function () {
+                    localStorage.locale = 'L';
+                    context.locale = 'custom';
+
+                    i18n.translate(context);
+                    usecaseAdapter.calls[0].args[1]();
+
+                    expect(cache.get('default:custom:code')).toEqual('translation');
                 });
             });
         });
@@ -302,7 +325,18 @@ describe('i18n', function () {
                             expect(reader.calls[0]).toBeUndefined();
                         })
                     });
+                });
 
+                describe('when using a custom locale', function () {
+                    beforeEach(function () {
+                        context.locale = 'custom';
+
+                        i18n.resolve(context, presenter);
+                    });
+
+                    it('resolution includes the custom locale on context', function () {
+                        expect(reader.calls[0].args[0].locale).toEqual('custom');
+                    });
                 });
             });
         });
@@ -1006,18 +1040,13 @@ describe('i18n', function () {
                 attrs.code = 'code';
                 attrs.default = 'default';
                 attrs.readOnly = undefined;
-
                 scope.var = 'var';
-                scope.code = 'code';
-                scope.default = 'default';
 
                 directive.link(scope, element, attrs);
             });
 
-            it('initialize scope values', function () {
+            it('initialize var on scope', function () {
                 expect(scope.var).toBeUndefined();
-                expect(scope.code).toBeUndefined();
-                expect(scope.default).toBeUndefined();
             });
 
             describe('and attribute watch is triggered', function () {
@@ -1025,13 +1054,23 @@ describe('i18n', function () {
                     scope.$digest();
                 });
 
-                it('code and default are available on scope', function () {
-                    expect(scope.code).toEqual('code');
-                    expect(scope.default).toEqual('default');
+                it('triggers message resolution', function () {
+                    expect(resolver.args).toEqual({
+                        code: 'code',
+                        default: 'default'
+                    });
                 });
 
-                it('triggers message resolution', function () {
-                    expect(resolver.args).toEqual(scope);
+                it('with default locale', function () {
+                    attrs.noLocale = '';
+                    directive.link(scope, element, attrs);
+                    scope.$digest();
+
+                    expect(resolver.args).toEqual({
+                        code: 'code',
+                        default: 'default',
+                        locale: 'default'
+                    });
                 });
 
                 describe('and code is changed', function () {
@@ -1042,7 +1081,10 @@ describe('i18n', function () {
                     });
 
                     it('triggers message resolution', function () {
-                        expect(resolver.args).toEqual(scope);
+                        expect(resolver.args).toEqual({
+                            code: 'changed',
+                            default: 'default'
+                        });
                     });
                 });
 
@@ -1054,7 +1096,10 @@ describe('i18n', function () {
                     });
 
                     it('triggers message resolution', function () {
-                        expect(resolver.args).toEqual(scope);
+                        expect(resolver.args).toEqual({
+                            code: 'code',
+                            default: 'changed'
+                        });
                     });
                 });
 
@@ -1066,7 +1111,10 @@ describe('i18n', function () {
                     });
 
                     it('triggers message resolution', function () {
-                        expect(resolver.args).toEqual(scope);
+                        expect(resolver.args).toEqual({
+                            code: 'code',
+                            default: 'default'
+                        });
                     });
                 });
 
@@ -1117,14 +1165,13 @@ describe('i18n', function () {
 
                         describe('and element receives click event', function () {
                             it('linker calls open function', function() {
-                                scope.code = 'code';
                                 scope.var = 'var';
 
                                 var clickResponse = clickHandler();
 
                                 expect(clickResponse).toEqual(false);
                                 expect(bindClickEvent).toEqual('click');
-                                expect(rendererArgs.code).toEqual(scope.code);
+                                expect(rendererArgs.code).toEqual('code');
                                 expect(rendererArgs.translation).toEqual(scope.var);
                             });
                         });
@@ -1197,11 +1244,11 @@ describe('i18n', function () {
         });
 
         it('linker registers an open function', function () {
+            attrs.code = 'code';
             directive.link(scope, null, attrs);
-            scope.code = 'code';
             scope.var = 'var';
             scope.open();
-            expect(rendererArgs.code).toEqual(scope.code);
+            expect(rendererArgs.code).toEqual('code');
             expect(rendererArgs.translation).toEqual(scope.var);
         });
 
@@ -1212,6 +1259,13 @@ describe('i18n', function () {
                 scope.$digest();
                 scope.open();
                 rendererArgs.submit('translation');
+            });
+
+            it('message is translated', function () {
+                expect(resolver.translateArgsSpy).toEqual({
+                    code: 'code',
+                    translation: 'translation'
+                });
             });
 
             it('raises i18n.updated notification', function () {
@@ -1227,7 +1281,6 @@ describe('i18n', function () {
                 describe('and code matches', function () {
                     beforeEach(function () {
                         directive.link(scope, null, attrs);
-                        scope.code = 'code';
 
                         registry['i18n.updated']({code: 'code', translation: 'foo'});
                     });
@@ -1250,6 +1303,25 @@ describe('i18n', function () {
                     it('translation should not be altered', function() {
                         expect(scope.var).toEqual('translation');
                     });
+                });
+            });
+        });
+
+        describe('on translation success with custom locale', function () {
+            beforeEach(function () {
+                attrs.code = 'code';
+                attrs.noLocale = '';
+                directive.link(scope, null, attrs);
+                scope.$digest();
+                scope.open();
+                rendererArgs.submit('translation');
+            });
+
+            it('message is translated', function () {
+                expect(resolver.translateArgsSpy).toEqual({
+                    code: 'code',
+                    translation: 'translation',
+                    locale: 'default'
                 });
             });
         });

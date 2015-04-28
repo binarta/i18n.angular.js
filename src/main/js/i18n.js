@@ -182,21 +182,23 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
         scope: true,
         link: function (scope, element, attrs) {
             scope.var = undefined;
-            scope.code = undefined;
-            scope.default = undefined;
 
             scope.$watch(function () {
                 return [attrs.code, attrs.default, localeResolver()];
             }, function () {
-                scope.code = attrs.code;
-                scope.default = attrs.default;
-                var promise = i18n.resolve(scope);
+                var ctx = {
+                    code: attrs.code,
+                    default: attrs.default
+                };
+                if (attrs.noLocale != undefined) ctx.locale = 'default';
+
+                var promise = i18n.resolve(ctx);
                 promise.then(updateTranslation);
             }, true);
 
             scope.open = function () {
                 i18nRenderer.open({
-                    code: scope.code,
+                    code: attrs.code,
                     translation: angular.copy(scope.var),
                     editor: attrs.editor,
                     submit: translate,
@@ -205,12 +207,15 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
             };
 
             function translate(translation) {
-                var promise = i18n.translate({
-                    code: scope.code,
+                var ctx = {
+                    code: attrs.code,
                     translation: translation
-                });
+                };
+                if (attrs.noLocale != undefined) ctx.locale = 'default';
+
+                var promise = i18n.translate(ctx);
                 promise.then(function () {
-                    topicMessageDispatcher.fire('i18n.updated', {code: scope.code, translation: translation});
+                    topicMessageDispatcher.fire('i18n.updated', ctx);
                 });
             }
 
@@ -243,7 +248,7 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
 
             ngRegisterTopicHandler(scope, 'edit.mode', toggleEditMode);
             ngRegisterTopicHandler(scope, 'i18n.updated', function (t) {
-                if (scope.code == t.code) updateTranslation(t.translation);
+                if (attrs.code == t.code) updateTranslation(t.translation);
             });
 
             function updateTranslation(translation) {
@@ -271,7 +276,7 @@ function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, 
         }
 
         if (config.namespace) context.namespace = config.namespace;
-        if (localeResolver()) context.locale = localeResolver();
+        if (!context.locale) context.locale = localeResolver();
         if (isCached())
             deferred.resolve(getFromCache());
         else
@@ -310,7 +315,7 @@ function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, 
 
         var ctx = {key: context.code, message: context.translation};
         if (config.namespace) ctx.namespace = config.namespace;
-        ctx.locale = localeResolver() || 'default';
+        ctx.locale = context.locale || localeResolver() || 'default';
         var onSuccess = function () {
             deferred.resolve(cache.put(toKey(), ctx.message));
         };
