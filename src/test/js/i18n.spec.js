@@ -417,7 +417,7 @@ describe('i18n', function () {
     });
 
     describe('I18nSupportController', function () {
-        var $rootScope, ctrl, registry, dispatcher, local, $location;
+        var $rootScope, registry, dispatcher, local, $location, window;
         var code = 'message.code';
         var translation = 'message translation';
         var config = {
@@ -437,235 +437,237 @@ describe('i18n', function () {
                 templateUrl: 'i18n-modal.html'
             };
 
-            ctrl = $controller(I18nSupportController, {$rootScope: $rootScope, config: config, $route: route});
+            window = {
+                navigator: {
+                    userLanguage: 'en_BE',
+                    language: 'en_BE'
+                }
+            };
+
+            $controller(I18nSupportController, {$rootScope: $rootScope, config: config, $route: route, $window: window});
         }));
+
+        function goToPath(path) {
+            $location.path(path);
+            $rootScope.$broadcast('$routeChangeStart', {params: {}});
+        }
 
         it('no i18n.locale notification should be raised yet', function() {
             expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
         });
 
-        describe('on $routeChangeSuccess', function () {
-            var params, locale;
+        describe('when locale is remembered', function () {
+            beforeEach(inject(function ($controller) {
+                local.locale = 'en';
+
+                $controller(I18nSupportController, {$rootScope: $rootScope, config: config, $route: route, $window: window});
+            }));
+
+            it('raise i18n.locale notification', function () {
+                expect(dispatcher.persistent['i18n.locale']).toEqual('en');
+            });
+        });
+
+        [undefined, []].forEach(function (lang) {
+            describe('when supportedLanguages is ' + lang, function () {
+                beforeEach(function () {
+                    config.supportedLanguages = lang;
+                });
+
+                it('localePrefix is empty string', function () {
+                    goToPath('/foo/bar');
+
+                    expect($rootScope.localePrefix).toBeUndefined();
+                });
+
+                it('remembered locale is default', function () {
+                    goToPath('/foo/bar');
+
+                    expect(local.locale).toEqual('default');
+                    expect(dispatcher.persistent['i18n.locale']).toEqual('default');
+                });
+            });
+        });
+
+        describe('locale is supported', function () {
+            var locale;
 
             beforeEach(function () {
                 locale = 'lang';
-                params = {};
+                config.supportedLanguages = [locale, 'remembered', 'en'];
             });
 
-            describe('and locale encoded in location path then', function () {
+            describe('and locale encoded in path then', function () {
                 beforeEach(function () {
-                    config.supportedLanguages = ['lang'];
+                    goToPath('/' + locale + '/foo/bar');
                 });
 
-                describe('and locale is supported', function () {
-                    beforeEach(function () {
-                        params.locale = locale;
-                        $location.path('/' + locale + '/foo/bar');
-                        $rootScope.$broadcast('$routeChangeSuccess', {params: params});
-                    });
-
-                    it('expose locale on rootScope', function () {
-                        expect($rootScope.locale).toEqual(locale);
-                    });
-
-                    it('expose localePrefix on rootScope', function () {
-                        expect($rootScope.localePrefix).toEqual('/' + locale);
-                    });
-
-                    it('remember locale', function () {
-                        expect(local.locale).toEqual(locale);
-                    });
-
-                    it('broadcast locale', function() {
-                        expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
-                    });
-
-                    it('expose unlocalized path on scope', function () {
-                        expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
-                    });
+                it('expose locale on rootScope', function () {
+                    expect($rootScope.locale).toEqual(locale);
                 });
 
-                describe('and no multilingualism', function () {
-                    beforeEach(function () {
-                        params.locale = 'default';
-                        $location.path('/default/foo/bar');
-                        $rootScope.$broadcast('$routeChangeSuccess', {params: params});
-                    });
-
-                    it('localePrefix is empty string', function () {
-                        expect($rootScope.localePrefix).toEqual('');
-                    });
+                it('expose localePrefix on rootScope', function () {
+                    expect($rootScope.localePrefix).toEqual('/' + locale);
                 });
 
-                describe('and locale is not supported', function () {
-                    beforeEach(function () {
-                        params.locale = 'unsupported';
-                        $location.path('/unsupported' + '/foo/bar');
-                        $rootScope.$broadcast('$routeChangeSuccess', {params: params});
-                    });
+                it('remember locale', function () {
+                    expect(local.locale).toEqual(locale);
+                });
 
-                    it('redirect to default 404 page', function () {
-                        expect($location.path()).toEqual('/lang/404');
-                    });
+                it('broadcast locale', function() {
+                    expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
+                });
+
+                it('expose unlocalized path on scope', function () {
+                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
                 });
             });
 
-            describe('and locale not encoded in location path then', function () {
-                beforeEach(function () {
-                    locale = '';
-                    params.locale = locale;
+            describe('and locale not encoded in path then', function () {
+                it('redirect to localized page', function () {
+                    goToPath('/foo/bar');
+
+                    expect($location.path()).toEqual('/lang/foo/bar');
                 });
 
                 it('unlocalized path is on scope', function () {
-                    $location.path('/' + locale + '/foo/bar');
-                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+                    goToPath('/foo/bar');
 
                     expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
                 });
 
                 it('localePrefix is undefined', function () {
-                    $location.path('/' + locale + '/foo/bar');
-                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+                    goToPath('/foo/bar');
 
                     expect($rootScope.localePrefix).toBeUndefined();
                 });
 
-                it('and one path param, remove trailing slash', function () {
-                    $location.path('/foo/');
-                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+                it('with one path param, remove trailing slash', function () {
+                    goToPath('/foo/');
 
                     expect($rootScope.unlocalizedPath).toEqual('/foo');
                 });
 
-                it('and more than one path param, do not remove trailing slash', function () {
-                    $location.path('/foo/bar/');
-                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+                it('with more than one path param, do not remove trailing slash', function () {
+                    goToPath('/foo/bar/');
 
                     expect($rootScope.unlocalizedPath).toEqual('/foo/bar/');
                 });
-            });
 
-            describe('and remembered locale', function () {
-                var redirectsTo;
+                describe('and remembered locale', function () {
+                    beforeEach(function () {
+                        local.locale = 'remembered';
+                    });
 
-                beforeEach(function () {
-                    config.supportedLanguages = null;
+                    it('redirects to localized page', function () {
+                        goToPath('/path');
 
-                    redirectsTo = function(locale, path) {
-                        local.locale = locale;
-                        $location.path('/path');
-                        $rootScope.$broadcast('$routeChangeSuccess', {params: params});
-                        expect($location.path()).toEqual(path + $rootScope.unlocalizedPath);
-                    };
+                        expect($location.path()).toEqual('/remembered/path');
+                    });
                 });
 
-                it('redirects to localized page', function () {
-                    redirectsTo('lang', '/lang');
-                });
+                describe('and no remembered locale', function () {
+                    beforeEach(function () {
+                        local.locale = undefined;
+                    });
 
-                it('except when remembered locale is default', function() {
-                    redirectsTo('default', '');
-                });
-            });
-
-            describe('and no remembered locale or locale in path with configured supported languages', function() {
-                beforeEach(function() {
-                    locale.locale = null;
-                    config.fallbackToBrowserLocale = true;
-                });
-
-                describe('and no browser user language or language', function() {
-                    it('with supported languages', inject(function(topicMessageDispatcherMock) {
-                        config.supportedLanguages = ['su'];
-
-                        $rootScope.$broadcast('$routeChangeSuccess', {params: params});
-
-                        expect($location.path()).toEqual('/su/');
-                        expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual('su');
-                    }));
-                });
-
-                describe('and browser user language', function() {
-                    describe('with user language is supported', function() {
-                        beforeEach(function() {
-                            window.navigator.userLanguage = 'fr_FR';
+                    describe('with fallback to browser locale', function () {
+                        beforeEach(function () {
+                            config.fallbackToBrowserLocale = true;
                         });
 
-                        it('with fallback to browser locale', inject(function(topicMessageDispatcherMock) {
-                            config.supportedLanguages = ['nl', 'fr'];
+                        it('and when no browser user language or browser language, fall back to first supported locale', function() {
+                            window.navigator.language = undefined;
+                            window.navigator.userLanguage = undefined;
 
-                            $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+                            goToPath('/');
 
-                            expect($location.path()).toEqual('/fr/');
-                            expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual('fr');
-                        }));
+                            expect($location.path()).toEqual('/lang/');
+                            //expect(dispatcher.persistent['i18n.locale']).toEqual('lang');
+                        });
 
-                        it('without fallback to browser locale', function() {
-                            config.supportedLanguages = ['su', 'en'];
+                        describe('and browser user language is supported', function() {
+                            beforeEach(function() {
+                                window.navigator.userLanguage = 'en_BE';
+                            });
+
+                            it('fallback to browser locale', function() {
+                                goToPath('/');
+
+                                expect($location.path()).toEqual('/en/');
+                                //expect(dispatcher.persistent['i18n.locale']).toEqual('en');
+                            });
+                        });
+
+                        describe('and browser user language is not supported', function() {
+                            beforeEach(function() {
+                                window.navigator.userLanguage = 'un_SU';
+                            });
+
+                            it('fall back to first supported locale', inject(function() {
+                                goToPath('/');
+
+                                expect($location.path()).toEqual('/lang/');
+                                //expect(dispatcher.persistent['i18n.locale']).toEqual('lang');
+                            }));
+                        });
+
+                        describe('and no browser user language with browser language', function() {
+                            beforeEach(function() {
+                                window.navigator.language = 'en_BE';
+                                window.navigator.userLanguage = undefined;
+                            });
+
+                            it('with fallback to browser locale', function() {
+                                goToPath('/');
+
+                                expect($location.path()).toEqual('/en/');
+                                //expect(dispatcher.persistent['i18n.locale']).toEqual('en');
+                            });
+                        });
+                    });
+
+                    describe('without fallback to browser locale', function () {
+                        beforeEach(function () {
                             config.fallbackToBrowserLocale = false;
-                            window.navigator.userLanguage = 'en_US';
-
-                            $rootScope.$broadcast('$routeChangeSuccess', {params: params});
-
-                            expect($location.path()).toEqual('/su/');
-                        });
-                    });
-
-                    describe('with user language is not supported', function() {
-                        beforeEach(function() {
-                            window.navigator.userLanguage = 'un_SU';
                         });
 
-                        it('fall back to first supported language', inject(function(topicMessageDispatcherMock) {
-                            config.supportedLanguages = ['su'];
+                        describe('and browser user language is supported', function() {
+                            beforeEach(function() {
+                                window.navigator.userLanguage = 'en_BE';
+                            });
 
-                            $rootScope.$broadcast('$routeChangeSuccess', {params: params});
+                            it('fall back to first supported locale', function() {
+                                goToPath('/');
 
-                            expect($location.path()).toEqual('/su/');
-                            expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual('su');
-                        }));
+                                expect($location.path()).toEqual('/lang/');
+                            });
+                        });
+
+                        describe('and browser language is supported', function() {
+                            beforeEach(function() {
+                                window.navigator.language = 'en_BE';
+                            });
+
+                            it('fall back to first supported locale', function() {
+                                goToPath('/');
+
+                                expect($location.path()).toEqual('/lang/');
+                            });
+                        });
                     });
                 });
 
-                describe('and no browser user language with browser language', function() {
-                    function browserLanguage() {
-                        return window.navigator.language.substr(0, 2);
-                    }
+                describe('and no fallback to default locale', function () {
                     beforeEach(function() {
-                        window.navigator.userLanguage = null;
+                        config.fallbackToDefaultLocale = false;
                     });
 
-                    it('with fallback to browser locale', inject(function(topicMessageDispatcherMock) {
-                        config.supportedLanguages = ['nl', 'fr', browserLanguage()];
+                    it('do not redirect', function () {
+                        goToPath('/');
 
-                        $rootScope.$broadcast('$routeChangeSuccess', {params: params});
-
-                        expect($location.path()).toEqual('/' + browserLanguage() + '/');
-                        expect(topicMessageDispatcherMock.persistent['i18n.locale']).toEqual(browserLanguage());
-                    }));
-
-                    it('without fallback to browser locale', function() {
-                        config.supportedLanguages = ['su', browserLanguage()];
-                        config.fallbackToBrowserLocale = false;
-
-                        $rootScope.$broadcast('$routeChangeSuccess', {params: params});
-
-                        expect($location.path()).toEqual('/su/');
+                        expect($location.path()).toEqual('/');
                     });
-                });
-            });
-
-            describe('and no remembered locale or locale in path with configured supported languages and no fallback to default locale', function() {
-                beforeEach(function() {
-                    config.supportedLanguages = ['su'];
-                    locale.locale = null;
-                    config.fallbackToDefaultLocale = false;
-                });
-
-                it('go to root', function () {
-                    $rootScope.$broadcast('$routeChangeSuccess', {params: params});
-
-                    expect($location.path()).toEqual('/');
                 });
             });
         });
@@ -684,7 +686,7 @@ describe('i18n', function () {
         });
 
         it('controller', function () {
-            expect(directive.controller).toEqual(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', I18nSupportController]);
+            expect(directive.controller).toEqual(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', I18nSupportController]);
         });
     });
 
