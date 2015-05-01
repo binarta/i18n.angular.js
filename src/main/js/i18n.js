@@ -45,14 +45,22 @@ function I18nLocationFactory($location, localeResolver) {
 }
 
 function LocaleResolverFactory(localStorage, sessionStorage) {
+    var rememberedLocale;
+
+    function remember(locale) {
+        rememberedLocale = locale;
+        return locale;
+    }
+
     function promoted(locale) {
         sessionStorage.locale = locale;
         return locale;
     }
 
     return function () {
-        if (sessionStorage.locale) return sessionStorage.locale;
+        if (sessionStorage.locale) return remember(sessionStorage.locale);
         if (localStorage.locale) return promoted(localStorage.locale);
+        if (rememberedLocale) return promoted(rememberedLocale);
         return undefined;
     }
 }

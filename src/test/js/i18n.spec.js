@@ -1423,11 +1423,13 @@ describe('i18n', function () {
     });
 
     describe('locale resolution', function() {
-        var resolve, swap;
+        var resolve, swap, localStorage, sessionStorage;
 
-        beforeEach(inject(function(localeResolver, localeSwapper) {
+        beforeEach(inject(function(localeResolver, localeSwapper, _localStorage_, _sessionStorage_) {
             resolve = localeResolver;
             swap = localeSwapper;
+            localStorage = _localStorage_;
+            sessionStorage = _sessionStorage_;
         }));
 
         it('starts out undefined', function() {
@@ -1435,21 +1437,49 @@ describe('i18n', function () {
         });
 
         describe('when locale is specified in local storage', function() {
-            beforeEach(inject(function(localStorage) {
+            beforeEach(function() {
                 localStorage.locale = 'from-local-storage';
-            }));
+            });
 
             it('then resolves from local storage', function() {
                 expect(resolve()).toEqual('from-local-storage');
             });
 
             describe('and locale is specified in session storage', function() {
-                beforeEach(inject(function(sessionStorage) {
+                beforeEach(function() {
                     sessionStorage.locale = 'from-session-storage';
-                }));
+                });
 
                 it('then resolves from session storage', function() {
                     expect(resolve()).toEqual('from-session-storage');
+                });
+
+                describe('and session storage is cleared', function () {
+                    beforeEach(function () {
+                        delete sessionStorage.locale
+                    });
+
+                    it('then resolves from local storage', function () {
+                        expect(resolve()).toEqual('from-local-storage');
+                    });
+                });
+
+                describe('and has previously been resolved', function () {
+                    beforeEach(function () {
+                        sessionStorage.locale = 'from-memory';
+                        resolve();
+                    });
+
+                    describe('and session storage and local storage are cleared', function () {
+                        beforeEach(function () {
+                            delete sessionStorage.locale;
+                            delete localStorage.locale;
+                        });
+
+                        it('then resolves to remembered locale', function () {
+                            expect(resolve()).toEqual('from-memory');
+                        });
+                    });
                 });
             });
 
@@ -1472,13 +1502,13 @@ describe('i18n', function () {
                 swap('swapped-locale');
             }));
 
-            it('then locale is saved in local storage', inject(function(localStorage) {
+            it('then locale is saved in local storage', function() {
                 expect(localStorage.locale).toEqual('swapped-locale');
-            }));
+            });
 
-            it('then locale is saved in session storage', inject(function(sessionStorage) {
+            it('then locale is saved in session storage', function() {
                 expect(sessionStorage.locale).toEqual('swapped-locale');
-            }));
+            });
 
             it('then broadcast the swap', function () {
                 expect(topics.persistent['i18n.locale']).toEqual('swapped-locale');
