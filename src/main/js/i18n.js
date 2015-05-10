@@ -397,7 +397,7 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
         else if (!isDefaultLocaleRemembered()) remember('default');
     });
 
-    remember(localeResolver());
+    if (localeResolver()) remember(localeResolver());
 
     function isLocalizationSupported() {
         return config.supportedLanguages && config.supportedLanguages.length > 0;
