@@ -9,7 +9,6 @@ angular.module('i18n', ['i18n.gateways', 'config', 'angular.usecase.adapter', 'w
     .factory('localeSwapper', ['localStorage', 'sessionStorage', 'topicMessageDispatcher', LocaleSwapperFactory])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
     .directive('i18nSupport', i18nSupportDirectiveFactory)
-    .directive('i18nDefault', ['localeSwapper', I18nDefaultDirectiveFactory])
     .directive('i18nTranslate', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('i18n', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
@@ -480,15 +479,6 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
         var suffix = $rootScope.unlocalizedPath ? $rootScope.unlocalizedPath : '/';
         $location.path(prefix + suffix);
     }
-}
-
-function I18nDefaultDirectiveFactory(localeSwapper) {
-    return {
-        restrict: 'C',
-        link: function () {
-            localeSwapper('default');
-        }
-    };
 }
 
 function SelectLocaleController($scope, $routeParams, localeResolver, localeSwapper) {
