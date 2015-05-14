@@ -486,6 +486,12 @@ describe('i18n', function () {
                     expect(local.locale).toEqual('default');
                     expect(dispatcher.persistent['i18n.locale']).toEqual('default');
                 });
+
+                it('test', inject(function() {
+                    goToPath('/foo/bar');
+
+                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
+                }));
             });
         });
 
@@ -687,29 +693,6 @@ describe('i18n', function () {
 
         it('controller', function () {
             expect(directive.controller).toEqual(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', I18nSupportController]);
-        });
-    });
-
-    describe('i18n-default directive', function() {
-        var directive, dispatcher;
-
-        beforeEach(inject(function(topicMessageDispatcherMock, localeSwapper) {
-            dispatcher = topicMessageDispatcherMock;
-            directive = I18nDefaultDirectiveFactory(localeSwapper);
-        }));
-
-        it('restrict to class', function() {
-            expect(directive.restrict).toEqual('C');
-        });
-
-        describe('on link', function() {
-            beforeEach(function() {
-                directive.link();
-            });
-
-            it('reset locale to default', inject(function(localStorage) {
-                expect(localStorage.locale).toEqual('default');
-            }));
         });
     });
 

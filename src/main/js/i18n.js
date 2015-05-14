@@ -393,7 +393,10 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
             exposeUnlocalizedPath(path, locale);
             locale ? expose(locale) : localeNotInPath();
         }
-        else if (!isDefaultLocaleRemembered()) remember('default');
+        else if (!isDefaultLocaleRemembered()) {
+            remember('default');
+            exposeUnlocalizedPath($location.path(), 'default')
+        }
     });
 
     if (localeResolver()) remember(localeResolver());
