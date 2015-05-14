@@ -417,34 +417,28 @@ describe('i18n', function () {
     });
 
     describe('I18nSupportController', function () {
-        var $rootScope, registry, dispatcher, local, $location, window;
+        var $rootScope, registry, dispatcher, local, session, $location, window;
         var code = 'message.code';
         var translation = 'message translation';
-        var config = {
-            namespace: 'namespace'
-        };
-        var route = {};
+        var config;
 
-        beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, localStorage, _$rootScope_, _$location_) {
+        beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, localStorage, sessionStorage, _$rootScope_, _$location_, _config_, $window) {
             $rootScope = _$rootScope_;
             $location = _$location_;
             local = localStorage;
+            session = sessionStorage;
             registry = topicRegistryMock;
             dispatcher = topicMessageDispatcherMock;
+            config = _config_;
+            config.namespace = 'namespace';
 
-            route.routes = [];
-            route.routes['/template/i18n-modal'] = {
-                templateUrl: 'i18n-modal.html'
+            window = $window;
+            window.navigator = {
+                userLanguage: 'en_BE',
+                language: 'en_BE'
             };
 
-            window = {
-                navigator: {
-                    userLanguage: 'en_BE',
-                    language: 'en_BE'
-                }
-            };
-
-            $controller(I18nSupportController, {$rootScope: $rootScope, config: config, $route: route, $window: window});
+            $controller(I18nSupportController, {$rootScope: $rootScope, config: config, $window: window});
         }));
 
         function goToPath(path) {
@@ -460,7 +454,7 @@ describe('i18n', function () {
             beforeEach(inject(function ($controller) {
                 local.locale = 'en';
 
-                $controller(I18nSupportController, {$rootScope: $rootScope, config: config, $route: route, $window: window});
+                $controller(I18nSupportController, {$rootScope: $rootScope, config: config, $window: window});
             }));
 
             it('raise i18n.locale notification', function () {
@@ -487,11 +481,29 @@ describe('i18n', function () {
                     expect(dispatcher.persistent['i18n.locale']).toEqual('default');
                 });
 
-                it('test', inject(function() {
+                it('with one path param, remove trailing slash', function () {
+                    goToPath('/foo/');
+
+                    expect($rootScope.unlocalizedPath).toEqual('/foo');
+                });
+
+                it('with more than one path param, do not remove trailing slash', inject(function() {
                     goToPath('/foo/bar');
 
                     expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
                 }));
+
+                describe('and default locale is remembered', function() {
+                    beforeEach(function() {
+                        local.locale = 'default';
+                    });
+
+                    it('test', inject(function() {
+                        goToPath('/foo/bar');
+
+                        expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
+                    }));
+                });
             });
         });
 
@@ -542,16 +554,10 @@ describe('i18n', function () {
                     expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
                 });
 
-                it('localePrefix is undefined', function () {
+                it('localePrefix is set to first locale', function () {
                     goToPath('/foo/bar');
 
-                    expect($rootScope.localePrefix).toBeUndefined();
-                });
-
-                it('with one path param, remove trailing slash', function () {
-                    goToPath('/foo/');
-
-                    expect($rootScope.unlocalizedPath).toEqual('/foo');
+                    expect($rootScope.localePrefix).toEqual('/lang');
                 });
 
                 it('with more than one path param, do not remove trailing slash', function () {
@@ -676,23 +682,6 @@ describe('i18n', function () {
                     });
                 });
             });
-        });
-    });
-
-    describe('i18n support directive', function () {
-        var directive, scope, resolver, support;
-
-        beforeEach(function () {
-            scope = {};
-            directive = i18nSupportDirectiveFactory();
-        });
-
-        it('restricted to', function () {
-            expect(directive.restrict).toEqual('C');
-        });
-
-        it('controller', function () {
-            expect(directive.controller).toEqual(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', I18nSupportController]);
         });
     });
 
