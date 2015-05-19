@@ -1,5 +1,5 @@
-angular.module('i18n', ['i18n.gateways', 'config', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'angularx'])
-    .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', '$q', 'i18nMessageWriter', 'usecaseAdapterFactory', I18nService])
+angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'angularx'])
+    .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', '$q', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -24,30 +24,34 @@ angular.module('i18n', ['i18n.gateways', 'config', 'angular.usecase.adapter', 'w
             scope: $rootScope
         }, 'edit.mode');
     }])
-    .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', I18nSupportController])
     .filter('trust', ['$sce', function ($sce) {
         return function (val) {
             return $sce.trustAsHtml(val);
         };
-    }]);
+    }])
+    .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', 'i18n', '$q', I18nSupportController]);
 
-function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config, $window) {
+function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config, $window, i18n, $q) {
     $rootScope.$on('$routeChangeStart', function () {
         var locale;
-        if (isLocalizationSupported()) {
+        isLocalizationSupported().then(function () {
             locale = getLocaleFromPath($location.path());
             locale ? expose(locale) : localeNotInPath();
-        }
-        else if (!isDefaultLocaleRemembered()) {
-            remember('default');
-        }
-        $rootScope.unlocalizedPath = exposeUnlocalizedPath(locale);
+        }, function () {
+            if (!isDefaultLocaleRemembered()) remember('default');
+        }).finally(function () {
+            $rootScope.unlocalizedPath = exposeUnlocalizedPath(locale);
+        });
     });
 
     if (localeResolver()) remember(localeResolver());
 
     function isLocalizationSupported() {
-        return config.supportedLanguages && config.supportedLanguages.length > 0;
+        var deferred = $q.defer();
+        i18n.getSupportedLanguages().then(function () {
+            config.supportedLanguages && config.supportedLanguages.length > 0 ? deferred.resolve() : deferred.reject();
+        });
+        return deferred.promise;
     }
 
     function getLocaleFromPath(path) {
@@ -358,8 +362,9 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
     };
 }
 
-function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, $q, i18nMessageWriter, usecaseAdapterFactory) {
+function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, $q, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader) {
     var cache = $cacheFactory.get('i18n');
+    var supportedLanguages;
 
     this.resolve = function (context) {
         var deferred = $q.defer();
@@ -425,6 +430,21 @@ function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, 
         }
 
         return deferred.promise;
+    };
+
+    this.getSupportedLanguages = function () {
+        if(angular.isUndefined(supportedLanguages)) {
+            var deferred = $q.defer();
+            publicConfigReader({
+                key: 'supportedLanguages'
+            }).then(function (it) {
+                config.supportedLanguages = JSON.parse(it.data.value);
+            }).finally(function () {
+                deferred.resolve(config.supportedLanguages || []);
+            });
+            supportedLanguages = deferred.promise;
+        }
+        return supportedLanguages;
     };
 }
 

@@ -18,6 +18,7 @@ describe('i18n', function () {
     beforeEach(module('permissions'));
     beforeEach(module('web.storage'));
     beforeEach(module('config'));
+    beforeEach(module('config.gateways'));
 
     var modal, modalInstance, submitModalSpy, cancelModalSpy;
 
@@ -75,13 +76,14 @@ describe('i18n', function () {
     });
 
     describe('i18n service', function () {
-        var $rootScope, config, i18n, localStorage;
+        var $rootScope, config, i18n, localStorage, publicConfigReader;
 
-        beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_) {
+        beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_, _publicConfigReader_) {
             $rootScope = _$rootScope_;
             config = _config_;
             i18n = _i18n_;
             localStorage = _localStorage_;
+            publicConfigReader = _publicConfigReader_;
         }));
 
         it('i18n service should be defined', function () {
@@ -341,7 +343,74 @@ describe('i18n', function () {
             });
         });
 
+        describe('get supported languages', function () {
+            var languages;
 
+            function execute() {
+                i18n.getSupportedLanguages().then(function (l) {
+                    languages = l;
+                });
+                $rootScope.$digest();
+            }
+
+            describe('no languages defined in publicConfig', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.reject();
+                    publicConfigReader.andReturn(deferred.promise);
+                }));
+
+                it('and no languages in local config', function () {
+                    execute();
+
+                    expect(languages).toEqual([]);
+                });
+
+                it('and languages in local config', function () {
+                    config.supportedLanguages = ['lang'];
+
+                    execute();
+
+                    expect(languages).toEqual(['lang']);
+                });
+            });
+
+            describe('languages defined in publicConfig', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.resolve({data: {value: '["en"]'}});
+                    publicConfigReader.andReturn(deferred.promise);
+                }));
+
+                it('and no languages in local config', function () {
+                    execute();
+
+                    expect(publicConfigReader.calls[0].args[0]).toEqual({
+                        key: 'supportedLanguages'
+                    });
+                    expect(languages).toEqual(['en']);
+                    expect(config.supportedLanguages).toEqual(['en']);
+                });
+
+                it('and languages in local config', function () {
+                    config.supportedLanguages = ['lang'];
+
+                    execute();
+
+                    expect(languages).toEqual(['en']);
+                    expect(config.supportedLanguages).toEqual(['en']);
+                });
+
+                it('on multiple calls, same promise is returned', function () {
+                    execute();
+                    languages = undefined;
+                    execute();
+
+                    expect(publicConfigReader.callCount).toEqual(1);
+                    expect(languages).toEqual(['en']);
+                });
+            });
+        });
     });
 
     describe('I18nDefaultRendererService', function () {
@@ -417,12 +486,12 @@ describe('i18n', function () {
     });
 
     describe('I18nSupportController', function () {
-        var $rootScope, registry, dispatcher, local, session, $location, window;
+        var $rootScope, registry, dispatcher, local, session, $location, window, i18n;
         var code = 'message.code';
         var translation = 'message translation';
         var config;
 
-        beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, localStorage, sessionStorage, _$rootScope_, _$location_, _config_, $window) {
+        beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, localStorage, sessionStorage, _$rootScope_, _$location_, _config_, $window, _i18n_) {
             $rootScope = _$rootScope_;
             $location = _$location_;
             local = localStorage;
@@ -438,12 +507,21 @@ describe('i18n', function () {
                 language: 'en_BE'
             };
 
-            $controller(I18nSupportController, {$rootScope: $rootScope, config: config, $window: window});
+            i18n = _i18n_;
+
+            $controller(I18nSupportController);
+        }));
+
+        beforeEach(inject(function ($q, publicConfigReader) {
+            var deferred = $q.defer();
+            deferred.reject();
+            publicConfigReader.andReturn(deferred.promise);
         }));
 
         function goToPath(path) {
             $location.path(path);
             $rootScope.$broadcast('$routeChangeStart', {params: {}});
+            $rootScope.$digest();
         }
 
         it('no i18n.locale notification should be raised yet', function() {
@@ -454,7 +532,7 @@ describe('i18n', function () {
             beforeEach(inject(function ($controller) {
                 local.locale = 'en';
 
-                $controller(I18nSupportController, {$rootScope: $rootScope, config: config, $window: window});
+                $controller(I18nSupportController);
             }));
 
             it('raise i18n.locale notification', function () {
@@ -595,7 +673,7 @@ describe('i18n', function () {
                             goToPath('/');
 
                             expect($location.path()).toEqual('/lang/');
-                            //expect(dispatcher.persistent['i18n.locale']).toEqual('lang');
+                            expect(dispatcher.persistent['i18n.locale']).toEqual('lang');
                         });
 
                         describe('and browser user language is supported', function() {
@@ -607,7 +685,7 @@ describe('i18n', function () {
                                 goToPath('/');
 
                                 expect($location.path()).toEqual('/en/');
-                                //expect(dispatcher.persistent['i18n.locale']).toEqual('en');
+                                expect(dispatcher.persistent['i18n.locale']).toEqual('en');
                             });
                         });
 
@@ -620,7 +698,7 @@ describe('i18n', function () {
                                 goToPath('/');
 
                                 expect($location.path()).toEqual('/lang/');
-                                //expect(dispatcher.persistent['i18n.locale']).toEqual('lang');
+                                expect(dispatcher.persistent['i18n.locale']).toEqual('lang');
                             }));
                         });
 
@@ -634,7 +712,7 @@ describe('i18n', function () {
                                 goToPath('/');
 
                                 expect($location.path()).toEqual('/en/');
-                                //expect(dispatcher.persistent['i18n.locale']).toEqual('en');
+                                expect(dispatcher.persistent['i18n.locale']).toEqual('en');
                             });
                         });
                     });
