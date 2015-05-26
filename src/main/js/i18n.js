@@ -1,5 +1,5 @@
 angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'angularx'])
-    .service('i18n', ['i18nMessageReader', 'localeResolver', '$cacheFactory', 'config', '$q', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', I18nService])
+    .service('i18n', ['$q', 'config', 'i18nMessageReader', 'localeResolver', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -11,6 +11,7 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
     .directive('i18nTranslate', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('i18n', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
+    .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'localeResolver', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
@@ -35,27 +36,27 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
     $rootScope.$on('$routeChangeStart', function () {
         var locale;
         isLocalizationSupported().then(function () {
-            locale = getLocaleFromPath($location.path());
-            locale ? expose(locale) : localeNotInPath();
+            locale = getLocaleFromPath();
+            locale ? remember(locale) : localeNotInPath();
         }, function () {
-            if (!isDefaultLocaleRemembered()) remember('default');
+            remember('default');
         }).finally(function () {
-            $rootScope.unlocalizedPath = exposeUnlocalizedPath(locale);
+            expose(locale);
         });
     });
 
-    if (localeResolver()) remember(localeResolver());
+    if (localeResolver()) localeSwapper(localeResolver());
 
     function isLocalizationSupported() {
         var deferred = $q.defer();
-        i18n.getSupportedLanguages().then(function () {
-            config.supportedLanguages && config.supportedLanguages.length > 0 ? deferred.resolve() : deferred.reject();
+        i18n.getSupportedLanguages().then(function (languages) {
+            languages.length > 0 ? deferred.resolve() : deferred.reject();
         });
         return deferred.promise;
     }
 
-    function getLocaleFromPath(path) {
-        var param = getFirstRouteParam(path);
+    function getLocaleFromPath() {
+        var param = getFirstRouteParam($location.path());
         if (isLocaleSupported(param)) return param;
     }
 
@@ -64,8 +65,10 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
         if (param) return param[0].replace(/\//g,'');
     }
 
-    function isLocaleSupported(locale) {
-        return config.supportedLanguages.indexOf(locale) != -1;
+    function expose(locale) {
+        $rootScope.unlocalizedPath = exposeUnlocalizedPath(locale);
+        $rootScope.locale = locale || '';
+        $rootScope.localePrefix = locale ? '/' + locale : '';
     }
 
     function exposeUnlocalizedPath(locale) {
@@ -74,36 +77,33 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
         else return path.replace(/^\/[^\/]+\/$/, path.slice(0,-1));
     }
 
-    function expose(locale) {
-        $rootScope.locale = locale;
-        $rootScope.localePrefix = '/' + locale;
-        if (isNewlySelected(locale)) remember(locale);
-    }
-
-    function isNewlySelected(locale) {
-        return localeResolver() != locale;
-    }
-
     function remember(locale) {
-        localeSwapper(locale);
+        i18n.getMainLanguage().then(function (mainLanguage) {
+            if (config.useDefaultAsMainLocale && locale == mainLanguage) locale = 'default';
+            if (!isLocaleRemembered(locale)) localeSwapper(locale);
+        });
+    }
+
+    function isLocaleRemembered(locale) {
+        return localeResolver() == locale;
     }
 
     function localeNotInPath() {
-        if (isLocaleRemembered()) redirectToLocalizedPage(localeResolver());
+        if (isLocaleSupported(localeResolver())) redirectToLocalizedPage(localeResolver());
         else initializeLocaleByConfig();
     }
 
-    function isLocaleRemembered() {
-        return isLocaleSupported(localeResolver());
-    }
-
-    function isDefaultLocaleRemembered() {
-        return localeResolver() == 'default';
+    function isLocaleSupported(locale) {
+        return config.supportedLanguages.indexOf(locale) != -1;
     }
 
     function initializeLocaleByConfig() {
         if (shouldFallbackToBrowserLocale()) redirectToLocalizedPage(browserLanguage());
-        else if (shouldFallbackToDefaultLocale()) redirectToLocalizedPage(getDefaultLocaleFromSupportedLanguages());
+        else if (shouldFallbackToMainLocale()) {
+            i18n.getMainLanguage().then(function (lang) {
+                redirectToLocalizedPage(lang);
+            });
+        }
         else $location.path('/');
     }
 
@@ -111,12 +111,8 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
         return config.fallbackToBrowserLocale && isBrowserLanguageSupported();
     }
 
-    function shouldFallbackToDefaultLocale() {
+    function shouldFallbackToMainLocale() {
         return config.fallbackToDefaultLocale != false;
-    }
-
-    function getDefaultLocaleFromSupportedLanguages() {
-        return config.supportedLanguages[0];
     }
 
     function isBrowserLanguageSupported() {
@@ -362,7 +358,176 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
     };
 }
 
-function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, $q, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader) {
+function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editModeRenderer, $location, $route, localeResolver) {
+    return {
+        restrict: ['E', 'A'],
+        scope: true,
+        link: function (scope, element) {
+            scope.supportedLanguages = [];
+
+            i18n.getSupportedLanguages().then(function (languages) {
+                if (languages.length > 0) {
+                    angular.forEach(config.languages || [], function (l) {
+                        if (languages.indexOf(l.code) != -1) scope.supportedLanguages.push(l);
+                    });
+                    sortLanguagesByName(scope.supportedLanguages);
+                }
+            });
+
+            scope.open = function () {
+                var child = scope.$new();
+                var mainLanguage;
+
+                i18n.getMainLanguage().then(function (locale) {
+                    mainLanguage = locale;
+                    child.languages = orderByMainLanguage(angular.copy(scope.supportedLanguages), locale);
+                    child.availableLanguages = getAvailableLanguages(child.languages);
+                    updateSelectedLanguage();
+                });
+
+                child.close = function () {
+                    editModeRenderer.close();
+                };
+
+                child.remove = function (lang) {
+                    child.languages = child.languages.filter(function(it) {
+                        return it.code != lang.code;
+                    });
+                    child.availableLanguages.push({name: lang.name, code: lang.code});
+                    sortLanguagesByName(child.availableLanguages);
+                    updateSelectedLanguage();
+                };
+
+                child.add = function (lang) {
+                    if (child.languages.length == 0) mainLanguage = lang.code;
+                    child.languages.push({name: lang.name, code: lang.code});
+                    child.languages = orderByMainLanguage(child.languages, mainLanguage);
+                    child.availableLanguages = child.availableLanguages.filter(function(it) {
+                        return it.code != lang.code;
+                    });
+                    updateSelectedLanguage();
+                };
+
+                child.save = function () {
+                    i18n.updateSupportedLanguages(getLanguageCodes(child.languages), function () {
+                        scope.supportedLanguages = child.languages;
+                        sortLanguagesByName(scope.supportedLanguages);
+                        scope.supportedLanguages.length == 0 ? redirectToUnlocalizedPath() : redirectToMainLanguage();
+                        editModeRenderer.close();
+                    });
+                };
+
+                function updateSelectedLanguage() {
+                    if (child.availableLanguages.length > 0) child.selectedLanguage = child.availableLanguages[0];
+                }
+
+                editModeRenderer.open({
+                    template: '<form ng-submit="save()">' +
+                    '<div class="form-group">' +
+                    '' +
+                    '<div ng-if="languages.length == 0">' +
+                        '<p>' +
+                        'What is the main language of your website?' +
+                        '</p>' +
+                    '</div>' +
+                    '' +
+                    '<table class="table">' +
+                    '<tr ng-if="languages.length > 0">' +
+                    '<th>{{languages[0].name}}</th>' +
+                    '<th ng-if="languages.length > 1">Main language</th>' +
+                    '<th ng-if="languages.length == 1"><button type="button" class="btn btn-danger" ng-click="remove(languages[0])"><i class="fa fa-times"></i> Delete</button></th>' +
+                    '</tr>' +
+                    '<tr ng-repeat="lang in languages track by lang.code" ng-if="!$first">' +
+                    '<td>{{lang.name}}</td>' +
+                    '<td><button type="button" class="btn btn-danger" ng-click="remove(lang)"><i class="fa fa-times"></i> Delete</button></td>' +
+                    '</tr>' +
+                    '<tfoot>' +
+                        '<tr>' +
+                        '<td><select ng-model="selectedLanguage" ng-options="l.name for l in availableLanguages track by l.code"></select></td>' +
+                        '<td><button type="button" class="btn btn-primary" ng-click="add(selectedLanguage)"><i class="fa fa-plus"></i> Add</button></td>' +
+                        '</tr>' +
+                    '</tfoot>' +
+                    '</table>' +
+                    '' +
+                    '</div>' +
+                    '<div class="dropdown-menu-buttons">' +
+                    '<button type="submit" class="btn btn-primary" ng-disabled="languages.length == 1">Save</button>' +
+                    '<button type="reset" class="btn btn-default" ng-click="close()">Cancel</button>' +
+                    '</div>' +
+                    '</form>',
+                    scope: child
+                });
+            };
+
+            editMode.bindEvent({
+                scope: scope,
+                element: element,
+                permission: 'config.store',
+                onClick: scope.open
+            });
+
+            function sortLanguagesByName(languages) {
+                languages.sort(function (l1, l2) {
+                    if(l1.name < l2.name) return -1;
+                    if(l1.name > l2.name) return 1;
+                    return 0;
+                });
+            }
+
+            function orderByMainLanguage(languages, mainLanguage) {
+                var main;
+                var ordered = languages.filter(function(it) {
+                    if (it.code == mainLanguage) main = it;
+                    return it.code != mainLanguage;
+                });
+                sortLanguagesByName(ordered);
+                if (main) ordered.unshift(main);
+                return ordered;
+            }
+
+            function redirectToUnlocalizedPath() {
+                $location.path($rootScope.unlocalizedPath);
+            }
+
+            function redirectToLocalizedPath(locale) {
+                $location.path(locale + $rootScope.unlocalizedPath);
+            }
+
+            function redirectToMainLanguage() {
+                i18n.getMainLanguage().then(function (locale) {
+                    if ($location.path() == '/' + locale + $rootScope.unlocalizedPath) {
+                        $route.reload();
+                    } else {
+                        redirectToLocalizedPath(locale);
+                    }
+                });
+            }
+
+            function getAvailableLanguages(languages) {
+                var availableLanguages = [];
+                angular.forEach(config.languages, function (l) {
+                    var exists = languages.some(function (it) {
+                        return it.code == l.code;
+                    });
+                    if (!exists) availableLanguages.push({name: l.name, code: l.code});
+                });
+                sortLanguagesByName(availableLanguages);
+                return availableLanguages;
+            }
+
+            function getLanguageCodes(languages) {
+                var codes = [];
+                angular.forEach(languages, function (lang) {
+                    codes.push(lang.code);
+                });
+                return codes;
+            }
+        }
+    };
+}
+
+function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter) {
+    var self = this;
     var cache = $cacheFactory.get('i18n');
     var supportedLanguages;
 
@@ -445,6 +610,27 @@ function I18nService(i18nMessageGateway, localeResolver, $cacheFactory, config, 
             supportedLanguages = deferred.promise;
         }
         return supportedLanguages;
+    };
+
+    this.getMainLanguage = function () {
+        var deferred = $q.defer();
+        self.getSupportedLanguages().then(function (languages) {
+            languages.length > 0 ? deferred.resolve(languages[0]) : deferred.resolve();
+        });
+        return deferred.promise;
+    };
+
+    this.updateSupportedLanguages = function (updatedLanguages, onSuccess) {
+        return publicConfigWriter({
+            key: 'supportedLanguages',
+            value: JSON.stringify(updatedLanguages)
+        }, {
+            success: function () {
+                config.supportedLanguages = updatedLanguages;
+                supportedLanguages = undefined;
+                if (onSuccess) onSuccess();
+            }
+        });
     };
 }
 

@@ -11,6 +11,7 @@ describe('i18n', function () {
             };
         });
 
+    beforeEach(module('ngRoute'));
     beforeEach(module('i18n'));
     beforeEach(module('i18n.gateways'));
     beforeEach(module('angular.usecase.adapter'));
@@ -76,14 +77,16 @@ describe('i18n', function () {
     });
 
     describe('i18n service', function () {
-        var $rootScope, config, i18n, localStorage, publicConfigReader;
+        var $rootScope, config, i18n, localStorage, publicConfigReader, publicConfigWriter, $location;
 
-        beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_, _publicConfigReader_) {
+        beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_, _publicConfigReader_, _publicConfigWriter_, _$location_) {
             $rootScope = _$rootScope_;
             config = _config_;
             i18n = _i18n_;
             localStorage = _localStorage_;
             publicConfigReader = _publicConfigReader_;
+            publicConfigWriter = _publicConfigWriter_;
+            $location = _$location_;
         }));
 
         it('i18n service should be defined', function () {
@@ -411,6 +414,116 @@ describe('i18n', function () {
                 });
             });
         });
+
+        describe('update supported languages', function () {
+            beforeEach(inject(function ($q) {
+                var deferred = $q.defer();
+                deferred.resolve({data: {value: '["en"]'}});
+                publicConfigReader.andReturn(deferred.promise);
+
+                i18n.getSupportedLanguages();
+            }));
+
+            [
+                {name: 'empty', value: []},
+                {name: '["nl", "en"]', value: ["nl", "en"]}
+            ].forEach(function (lang) {
+                describe('with languages equal to ' + lang.name, function () {
+                    describe('without callback', function () {
+                        beforeEach(function () {
+                            i18n.updateSupportedLanguages(lang.value);
+                        });
+
+                        it('write to public config', function () {
+                            expect(publicConfigWriter.calls[0].args[0]).toEqual({
+                                key: 'supportedLanguages',
+                                value: JSON.stringify(lang.value)
+                            });
+                        });
+
+                        describe('on success', function () {
+                            beforeEach(function () {
+                                $rootScope.unlocalizedPath = '/path';
+                                publicConfigWriter.calls[0].args[1].success();
+                            });
+
+                            it('supported languages on config are updated', function () {
+                                expect(config.supportedLanguages).toEqual(lang.value);
+                            });
+
+                            it('reader returns updated languages', function () {
+                                i18n.getSupportedLanguages();
+                                $rootScope.$digest();
+
+                                expect(publicConfigReader.callCount).toEqual(2);
+                            });
+                        });
+                    });
+
+                    describe('with callback', function () {
+                        var callback;
+
+                        beforeEach(function () {
+                            i18n.updateSupportedLanguages(lang.value, function () {
+                                callback = true;
+                            });
+                        });
+
+                        describe('on success', function () {
+                            beforeEach(function () {
+                                publicConfigWriter.calls[0].args[1].success();
+                            });
+
+                            it('callback is executed', function () {
+                                expect(callback).toBeTruthy();
+                            });
+                        });
+                    });
+                });
+            });
+        });
+
+        describe('get main language', function () {
+            beforeEach(inject(function ($q) {
+                var deferred = $q.defer();
+                deferred.reject();
+                publicConfigReader.andReturn(deferred.promise);
+            }));
+
+            describe('no languages', function () {
+                beforeEach(function () {
+                    config.supportedLanguages = [];
+                });
+
+                it('return nothing', function () {
+                    var language;
+
+                    i18n.getMainLanguage().then(function (lang) {
+                        language = lang;
+                    });
+                    $rootScope.$digest();
+
+                    expect(language).toBeUndefined();
+                });
+            });
+
+            describe('with languages', function () {
+                beforeEach(function () {
+                    config.supportedLanguages = ['en', 'nl', 'fr'];
+                });
+
+                it('return first from list', function () {
+                    var language;
+
+                    i18n.getMainLanguage().then(function (lang) {
+                        language = lang;
+                    });
+                    $rootScope.$digest();
+
+                    expect(language).toEqual('en');
+                });
+            });
+        });
     });
 
     describe('I18nDefaultRendererService', function () {
@@ -530,9 +643,11 @@ describe('i18n', function () {
 
         describe('when locale is remembered', function () {
             beforeEach(inject(function ($controller) {
+                config.supportedLanguages = ['en'];
                 local.locale = 'en';
 
                 $controller(I18nSupportController);
+                $rootScope.$digest();
             }));
 
             it('raise i18n.locale notification', function () {
@@ -540,16 +655,29 @@ describe('i18n', function () {
             });
         });
 
-        [undefined, []].forEach(function (lang) {
-            describe('when supportedLanguages is ' + lang, function () {
+        [
+            {name: 'undefined', value: undefined},
+            {name: 'empty', value: []}
+        ].forEach(function (lang) {
+            describe('when supportedLanguages is ' + lang.name, function () {
                 beforeEach(function () {
-                    config.supportedLanguages = lang;
+                    config.supportedLanguages = lang.value;
                 });
 
                 it('localePrefix is empty string', function () {
+                    $rootScope.localePrefix = 'foo';
+
                     goToPath('/foo/bar');
 
-                    expect($rootScope.localePrefix).toBeUndefined();
+                    expect($rootScope.localePrefix).toEqual('');
+                });
+
+                it('locale is empty string', function () {
+                    $rootScope.locale = 'foo';
+
+                    goToPath('/foo/bar');
+
+                    expect($rootScope.locale).toEqual('');
                 });
 
                 it('remembered locale is default', function () {
@@ -574,13 +702,23 @@ describe('i18n', function () {
                 describe('and default locale is remembered', function() {
                     beforeEach(function() {
                         local.locale = 'default';
+                        $rootScope.locale = 'previous';
+                        $rootScope.localePrefix = '/previous';
+
+                        goToPath('/foo/bar');
                     });
 
-                    it('test', inject(function() {
-                        goToPath('/foo/bar');
-
+                    it('update unlocalized path', inject(function() {
                         expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
                     }));
+
+                    it('locale is empty', function() {
+                        expect($rootScope.locale).toEqual('');
+                    });
+
+                    it('locale prefix is empty', function() {
+                        expect($rootScope.localePrefix).toEqual('');
+                    });
                 });
             });
         });
@@ -610,12 +748,43 @@ describe('i18n', function () {
                     expect(local.locale).toEqual(locale);
                 });
 
+                it('expose unlocalized path on scope', function () {
+                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
+                });
+
                 it('broadcast locale', function() {
                     expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
                 });
+            });
 
-                it('expose unlocalized path on scope', function () {
-                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
+            it('when previously remembered do not broadcast again', function () {
+                local.locale = locale;
+                goToPath('/' + locale + '/foo/bar');
+
+                expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
+            });
+
+            describe('and use default locale as main locale', function () {
+                beforeEach(function () {
+                    config.useDefaultAsMainLocale = true;
+
+                    goToPath('/' + locale + '/foo/bar');
+                });
+
+                it('expose locale on rootScope', function () {
+                    expect($rootScope.locale).toEqual(locale);
+                });
+
+                it('expose localePrefix on rootScope', function () {
+                    expect($rootScope.localePrefix).toEqual('/' + locale);
+                });
+
+                it('remember default locale', function () {
+                    expect(local.locale).toEqual('default');
+                });
+
+                it('broadcast default locale', function () {
+                    expect(dispatcher.persistent['i18n.locale']).toEqual('default');
                 });
             });
 
@@ -632,16 +801,17 @@ describe('i18n', function () {
                     expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
                 });
 
-                it('localePrefix is set to first locale', function () {
-                    goToPath('/foo/bar');
-
-                    expect($rootScope.localePrefix).toEqual('/lang');
-                });
 
                 it('with more than one path param, do not remove trailing slash', function () {
                     goToPath('/foo/bar/');
 
                     expect($rootScope.unlocalizedPath).toEqual('/foo/bar/');
+                });
+
+                it('redirect to main locale', function () {
+                    goToPath('/foo/bar');
+
+                    expect($location.path()).toEqual('/lang/foo/bar');
                 });
 
                 describe('and remembered locale', function () {
@@ -666,14 +836,13 @@ describe('i18n', function () {
                             config.fallbackToBrowserLocale = true;
                         });
 
-                        it('and when no browser user language or browser language, fall back to first supported locale', function() {
+                        it('and when no browser user language or browser language, fall back to main locale', function() {
                             window.navigator.language = undefined;
                             window.navigator.userLanguage = undefined;
 
                             goToPath('/');
 
                             expect($location.path()).toEqual('/lang/');
-                            expect(dispatcher.persistent['i18n.locale']).toEqual('lang');
                         });
 
                         describe('and browser user language is supported', function() {
@@ -694,11 +863,10 @@ describe('i18n', function () {
                                 window.navigator.userLanguage = 'un_SU';
                             });
 
-                            it('fall back to first supported locale', inject(function() {
+                            it('fall back to main locale', inject(function() {
                                 goToPath('/');
 
                                 expect($location.path()).toEqual('/lang/');
-                                expect(dispatcher.persistent['i18n.locale']).toEqual('lang');
                             }));
                         });
 
@@ -1379,6 +1547,247 @@ describe('i18n', function () {
         });
     });
 
+    describe('i18n language switcher directive', function () {
+        var $rootScope, i18n, editMode, editModeRenderer, publicConfigWriter, directive, scope, element, config, $location, route, sessionStorage;
+
+        beforeEach(inject(function (_$rootScope_, _i18n_, _config_, publicConfigReader, _publicConfigWriter_, $q, _$location_, localeResolver, _sessionStorage_) {
+            var reader = $q.defer();
+            reader.reject();
+            publicConfigReader.andReturn(reader.promise);
+
+            publicConfigWriter = _publicConfigWriter_;
+            var writer = $q.defer();
+            writer.resolve('["nl","en"]');
+            publicConfigWriter.andReturn(writer.promise);
+
+            $rootScope = _$rootScope_;
+            scope = $rootScope.$new();
+            element = {};
+            i18n = _i18n_;
+            config = _config_;
+            $location = _$location_;
+            editMode = jasmine.createSpyObj('editMode', ['bindEvent']);
+            editModeRenderer = jasmine.createSpyObj('editModeRenderer', ['open', 'close']);
+            route = jasmine.createSpyObj('$route', ['reload']);
+            sessionStorage = _sessionStorage_;
+
+            directive = I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editModeRenderer, $location, route, localeResolver);
+        }));
+
+        describe('on link', function () {
+            var dutch = {name:'Dutch', code:'nl'},
+                english = {name:'English', code:'en'},
+                french = {name:'French', code:'fr'},
+                chinese = {name:'Chinese', code:'ch'},
+                arabic = {name:'Arabic', code:'ar'};
+
+            beforeEach(function () {
+                config.languages = [dutch, french, english, chinese, arabic];
+            });
+
+            describe('when no supported languages', function () {
+                beforeEach(function () {
+                    config.supportedLanguages = [];
+
+                    directive.link(scope, element);
+                    scope.$digest();
+                });
+
+                it('supported languages on scope are empty', function () {
+                    expect(scope.supportedLanguages).toEqual([]);
+                });
+
+                describe('no active language on scope', function () {
+                    beforeEach(function () {
+                        sessionStorage.locale = 'default';
+                        scope.$digest();
+                    });
+
+                    it('initial', function () {
+                        expect(scope.activeLanguage).toBeUndefined();
+                    });
+                });
+            });
+
+            describe('when supported languages', function () {
+                beforeEach(function () {
+                    config.supportedLanguages = ['en', 'nl'];
+
+                    directive.link(scope, element);
+                    scope.$digest();
+                });
+
+                it('put supported languages on scope ordered by name', function () {
+                    expect(scope.supportedLanguages).toEqual([dutch, english]);
+                });
+
+                it('install editMode event binder', function () {
+                    expect(editMode.bindEvent).toHaveBeenCalledWith({
+                        scope: scope,
+                        element: element,
+                        permission: 'config.store',
+                        onClick: jasmine.any(Function)
+                    });
+                });
+
+                describe('editMode event is triggered', function () {
+                    beforeEach(function () {
+                        editMode.bindEvent.calls[0].args[0].onClick();
+                    });
+
+                    it('editMode renderer is opened', function () {
+                        expect(editModeRenderer.open).toHaveBeenCalledWith({
+                            template: jasmine.any(String),
+                            scope: jasmine.any(Object)
+                        });
+                    });
+
+                    describe('with child scope', function () {
+                        var child;
+
+                        beforeEach(function () {
+                            child = editModeRenderer.open.calls[0].args[0].scope;
+
+                            child.$digest();
+                        });
+
+                        it('copy supported languages to child scope ordered by main language and name', function () {
+                            expect(child.languages).toEqual([english, dutch]);
+                        });
+
+                        it('languages that can be added are available on child scope', function () {
+                            expect(child.availableLanguages).toEqual([arabic, chinese, french]);
+                        });
+
+                        it('set selected language to first one', function () {
+                            expect(child.selectedLanguage).toEqual(arabic);
+                        });
+
+                        describe('on save', function () {
+                            beforeEach(function () {
+                                $rootScope.unlocalizedPath = '/foo/bar';
+                            });
+
+                            describe('with no supported languages', function () {
+                                beforeEach(function () {
+                                    child.remove(dutch);
+                                    child.remove(english);
+                                    child.save();
+                                    publicConfigWriter.calls[0].args[1].success();
+                                    scope.$digest();
+                                });
+
+                                it('write to public config', function () {
+                                    expect(publicConfigWriter.calls[0].args[0]).toEqual({
+                                        key: 'supportedLanguages',
+                                        value: '[]'
+                                    });
+                                });
+
+                                it('update supported languages on scope', function () {
+                                    expect(scope.supportedLanguages).toEqual([]);
+                                });
+
+                                it('redirect to unlocalized path', function () {
+                                    expect($location.path()).toEqual('/foo/bar');
+                                });
+                            });
+
+                            describe('with supported languages', function () {
+                                beforeEach(function () {
+                                    $location.path('/en/foo/bar');
+                                    child.add(chinese);
+                                    child.save();
+                                    publicConfigWriter.calls[0].args[1].success();
+                                    scope.$digest();
+                                });
+
+                                it('write to public config', function () {
+                                    expect(publicConfigWriter.calls[0].args[0]).toEqual({
+                                        key: 'supportedLanguages',
+                                        value: '["en","ch","nl"]'
+                                    });
+                                });
+
+                                it('editMode renderer is closed', function () {
+                                    expect(editModeRenderer.close).toHaveBeenCalled();
+                                });
+
+                                it('update supported languages on scope ordered by name', function () {
+                                    expect(scope.supportedLanguages).toEqual([chinese, dutch, english]);
+                                });
+
+                                it('reload route', function () {
+                                    expect(route.reload).toHaveBeenCalled();
+                                });
+
+                                describe('and main locale changes', function () {
+                                    beforeEach(function () {
+                                        child.remove(dutch);
+                                        child.remove(chinese);
+                                        child.save();
+                                        publicConfigWriter.calls[1].args[1].success();
+                                        scope.$digest();
+                                    });
+
+                                    it('update supported languages on scope', function () {
+                                        expect(scope.supportedLanguages).toEqual([english]);
+                                    });
+
+                                    it('redirect to new main language', function () {
+                                        expect($location.path()).toEqual('/en/foo/bar');
+                                    });
+                                });
+                            });
+                        });
+
+                        describe('on remove', function () {
+                            beforeEach(function () {
+                                child.remove(dutch);
+                            });
+
+                            it('remove language from supportedLanguages', function () {
+                                expect(child.languages).toEqual([english]);
+                            });
+
+                            it('add to languages', function () {
+                                expect(child.availableLanguages).toEqual([arabic, chinese, dutch, french]);
+                            });
+
+                            it('update selected language', function () {
+                                expect(child.selectedLanguage).toEqual(arabic);
+                            });
+                        });
+
+                        describe('on add', function () {
+                            beforeEach(function () {
+                                child.add(arabic);
+                            });
+
+                            it('add to supported languages ordered by main language', function () {
+                                expect(child.languages).toEqual([english, arabic, dutch]);
+                            });
+
+                            it('remove from languages', function () {
+                                expect(child.availableLanguages).toEqual([chinese, french]);
+                            });
+
+                            it('update selected language', function () {
+                                expect(child.selectedLanguage).toEqual(chinese);
+                            });
+                        });
+
+                        it('on close', function () {
+                            child.close();
+
+                            expect(editModeRenderer.close).toHaveBeenCalled();
+                        });
+                    });
+                });
+            });
+        });
+    });
+
     describe('i18n resolver', function () {
         var resolver, i18n, presenter, msg, $rootScope;
 
@@ -1410,11 +1819,17 @@ describe('i18n', function () {
     describe('SelectLocaleController', function () {
         var ctrl, scope, params, local, locale, topics;
 
-        beforeEach(inject(function ($controller, topicMessageDispatcherMock, localStorage) {
-            scope = {};
+        beforeEach(inject(function ($rootScope, $controller, topicMessageDispatcherMock, localStorage, publicConfigReader, $q, config) {
+            config.supportedLanguages = ['lang'];
+            scope = $rootScope.$new();
             params = {};
             local = localStorage;
             topics = topicMessageDispatcherMock;
+
+            var reader = $q.defer();
+            reader.reject();
+            publicConfigReader.andReturn(reader.promise);
+
             ctrl = $controller(SelectLocaleController, {$scope: scope, $routeParams: params});
         }));
 
@@ -1422,6 +1837,7 @@ describe('i18n', function () {
             beforeEach(function () {
                 locale = 'lang';
                 scope.select(locale);
+                scope.$digest();
             });
 
             it('expose the active selection', function () {
@@ -1446,6 +1862,7 @@ describe('i18n', function () {
             describe('on init', function () {
                 beforeEach(function () {
                     scope.init();
+                    scope.$digest();
                 });
 
                 it('activate the previous selection', function () {
@@ -1463,6 +1880,7 @@ describe('i18n', function () {
             describe('on init', function () {
                 beforeEach(function () {
                     scope.init();
+                    scope.$digest();
                 });
 
                 it('then expose locale on scope', function () {
@@ -1549,6 +1967,7 @@ describe('i18n', function () {
 
             beforeEach(inject(function(topicMessageDispatcherMock) {
                 topics = topicMessageDispatcherMock;
+
                 swap('swapped-locale');
             }));
 
