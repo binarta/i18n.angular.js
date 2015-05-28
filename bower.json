@@ -3,7 +3,8 @@
   "main": [
     "./src/main/js/i18n.js",
     "./less/i18n.less",
-    "./metadata.json"
+    "./metadata.json",
+    "./metadata-system.json"
   ],
   "dependencies": {
     "angular": "1.3.*",
