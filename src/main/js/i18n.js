@@ -11,7 +11,7 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
     .directive('i18nTranslate', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('i18n', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
-    .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'localeResolver', I18nLanguageSwitcherDirective])
+    .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
@@ -358,14 +358,13 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
     };
 }
 
-function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editModeRenderer, $location, $route, localeResolver) {
+function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editModeRenderer, $location, $route) {
     return {
         restrict: ['E', 'A'],
         scope: true,
         link: function (scope, element) {
-            scope.supportedLanguages = [];
-
             i18n.getSupportedLanguages().then(function (languages) {
+                scope.supportedLanguages = [];
                 if (languages.length > 0) {
                     angular.forEach(config.languages || [], function (l) {
                         if (languages.indexOf(l.code) != -1) scope.supportedLanguages.push(l);
@@ -424,35 +423,39 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                 editModeRenderer.open({
                     template: '<form ng-submit="save()">' +
                     '<div class="form-group">' +
-                    '' +
-                    '<div ng-if="languages.length == 0">' +
-                        '<p>' +
-                        'What is the main language of your website?' +
-                        '</p>' +
+                    '<div class="well" ng-if="languages.length == 0" ' +
+                    'i18n code="i18n.menu.what.is.main.language.label" default="What is the main language of your website?" read-only>' +
+                    '{{var}}' +
                     '</div>' +
-                    '' +
                     '<table class="table">' +
                     '<tr ng-if="languages.length > 0">' +
                     '<th>{{languages[0].name}}</th>' +
-                    '<th ng-if="languages.length > 1">Main language</th>' +
-                    '<th ng-if="languages.length == 1"><button type="button" class="btn btn-danger" ng-click="remove(languages[0])"><i class="fa fa-times"></i> Delete</button></th>' +
+                    '<th ng-if="languages.length > 1" i18n code="i18n.menu.main.language.label" default="Main language" read-only>{{var}}</th>' +
+                    '<th ng-if="languages.length == 1"><button type="button" class="btn btn-danger" ng-click="remove(languages[0])" ' +
+                    'i18n code="i18n.menu.delete.language.button" default="Delete" read-only>' +
+                    '<i class="fa fa-times"></i> {{var}}' +
+                    '</button></th>' +
                     '</tr>' +
                     '<tr ng-repeat="lang in languages track by lang.code" ng-if="!$first">' +
-                    '<td>{{lang.name}}</td>' +
-                    '<td><button type="button" class="btn btn-danger" ng-click="remove(lang)"><i class="fa fa-times"></i> Delete</button></td>' +
+                    '<th>{{lang.name}}</th>' +
+                    '<td><button type="button" class="btn btn-danger" ng-click="remove(lang)" i18n code="i18n.menu.delete.language.button" default="Delete" read-only>' +
+                    '<i class="fa fa-times"></i> {{var}}' +
+                    '</button></td>' +
                     '</tr>' +
                     '<tfoot>' +
-                        '<tr>' +
-                        '<td><select ng-model="selectedLanguage" ng-options="l.name for l in availableLanguages track by l.code"></select></td>' +
-                        '<td><button type="button" class="btn btn-primary" ng-click="add(selectedLanguage)"><i class="fa fa-plus"></i> Add</button></td>' +
-                        '</tr>' +
+                    '<tr><td>' +
+                    '<select class="form-control" ng-model="selectedLanguage" ng-options="l.name for l in availableLanguages track by l.code"></select>' +
+                    '</td><td><button type="button" class="btn btn-primary" ng-click="add(selectedLanguage)" i18n code="i18n.menu.add.language.button" default="Add" read-only>' +
+                    '<i class="fa fa-plus"></i> {{var}}' +
+                    '</button></td>' +
+                    '</tr>' +
                     '</tfoot>' +
                     '</table>' +
-                    '' +
                     '</div>' +
+                    '<hr>' +
                     '<div class="dropdown-menu-buttons">' +
-                    '<button type="submit" class="btn btn-primary" ng-disabled="languages.length == 1">Save</button>' +
-                    '<button type="reset" class="btn btn-default" ng-click="close()">Cancel</button>' +
+                    '<button type="submit" class="btn btn-primary" ng-disabled="languages.length == 1" i18n code="i18n.menu.save.button" default="Save" read-only>{{var}}</button>' +
+                    '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.cancel.button" default="Cancel" read-only>{{var}}</button>' +
                     '</div>' +
                     '</form>',
                     scope: child

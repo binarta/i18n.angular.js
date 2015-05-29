@@ -2,11 +2,21 @@
   "msgs":{
     "nl":{
       "i18n.menu.save.button": "Opslaan",
-      "i18n.menu.cancel.button": "Annuleren"
+      "i18n.menu.cancel.button": "Annuleren",
+      "i18n.menu.add.language.button": "Toevoegen",
+      "i18n.menu.delete.language.button": "Verwijder",
+      "i18n.menu.main.language.label": "Hoofdtaal",
+      "i18n.menu.what.is.main.language.label": "Wat is de hoofdtaal van jouw website?",
+      "i18n.menu.add.first.language.button": "Nieuwe taal"
     },
     "en":{
       "i18n.menu.save.button": "Save",
-      "i18n.menu.cancel.button": "Cancel"
+      "i18n.menu.cancel.button": "Cancel",
+      "i18n.menu.add.language.button": "Add",
+      "i18n.menu.delete.language.button": "Delete",
+      "i18n.menu.main.language.label": "Main language",
+      "i18n.menu.what.is.main.language.label": "What is the main language of your website?",
+      "i18n.menu.add.first.language.button": "Add language"
     },
     "fr":{
       "i18n.menu.save.button": "Enregistrer",
