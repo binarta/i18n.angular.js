@@ -365,12 +365,15 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
         link: function (scope, element) {
             i18n.getSupportedLanguages().then(function (languages) {
                 scope.supportedLanguages = [];
-                if (languages.length > 0) {
-                    angular.forEach(config.languages || [], function (l) {
-                        if (languages.indexOf(l.code) != -1) scope.supportedLanguages.push(l);
-                    });
-                    sortLanguagesByName(scope.supportedLanguages);
+                for (var i = 0; i < languages.length; i++) {
+                    for (var j = 0; j < (config.languages || []).length; j++) {
+                        if (languages[i] == config.languages[j].code) {
+                            scope.supportedLanguages.push(config.languages[j]);
+                            break;
+                        }
+                    }
                 }
+                sortLanguagesByName(scope.supportedLanguages);
             });
 
             scope.open = function () {
@@ -424,28 +427,24 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                     template: '<form ng-submit="save()">' +
                     '<div class="form-group">' +
                     '<div class="well" ng-if="languages.length == 0" ' +
-                    'i18n code="i18n.menu.what.is.main.language.label" default="What is the main language of your website?" read-only>' +
+                    'i18n code="i18n.menu.what.is.main.language.label" read-only>' +
                     '{{var}}' +
                     '</div>' +
                     '<table class="table">' +
                     '<tr ng-if="languages.length > 0">' +
                     '<th>{{languages[0].name}}</th>' +
-                    '<th ng-if="languages.length > 1" i18n code="i18n.menu.main.language.label" default="Main language" read-only>{{var}}</th>' +
-                    '<th ng-if="languages.length == 1"><button type="button" class="btn btn-danger" ng-click="remove(languages[0])" ' +
-                    'i18n code="i18n.menu.delete.language.button" default="Delete" read-only>' +
-                    '<i class="fa fa-times"></i> {{var}}' +
-                    '</button></th>' +
+                    '<th i18n code="i18n.menu.main.language.label" read-only>{{var}}</th>' +
                     '</tr>' +
                     '<tr ng-repeat="lang in languages track by lang.code" ng-if="!$first">' +
                     '<th>{{lang.name}}</th>' +
-                    '<td><button type="button" class="btn btn-danger" ng-click="remove(lang)" i18n code="i18n.menu.delete.language.button" default="Delete" read-only>' +
+                    '<td><button type="button" class="btn btn-danger" ng-click="remove(lang)" i18n code="i18n.menu.delete.language.button" read-only>' +
                     '<i class="fa fa-times"></i> {{var}}' +
                     '</button></td>' +
                     '</tr>' +
                     '<tfoot>' +
                     '<tr><td>' +
                     '<select class="form-control" ng-model="selectedLanguage" ng-options="l.name for l in availableLanguages track by l.code"></select>' +
-                    '</td><td><button type="button" class="btn btn-primary" ng-click="add(selectedLanguage)" i18n code="i18n.menu.add.language.button" default="Add" read-only>' +
+                    '</td><td><button type="button" class="btn btn-primary" ng-click="add(selectedLanguage)" i18n code="i18n.menu.add.language.button" read-only>' +
                     '<i class="fa fa-plus"></i> {{var}}' +
                     '</button></td>' +
                     '</tr>' +
@@ -454,8 +453,8 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                     '</div>' +
                     '<hr>' +
                     '<div class="dropdown-menu-buttons">' +
-                    '<button type="submit" class="btn btn-primary" ng-disabled="languages.length == 1" i18n code="i18n.menu.save.button" default="Save" read-only>{{var}}</button>' +
-                    '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.cancel.button" default="Cancel" read-only>{{var}}</button>' +
+                    '<button type="submit" class="btn btn-primary" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
+                    '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>' +
                     '</div>' +
                     '</form>',
                     scope: child
@@ -468,6 +467,17 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                 permission: 'config.store',
                 onClick: scope.open
             });
+
+            scope.getActiveLanguageName = function() {
+                var lang;
+                for (var i = 0; i < scope.supportedLanguages.length; i++) {
+                    if (scope.supportedLanguages[i].code == $rootScope.locale) {
+                        lang = scope.supportedLanguages[i].name;
+                        break;
+                    }
+                }
+                return lang;
+            };
 
             function sortLanguagesByName(languages) {
                 languages.sort(function (l1, l2) {
@@ -508,12 +518,12 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
 
             function getAvailableLanguages(languages) {
                 var availableLanguages = [];
-                angular.forEach(config.languages, function (l) {
+                for(var i = 0; i < config.languages.length; i++) {
                     var exists = languages.some(function (it) {
-                        return it.code == l.code;
+                        return it.code == config.languages[i].code;
                     });
-                    if (!exists) availableLanguages.push({name: l.name, code: l.code});
-                });
+                    if (!exists) availableLanguages.push(config.languages[i]);
+                }
                 sortLanguagesByName(availableLanguages);
                 return availableLanguages;
             }

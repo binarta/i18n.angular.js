@@ -1607,6 +1607,12 @@ describe('i18n', function () {
                         expect(scope.activeLanguage).toBeUndefined();
                     });
                 });
+
+                it('no active language name', function () {
+                    $rootScope.locale = 'default';
+
+                    expect(scope.getActiveLanguageName()).toBeUndefined();
+                });
             });
 
             describe('when supported languages', function () {
@@ -1783,6 +1789,12 @@ describe('i18n', function () {
                             expect(editModeRenderer.close).toHaveBeenCalled();
                         });
                     });
+                });
+
+                it('get active language name', function () {
+                    $rootScope.locale = 'nl';
+
+                    expect(scope.getActiveLanguageName()).toEqual('Dutch');
                 });
             });
         });
