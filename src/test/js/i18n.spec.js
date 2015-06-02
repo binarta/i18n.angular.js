@@ -2028,4 +2028,33 @@ describe('i18n', function () {
             expect(target.path()).toEqual('/');
         });
     });
+
+    describe('toLanguage filter', function () {
+        var config, filter;
+
+        beforeEach(inject(function (_config_, toLanguageNameFilter) {
+            config = _config_;
+            filter = toLanguageNameFilter;
+        }));
+
+        describe('with languages', function () {
+            beforeEach(function () {
+                config.languages = [
+                    {code:'en', name:'English'}
+                ];
+            });
+
+            it('should convert to language name', function () {
+                expect(filter('en')).toEqual('English');
+            });
+
+            it('when unknown', function () {
+                expect(filter('unknown')).toEqual('');
+            });
+        });
+
+        it('no languages in config', function () {
+            expect(filter('en')).toEqual('');
+        });
+    });
 });
