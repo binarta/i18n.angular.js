@@ -745,7 +745,7 @@ function i18nDirectiveTemplate(editor) {
                 '</textarea>' +
                 '</form>' +
                 '<div class=\"dropdown-menu-buttons\">' +
-                '<span class="pull-left" ng-if="locale != \'default\'"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
+                '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
                 '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
                 '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                 '</div>';
@@ -762,7 +762,7 @@ function i18nDirectiveTemplate(editor) {
                 '</textarea>' +
                 '</form>' +
                 '<div class=\"dropdown-menu-buttons\">' +
-                '<span class="pull-left" ng-if="locale != \'default\'"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
+                '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
                 '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
                 '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                 '</div>';
@@ -781,7 +781,7 @@ function i18nDirectiveTemplate(editor) {
                 '</textarea>' +
                 '</form>' +
                 '<div class=\"dropdown-menu-buttons\">' +
-                '<span class="pull-left" ng-if="locale != \'default\'"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
+                '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
                 '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
                 '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                 '</div>';
@@ -822,7 +822,7 @@ function i18nDirectiveTemplate(editor) {
                 '<textarea rows=\"12\" ng-model=\"translation\"></textarea>' +
                 '</form>' +
                 '<div class=\"dropdown-menu-buttons\">' +
-                '<span class="pull-left" ng-if="locale != \'default\'"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
+                '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
                 '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
                 '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                 '</div>';
