@@ -7,7 +7,8 @@
       "i18n.menu.delete.language.button": "Verwijder",
       "i18n.menu.main.language.label": "Hoofdtaal",
       "i18n.menu.what.is.main.language.label": "Wat is de huidige taal van jouw website?",
-      "i18n.menu.add.first.language.button": "Nieuwe taal"
+      "i18n.menu.add.first.language.button": "Nieuwe taal",
+      "i18n.menu.continue.button": "Ga verder"
     },
     "en":{
       "i18n.menu.save.button": "Save",
@@ -16,7 +17,8 @@
       "i18n.menu.delete.language.button": "Delete",
       "i18n.menu.main.language.label": "Main language",
       "i18n.menu.what.is.main.language.label": "What is the current language of your site?",
-      "i18n.menu.add.first.language.button": "New language"
+      "i18n.menu.add.first.language.button": "New language",
+      "i18n.menu.continue.button": "Continue"
     },
     "fr":{
       "i18n.menu.save.button": "Enregistrer",
@@ -25,7 +27,8 @@
       "i18n.menu.delete.language.button": "Supprimer",
       "i18n.menu.main.language.label": "Langue principale",
       "i18n.menu.what.is.main.language.label": "Quelle est la langue actuelle de votre site?",
-      "i18n.menu.add.first.language.button": "Nouvelle langue"
+      "i18n.menu.add.first.language.button": "Nouvelle langue",
+      "i18n.menu.continue.button": "Continuer"
     },
     "de":{
       "i18n.menu.save.button": "Speichern",
@@ -34,7 +37,8 @@
       "i18n.menu.delete.language.button": "Löschen",
       "i18n.menu.main.language.label": "Hauptsprache",
       "i18n.menu.what.is.main.language.label": "Was ist die heutige Sprache Ihrer Website?",
-      "i18n.menu.add.first.language.button": "Neue Sprache"
+      "i18n.menu.add.first.language.button": "Neue Sprache",
+      "i18n.menu.continue.button": "Weiter"
     }
   }
 }

@@ -438,27 +438,41 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                 editModeRenderer.open({
                     template: '<form ng-submit="save()">' +
                     '<div class="form-group">' +
-                    '<div class="well" ng-if="languages.length == 0" ' +
-                    'i18n code="i18n.menu.what.is.main.language.label" read-only>' +
-                    '{{var}}' +
-                    '</div>' +
                     '<table class="table">' +
+                    '<tr ng-if="languages.length == 0">' +
+                    '<th colspan="2">' +
+                    '<i18n code="i18n.menu.what.is.main.language.label" read-only>{{var}}</i18n>' +
+                    '</th>' +
+                    '</tr>' +
                     '<tr ng-if="languages.length > 0">' +
                     '<th>{{languages[0].name}}</th>' +
-                    '<th i18n code="i18n.menu.main.language.label" read-only>{{var}}</th>' +
+                    '<th>' +
+                    '<span ng-show="languages.length > 1" i18n code="i18n.menu.main.language.label" read-only>{{var}}</span>' +
+                    '<button ng-show="languages.length == 1" type="button" class="btn btn-danger" ng-click="remove(languages[0])" ' +
+                    'i18n code="i18n.menu.delete.language.button" read-only>' +
+                    '<i class="fa fa-times"></i> {{var}}' +
+                    '</button>' +
+                    '</th>' +
                     '</tr>' +
                     '<tr ng-repeat="lang in languages track by lang.code" ng-if="!$first">' +
                     '<th>{{lang.name}}</th>' +
-                    '<td><button type="button" class="btn btn-danger" ng-click="remove(lang)" i18n code="i18n.menu.delete.language.button" read-only>' +
+                    '<td>' +
+                    '<button type="button" class="btn btn-danger" ng-click="remove(lang)" i18n code="i18n.menu.delete.language.button" read-only>' +
                     '<i class="fa fa-times"></i> {{var}}' +
-                    '</button></td>' +
+                    '</button>' +
+                    '</td>' +
                     '</tr>' +
                     '<tfoot>' +
-                    '<tr><td>' +
+                    '<tr>' +
+                    '<td>' +
                     '<select class="form-control" ng-model="selectedLanguage" ng-options="l.name for l in availableLanguages track by l.code"></select>' +
-                    '</td><td><button type="button" class="btn btn-primary" ng-click="add(selectedLanguage)" i18n code="i18n.menu.add.language.button" read-only>' +
-                    '<i class="fa fa-plus"></i> {{var}}' +
-                    '</button></td>' +
+                    '</td>' +
+                    '<td>' +
+                    '<button type="button" class="btn btn-primary" ng-click="add(selectedLanguage)">' +
+                    '<span ng-show="languages.length == 0" i18n code="i18n.menu.continue.button" read-only>{{var}}</span>' +
+                    '<span ng-hide="languages.length == 0" i18n code="i18n.menu.add.language.button" read-only><i class="fa fa-plus"></i> {{var}}</span>' +
+                    '</button>' +
+                    '</td>' +
                     '</tr>' +
                     '</tfoot>' +
                     '</table>' +
