@@ -11,7 +11,7 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
     .directive('i18nTranslate', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('i18n', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
-    .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', I18nLanguageSwitcherDirective])
+    .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'activeUserHasPermission', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
@@ -370,7 +370,7 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
     };
 }
 
-function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editModeRenderer, $location, $route) {
+function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editModeRenderer, $location, $route, activeUserHasPermission) {
     return {
         restrict: ['E', 'A'],
         scope: true,
@@ -390,101 +390,120 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
 
             scope.open = function () {
                 var child = scope.$new();
-                var mainLanguage;
-
-                i18n.getMainLanguage().then(function (locale) {
-                    mainLanguage = locale;
-                    child.languages = orderByMainLanguage(angular.copy(scope.supportedLanguages), locale);
-                    child.availableLanguages = getAvailableLanguages(child.languages);
-                    updateSelectedLanguage();
-                });
 
                 child.close = function () {
                     editModeRenderer.close();
                 };
 
-                child.remove = function (lang) {
-                    child.languages = child.languages.filter(function(it) {
-                        return it.code != lang.code;
-                    });
-                    child.availableLanguages.push({name: lang.name, code: lang.code});
-                    sortLanguagesByName(child.availableLanguages);
-                    updateSelectedLanguage();
-                };
+                activeUserHasPermission({
+                    no: unauthorized,
+                    yes: authorized
+                }, 'i18n.config.update');
 
-                child.add = function (lang) {
-                    if (child.languages.length == 0) mainLanguage = lang.code;
-                    child.languages.push({name: lang.name, code: lang.code});
-                    child.languages = orderByMainLanguage(child.languages, mainLanguage);
-                    child.availableLanguages = child.availableLanguages.filter(function(it) {
-                        return it.code != lang.code;
+                function unauthorized() {
+                    editModeRenderer.open({
+                        template: '<form><p i18n code="i18n.menu.update.language.unauthorized.message" read-only>{{var}}</p></form>' +
+                        '<div class="dropdown-menu-buttons">' +
+                        '<a class="btn btn-success" href="https://binarta.com/#!/applications" target="_blank" i18n code="i18n.menu.upgrade.button" read-only>{{var}}</a>' +
+                        '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.close.button" read-only>{{var}}</button>' +
+                        '</div>',
+                        scope: child
                     });
-                    updateSelectedLanguage();
-                };
-
-                child.save = function () {
-                    i18n.updateSupportedLanguages(getLanguageCodes(child.languages), function () {
-                        scope.supportedLanguages = child.languages;
-                        sortLanguagesByName(scope.supportedLanguages);
-                        scope.supportedLanguages.length == 0 ? redirectToUnlocalizedPath() : redirectToMainLanguage();
-                        editModeRenderer.close();
-                    });
-                };
-
-                function updateSelectedLanguage() {
-                    if (child.availableLanguages.length > 0) child.selectedLanguage = child.availableLanguages[0];
                 }
 
-                editModeRenderer.open({
-                    template: '<form ng-submit="save()">' +
-                    '<div class="form-group">' +
-                    '<table class="table">' +
-                    '<tr ng-if="languages.length == 0">' +
-                    '<th colspan="2">' +
-                    '<i18n code="i18n.menu.what.is.main.language.label" read-only>{{var}}</i18n>' +
-                    '</th>' +
-                    '</tr>' +
-                    '<tr ng-if="languages.length > 0">' +
-                    '<th>{{languages[0].name}}</th>' +
-                    '<th>' +
-                    '<span ng-show="languages.length > 1" i18n code="i18n.menu.main.language.label" read-only>{{var}}</span>' +
-                    '<button ng-show="languages.length == 1" type="button" class="btn btn-danger" ng-click="remove(languages[0])" ' +
-                    'i18n code="i18n.menu.delete.language.button" read-only>' +
-                    '<i class="fa fa-times"></i> {{var}}' +
-                    '</button>' +
-                    '</th>' +
-                    '</tr>' +
-                    '<tr ng-repeat="lang in languages track by lang.code" ng-if="!$first">' +
-                    '<th>{{lang.name}}</th>' +
-                    '<td>' +
-                    '<button type="button" class="btn btn-danger" ng-click="remove(lang)" i18n code="i18n.menu.delete.language.button" read-only>' +
-                    '<i class="fa fa-times"></i> {{var}}' +
-                    '</button>' +
-                    '</td>' +
-                    '</tr>' +
-                    '<tfoot>' +
-                    '<tr>' +
-                    '<td>' +
-                    '<select class="form-control" ng-model="selectedLanguage" ng-options="l.name for l in availableLanguages track by l.code"></select>' +
-                    '</td>' +
-                    '<td>' +
-                    '<button type="button" class="btn btn-primary" ng-click="add(selectedLanguage)">' +
-                    '<span ng-show="languages.length == 0" i18n code="i18n.menu.continue.button" read-only>{{var}}</span>' +
-                    '<span ng-hide="languages.length == 0" i18n code="i18n.menu.add.language.button" read-only><i class="fa fa-plus"></i> {{var}}</span>' +
-                    '</button>' +
-                    '</td>' +
-                    '</tr>' +
-                    '</tfoot>' +
-                    '</table>' +
-                    '</div>' +
-                    '<hr>' +
-                    '<div class="dropdown-menu-buttons">' +
-                    '<button type="submit" class="btn btn-primary" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
-                    '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>' +
-                    '</div>' +
-                    '</form>',
-                    scope: child
-                });
+                function authorized() {
+                    var mainLanguage;
+
+                    i18n.getMainLanguage().then(function (locale) {
+                        mainLanguage = locale;
+                        child.languages = orderByMainLanguage(angular.copy(scope.supportedLanguages), locale);
+                        child.availableLanguages = getAvailableLanguages(child.languages);
+                        updateSelectedLanguage();
+                    });
+
+                    child.remove = function (lang) {
+                        child.languages = child.languages.filter(function(it) {
+                            return it.code != lang.code;
+                        });
+                        child.availableLanguages.push({name: lang.name, code: lang.code});
+                        sortLanguagesByName(child.availableLanguages);
+                        updateSelectedLanguage();
+                    };
+
+                    child.add = function (lang) {
+                        if (child.languages.length == 0) mainLanguage = lang.code;
+                        child.languages.push({name: lang.name, code: lang.code});
+                        child.languages = orderByMainLanguage(child.languages, mainLanguage);
+                        child.availableLanguages = child.availableLanguages.filter(function(it) {
+                            return it.code != lang.code;
+                        });
+                        updateSelectedLanguage();
+                    };
+
+                    child.save = function () {
+                        i18n.updateSupportedLanguages(getLanguageCodes(child.languages), function () {
+                            scope.supportedLanguages = child.languages;
+                            sortLanguagesByName(scope.supportedLanguages);
+                            scope.supportedLanguages.length == 0 ? redirectToUnlocalizedPath() : redirectToMainLanguage();
+                            editModeRenderer.close();
+                        });
+                    };
+
+                    function updateSelectedLanguage() {
+                        if (child.availableLanguages.length > 0) child.selectedLanguage = child.availableLanguages[0];
+                    }
+
+                    editModeRenderer.open({
+                        template: '<form ng-submit="save()">' +
+                        '<div class="form-group">' +
+                        '<table class="table">' +
+                        '<tr ng-if="languages.length == 0">' +
+                        '<th colspan="2">' +
+                        '<i18n code="i18n.menu.what.is.main.language.label" read-only>{{var}}</i18n>' +
+                        '</th>' +
+                        '</tr>' +
+                        '<tr ng-if="languages.length > 0">' +
+                        '<th>{{languages[0].name}}</th>' +
+                        '<th>' +
+                        '<span ng-show="languages.length > 1" i18n code="i18n.menu.main.language.label" read-only>{{var}}</span>' +
+                        '<button ng-show="languages.length == 1" type="button" class="btn btn-danger" ng-click="remove(languages[0])" ' +
+                        'i18n code="i18n.menu.delete.language.button" read-only>' +
+                        '<i class="fa fa-times"></i> {{var}}' +
+                        '</button>' +
+                        '</th>' +
+                        '</tr>' +
+                        '<tr ng-repeat="lang in languages track by lang.code" ng-if="!$first">' +
+                        '<th>{{lang.name}}</th>' +
+                        '<td>' +
+                        '<button type="button" class="btn btn-danger" ng-click="remove(lang)" i18n code="i18n.menu.delete.language.button" read-only>' +
+                        '<i class="fa fa-times"></i> {{var}}' +
+                        '</button>' +
+                        '</td>' +
+                        '</tr>' +
+                        '<tfoot>' +
+                        '<tr>' +
+                        '<td>' +
+                        '<select class="form-control" ng-model="selectedLanguage" ng-options="l.name for l in availableLanguages track by l.code"></select>' +
+                        '</td>' +
+                        '<td>' +
+                        '<button type="button" class="btn btn-primary" ng-click="add(selectedLanguage)">' +
+                        '<span ng-show="languages.length == 0" i18n code="i18n.menu.continue.button" read-only>{{var}}</span>' +
+                        '<span ng-hide="languages.length == 0" i18n code="i18n.menu.add.language.button" read-only><i class="fa fa-plus"></i> {{var}}</span>' +
+                        '</button>' +
+                        '</td>' +
+                        '</tr>' +
+                        '</tfoot>' +
+                        '</table>' +
+                        '</div>' +
+                        '<hr>' +
+                        '<div class="dropdown-menu-buttons">' +
+                        '<button type="submit" class="btn btn-primary" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
+                        '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>' +
+                        '</div>' +
+                        '</form>',
+                        scope: child
+                    });
+                }
             };
 
             editMode.bindEvent({

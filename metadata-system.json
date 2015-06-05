@@ -8,7 +8,10 @@
       "i18n.menu.main.language.label": "Hoofdtaal",
       "i18n.menu.what.is.main.language.label": "Wat is de huidige taal van jouw website?",
       "i18n.menu.add.first.language.button": "Nieuwe taal",
-      "i18n.menu.continue.button": "Ga verder"
+      "i18n.menu.continue.button": "Ga verder",
+      "i18n.menu.upgrade.button": "Upgraden",
+      "i18n.menu.close.button": "Sluiten",
+      "i18n.menu.update.language.unauthorized.message": "Vanaf een Essential abonnement kun je hier extra talen toevoegen aan jouw website."
     },
     "en":{
       "i18n.menu.save.button": "Save",
@@ -18,7 +21,10 @@
       "i18n.menu.main.language.label": "Main language",
       "i18n.menu.what.is.main.language.label": "What is the current language of your site?",
       "i18n.menu.add.first.language.button": "New language",
-      "i18n.menu.continue.button": "Continue"
+      "i18n.menu.continue.button": "Continue",
+      "i18n.menu.upgrade.button": "Upgrade",
+      "i18n.menu.close.button": "Close",
+      "i18n.menu.update.language.unauthorized.message": "Add as many languages as you like. This feature is available starting from our Essential subscription."
     },
     "fr":{
       "i18n.menu.save.button": "Enregistrer",
@@ -28,7 +34,10 @@
       "i18n.menu.main.language.label": "Langue principale",
       "i18n.menu.what.is.main.language.label": "Quelle est la langue actuelle de votre site?",
       "i18n.menu.add.first.language.button": "Nouvelle langue",
-      "i18n.menu.continue.button": "Continuer"
+      "i18n.menu.continue.button": "Continuer",
+      "i18n.menu.upgrade.button": "Mise à niveau",
+      "i18n.menu.close.button": "Fermer",
+      "i18n.menu.update.language.unauthorized.message": "Add as many languages as you like. This feature is available starting from our Essential subscription."
     },
     "de":{
       "i18n.menu.save.button": "Speichern",
@@ -38,7 +47,10 @@
       "i18n.menu.main.language.label": "Hauptsprache",
       "i18n.menu.what.is.main.language.label": "Was ist die heutige Sprache Ihrer Website?",
       "i18n.menu.add.first.language.button": "Neue Sprache",
-      "i18n.menu.continue.button": "Weiter"
+      "i18n.menu.continue.button": "Weiter",
+      "i18n.menu.upgrade.button": "Upgraden",
+      "i18n.menu.close.button": "Schließen",
+      "i18n.menu.update.language.unauthorized.message": "Add as many languages as you like. This feature is available starting from our Essential subscription."
     }
   }
 }
