@@ -11,7 +11,8 @@
       "i18n.menu.continue.button": "Ga verder",
       "i18n.menu.upgrade.button": "Upgraden",
       "i18n.menu.close.button": "Sluiten",
-      "i18n.menu.update.language.unauthorized.message": "Vanaf een Essential abonnement kun je hier extra talen toevoegen aan jouw website."
+      "i18n.menu.update.language.unauthorized.message": "Vanaf een Essential abonnement kun je hier extra talen toevoegen aan jouw website.",
+      "i18n.menu.no.multilingualism.message": "Deze tekst is enkel aanpasbaar in de hoofdtaal."
     },
     "en":{
       "i18n.menu.save.button": "Save",
@@ -24,7 +25,8 @@
       "i18n.menu.continue.button": "Continue",
       "i18n.menu.upgrade.button": "Upgrade",
       "i18n.menu.close.button": "Close",
-      "i18n.menu.update.language.unauthorized.message": "Add as many languages as you like. This feature is available starting from our Essential subscription."
+      "i18n.menu.update.language.unauthorized.message": "Add as many languages as you like. This feature is available starting from our Essential subscription.",
+      "i18n.menu.no.multilingualism.message": "This text is only editable in the main language."
     },
     "fr":{
       "i18n.menu.save.button": "Enregistrer",
@@ -37,7 +39,8 @@
       "i18n.menu.continue.button": "Continuer",
       "i18n.menu.upgrade.button": "Mise à niveau",
       "i18n.menu.close.button": "Fermer",
-      "i18n.menu.update.language.unauthorized.message": "Add as many languages as you like. This feature is available starting from our Essential subscription."
+      "i18n.menu.update.language.unauthorized.message": "Add as many languages as you like. This feature is available starting from our Essential subscription.",
+      "i18n.menu.no.multilingualism.message": "This text is only editable in the main language."
     },
     "de":{
       "i18n.menu.save.button": "Speichern",
@@ -50,7 +53,8 @@
       "i18n.menu.continue.button": "Weiter",
       "i18n.menu.upgrade.button": "Upgraden",
       "i18n.menu.close.button": "Schließen",
-      "i18n.menu.update.language.unauthorized.message": "Add as many languages as you like. This feature is available starting from our Essential subscription."
+      "i18n.menu.update.language.unauthorized.message": "Add as many languages as you like. This feature is available starting from our Essential subscription.",
+      "i18n.menu.no.multilingualism.message": "This text is only editable in the main language."
     }
   }
 }

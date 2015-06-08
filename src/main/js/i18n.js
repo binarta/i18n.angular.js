@@ -293,6 +293,7 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
         scope: true,
         link: function (scope, element, attrs) {
             scope.var = undefined;
+            var defaultLocale = 'default';
 
             scope.$watch(function () {
                 return [attrs.code, attrs.default, localeResolver()];
@@ -301,7 +302,7 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
                     code: attrs.code,
                     default: attrs.default
                 };
-                if (attrs.noLocale != undefined) ctx.locale = 'default';
+                if (useDefaultLocale()) ctx.locale = defaultLocale;
 
                 var promise = i18n.resolve(ctx);
                 promise.then(updateTranslation);
@@ -313,7 +314,7 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
                     translation: angular.copy(scope.var),
                     editor: attrs.editor,
                     submit: translate,
-                    template: i18nDirectiveTemplate(attrs.editor)
+                    template: i18nDirectiveTemplate(attrs.editor, scope.isEditable)
                 });
             };
 
@@ -322,12 +323,22 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
                     code: attrs.code,
                     translation: translation
                 };
-                if (attrs.noLocale != undefined) ctx.locale = 'default';
+                if (useDefaultLocale()) ctx.locale = defaultLocale;
 
                 var promise = i18n.translate(ctx);
                 promise.then(function () {
                     topicMessageDispatcher.fire('i18n.updated', ctx);
                 });
+            }
+
+            scope.isEditable = useDefaultLocale() ? currentLocaleIsDefault() : true;
+
+            function useDefaultLocale() {
+                return attrs.noLocale != undefined;
+            }
+
+            function currentLocaleIsDefault() {
+                return localeResolver() == defaultLocale;
             }
 
             function bindClickEvent(editMode) {
@@ -763,7 +774,7 @@ function SelectLocaleController($scope, $routeParams, localeResolver, localeSwap
     }
 }
 
-function i18nDirectiveTemplate(editor) {
+function i18nDirectiveTemplate(editor, isEditable) {
     switch (editor) {
         case 'full':
             return '<form>' +
@@ -773,15 +784,12 @@ function i18nDirectiveTemplate(editor) {
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
                 'height:\'180\',' +
+                (isEditable ? '' : 'readonly: 1,') +
                 'menubar:false}\"' +
                 'ng-model=\"translation\">' +
                 '</textarea>' +
                 '</form>' +
-                '<div class=\"dropdown-menu-buttons\">' +
-                '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
-                '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
-                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
-                '</div>';
+                menuButtons();
         case 'media':
             return '<form>' +
                 '<textarea ui-tinymce=\"{' +
@@ -790,15 +798,12 @@ function i18nDirectiveTemplate(editor) {
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
                 'height:\'180\',' +
+                (isEditable ? '' : 'readonly: 1,') +
                 'menubar:false}\"' +
                 'ng-model=\"translation\">' +
                 '</textarea>' +
                 '</form>' +
-                '<div class=\"dropdown-menu-buttons\">' +
-                '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
-                '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
-                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
-                '</div>';
+                menuButtons();
         case 'full-media':
             return '<form>' +
                 '<textarea ui-tinymce=\"{' +
@@ -809,15 +814,12 @@ function i18nDirectiveTemplate(editor) {
                 'extended_valid_elements : \'img[src|alt|title|width|height|bin-image]\',' +
                 'media_poster: false,' +
                 'height:\'180\',' +
+                (isEditable ? '' : 'readonly: 1,') +
                 'menubar:false}\"' +
                 'ng-model=\"translation\">' +
                 '</textarea>' +
                 '</form>' +
-                '<div class=\"dropdown-menu-buttons\">' +
-                '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
-                '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
-                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
-                '</div>';
+                menuButtons();
         case 'icon':
             var icons = ['', 'adjust', 'anchor', 'archive', 'area-chart', 'arrows', 'arrows-h', 'arrows-v', 'asterisk', 'at', 'ban', 'bar-chart', 'barcode', 'bars', 'beer', 'bell',
                 'bell-o', 'bell-slash', 'bell-slash-o', 'bicycle', 'binoculars', 'birthday-cake', 'bolt', 'bomb', 'book', 'bookmark', 'bookmark-o', 'briefcase', 'bug',
@@ -852,12 +854,23 @@ function i18nDirectiveTemplate(editor) {
             return iconTemplate;
         default:
             return '<form>' +
-                '<textarea rows=\"12\" ng-model=\"translation\"></textarea>' +
+                '<textarea rows=\"12\" ng-model=\"translation\" ' +
+                (isEditable ? '' : 'disabled="true"') +
+                '></textarea>' +
                 '</form>' +
-                '<div class=\"dropdown-menu-buttons\">' +
-                '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
-                '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
-                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
-                '</div>';
+                menuButtons();
+    }
+
+    function menuButtons() {
+        return '<div class=\"dropdown-menu-buttons\">' +
+            (
+                isEditable
+                    ? '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
+                '<button type="submit" class="btn btn-primary" ng-click="submit(translation)" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
+                '<button type="reset" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>'
+                    : '<span class="pull-left" i18n code="i18n.menu.no.multilingualism.message" read-only><i class="fa fa-info-circle fa-fw"></i> {{var}}</span>' +
+                '<button type="button" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.close.button" read-only>{{var}}</button>'
+            ) +
+            '</div>';
     }
 }

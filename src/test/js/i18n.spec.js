@@ -1231,7 +1231,6 @@ describe('i18n', function () {
             };
 
             directive = i18nDirectiveFactory(resolver, renderer, ngRegisterTopicHandler, activeUserHasPermission, dispatcher, localeResolver);
-
         }));
 
         it('restricted to', function () {
@@ -1464,12 +1463,80 @@ describe('i18n', function () {
         });
 
         it('linker registers an open function', function () {
-            attrs.code = 'code';
+            attrs = {
+                code: 'code',
+                editor: 'editor'
+            };
             directive.link(scope, null, attrs);
             scope.var = 'var';
             scope.open();
             expect(rendererArgs.code).toEqual('code');
-            expect(rendererArgs.translation).toEqual(scope.var);
+            expect(rendererArgs.translation).toEqual('var');
+            expect(rendererArgs.editor).toEqual('editor');
+            expect(rendererArgs.submit).toEqual(jasmine.any(Function));
+            expect(rendererArgs.template).toEqual(jasmine.any(String));
+        });
+
+        describe('when no multilingualism is supported', function () {
+            beforeEach(function () {
+                attrs = {
+                    noLocale: ''
+                };
+            });
+
+            describe('and locale is default', function () {
+                beforeEach(function () {
+                    locale = 'default';
+                });
+
+                it('should be editable', function () {
+                    directive.link(scope, null, attrs);
+
+                    expect(scope.isEditable).toBeTruthy();
+                });
+            });
+
+            describe('and locale is not default', function () {
+                beforeEach(function () {
+                    locale = 'en';
+                });
+
+                it('should not be editable', function () {
+                    directive.link(scope, null, attrs);
+
+                    expect(scope.isEditable).toBeFalsy();
+                });
+            });
+        });
+
+        describe('when multilingualism is supported', function () {
+            beforeEach(function () {
+                attrs = {};
+            });
+
+            describe('and locale is default', function () {
+                beforeEach(function () {
+                    locale = 'default';
+                });
+
+                it('should be editable', function () {
+                    directive.link(scope, null, attrs);
+
+                    expect(scope.isEditable).toBeTruthy();
+                });
+            });
+
+            describe('and locale is not default', function () {
+                beforeEach(function () {
+                    locale = 'en';
+                });
+
+                it('should be editable', function () {
+                    directive.link(scope, null, attrs);
+
+                    expect(scope.isEditable).toBeTruthy();
+                });
+            });
         });
 
         describe('on translation success', function () {
