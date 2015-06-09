@@ -867,6 +867,8 @@ function i18nDirectiveTemplate(editor, isEditable) {
                 isEditable
                     ? '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
                 '<button type="submit" class="btn btn-primary" ng-click="submit(translation)" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
+                '<hr class="visible-xs">' +
+                '<button type="reset" class="btn btn-danger" ng-click="erase()" i18n code="i18n.menu.erase.text.button" read-only>{{var}}</button>' +
                 '<button type="reset" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>'
                     : '<span class="pull-left" i18n code="i18n.menu.no.multilingualism.message" read-only><i class="fa fa-info-circle fa-fw"></i> {{var}}</span>' +
                 '<button type="button" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.close.button" read-only>{{var}}</button>'
