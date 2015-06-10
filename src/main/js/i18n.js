@@ -404,9 +404,9 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
             });
 
             scope.open = function () {
-                var child = scope.$new();
+                var rendererScope = $rootScope.$new();
 
-                child.close = function () {
+                rendererScope.close = function () {
                     editModeRenderer.close();
                 };
 
@@ -422,7 +422,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                         '<a class="btn btn-success" href="https://binarta.com/#!/applications" target="_blank" i18n code="i18n.menu.upgrade.button" read-only>{{var}}</a>' +
                         '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.close.button" read-only>{{var}}</button>' +
                         '</div>',
-                        scope: child
+                        scope: rendererScope
                     });
                 }
 
@@ -431,33 +431,33 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
 
                     i18n.getMainLanguage().then(function (locale) {
                         mainLanguage = locale;
-                        child.languages = orderByMainLanguage(angular.copy(scope.supportedLanguages), locale);
-                        child.availableLanguages = getAvailableLanguages(child.languages);
+                        rendererScope.languages = orderByMainLanguage(angular.copy(scope.supportedLanguages), locale);
+                        rendererScope.availableLanguages = getAvailableLanguages(rendererScope.languages);
                         updateSelectedLanguage();
                     });
 
-                    child.remove = function (lang) {
-                        child.languages = child.languages.filter(function(it) {
+                    rendererScope.remove = function (lang) {
+                        rendererScope.languages = rendererScope.languages.filter(function(it) {
                             return it.code != lang.code;
                         });
-                        child.availableLanguages.push({name: lang.name, code: lang.code});
-                        sortLanguagesByName(child.availableLanguages);
+                        rendererScope.availableLanguages.push({name: lang.name, code: lang.code});
+                        sortLanguagesByName(rendererScope.availableLanguages);
                         updateSelectedLanguage();
                     };
 
-                    child.add = function (lang) {
-                        if (child.languages.length == 0) mainLanguage = lang.code;
-                        child.languages.push({name: lang.name, code: lang.code});
-                        child.languages = orderByMainLanguage(child.languages, mainLanguage);
-                        child.availableLanguages = child.availableLanguages.filter(function(it) {
+                    rendererScope.add = function (lang) {
+                        if (rendererScope.languages.length == 0) mainLanguage = lang.code;
+                        rendererScope.languages.push({name: lang.name, code: lang.code});
+                        rendererScope.languages = orderByMainLanguage(rendererScope.languages, mainLanguage);
+                        rendererScope.availableLanguages = rendererScope.availableLanguages.filter(function(it) {
                             return it.code != lang.code;
                         });
                         updateSelectedLanguage();
                     };
 
-                    child.save = function () {
-                        i18n.updateSupportedLanguages(getLanguageCodes(child.languages), function () {
-                            scope.supportedLanguages = child.languages;
+                    rendererScope.save = function () {
+                        i18n.updateSupportedLanguages(getLanguageCodes(rendererScope.languages), function () {
+                            scope.supportedLanguages = rendererScope.languages;
                             sortLanguagesByName(scope.supportedLanguages);
                             scope.supportedLanguages.length == 0 ? redirectToUnlocalizedPath() : redirectToMainLanguage();
                             editModeRenderer.close();
@@ -465,7 +465,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                     };
 
                     function updateSelectedLanguage() {
-                        if (child.availableLanguages.length > 0) child.selectedLanguage = child.availableLanguages[0];
+                        if (rendererScope.availableLanguages.length > 0) rendererScope.selectedLanguage = rendererScope.availableLanguages[0];
                     }
 
                     editModeRenderer.open({
@@ -516,7 +516,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                         '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>' +
                         '</div>' +
                         '</form>',
-                        scope: child
+                        scope: rendererScope
                     });
                 }
             };

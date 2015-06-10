@@ -1735,16 +1735,16 @@ describe('i18n', function () {
                             });
                         });
 
-                        describe('with child scope', function () {
-                            var child;
+                        describe('with renderer scope', function () {
+                            var rendererScope;
 
                             beforeEach(function () {
-                                child = editModeRenderer.open.calls[0].args[0].scope;
-                                child.$digest();
+                                rendererScope = editModeRenderer.open.calls[0].args[0].scope;
+                                scope.$digest();
                             });
 
                             it('on close', function () {
-                                child.close();
+                                rendererScope.close();
 
                                 expect(editModeRenderer.close).toHaveBeenCalled();
                             });
@@ -1768,24 +1768,24 @@ describe('i18n', function () {
                             });
                         });
 
-                        describe('with child scope', function () {
-                            var child;
+                        describe('with renderer scope', function () {
+                            var rendererScope;
 
                             beforeEach(function () {
-                                child = editModeRenderer.open.calls[0].args[0].scope;
-                                child.$digest();
+                                rendererScope = editModeRenderer.open.calls[0].args[0].scope;
+                                rendererScope.$digest();
                             });
 
                             it('copy supported languages to child scope ordered by main language and name', function () {
-                                expect(child.languages).toEqual([english, dutch]);
+                                expect(rendererScope.languages).toEqual([english, dutch]);
                             });
 
                             it('languages that can be added are available on child scope', function () {
-                                expect(child.availableLanguages).toEqual([arabic, chinese, french]);
+                                expect(rendererScope.availableLanguages).toEqual([arabic, chinese, french]);
                             });
 
                             it('set selected language to first one', function () {
-                                expect(child.selectedLanguage).toEqual(arabic);
+                                expect(rendererScope.selectedLanguage).toEqual(arabic);
                             });
 
                             describe('on save', function () {
@@ -1795,9 +1795,9 @@ describe('i18n', function () {
 
                                 describe('with no supported languages', function () {
                                     beforeEach(function () {
-                                        child.remove(dutch);
-                                        child.remove(english);
-                                        child.save();
+                                        rendererScope.remove(dutch);
+                                        rendererScope.remove(english);
+                                        rendererScope.save();
                                         publicConfigWriter.calls[0].args[1].success();
                                         scope.$digest();
                                     });
@@ -1821,8 +1821,8 @@ describe('i18n', function () {
                                 describe('with supported languages', function () {
                                     beforeEach(function () {
                                         $location.path('/en/foo/bar');
-                                        child.add(chinese);
-                                        child.save();
+                                        rendererScope.add(chinese);
+                                        rendererScope.save();
                                         publicConfigWriter.calls[0].args[1].success();
                                         scope.$digest();
                                     });
@@ -1848,9 +1848,9 @@ describe('i18n', function () {
 
                                     describe('and main locale changes', function () {
                                         beforeEach(function () {
-                                            child.remove(dutch);
-                                            child.remove(chinese);
-                                            child.save();
+                                            rendererScope.remove(dutch);
+                                            rendererScope.remove(chinese);
+                                            rendererScope.save();
                                             publicConfigWriter.calls[1].args[1].success();
                                             scope.$digest();
                                         });
@@ -1868,42 +1868,42 @@ describe('i18n', function () {
 
                             describe('on remove', function () {
                                 beforeEach(function () {
-                                    child.remove(dutch);
+                                    rendererScope.remove(dutch);
                                 });
 
                                 it('remove language from supportedLanguages', function () {
-                                    expect(child.languages).toEqual([english]);
+                                    expect(rendererScope.languages).toEqual([english]);
                                 });
 
                                 it('add to languages', function () {
-                                    expect(child.availableLanguages).toEqual([arabic, chinese, dutch, french]);
+                                    expect(rendererScope.availableLanguages).toEqual([arabic, chinese, dutch, french]);
                                 });
 
                                 it('update selected language', function () {
-                                    expect(child.selectedLanguage).toEqual(arabic);
+                                    expect(rendererScope.selectedLanguage).toEqual(arabic);
                                 });
                             });
 
                             describe('on add', function () {
                                 beforeEach(function () {
-                                    child.add(arabic);
+                                    rendererScope.add(arabic);
                                 });
 
                                 it('add to supported languages ordered by main language', function () {
-                                    expect(child.languages).toEqual([english, arabic, dutch]);
+                                    expect(rendererScope.languages).toEqual([english, arabic, dutch]);
                                 });
 
                                 it('remove from languages', function () {
-                                    expect(child.availableLanguages).toEqual([chinese, french]);
+                                    expect(rendererScope.availableLanguages).toEqual([chinese, french]);
                                 });
 
                                 it('update selected language', function () {
-                                    expect(child.selectedLanguage).toEqual(chinese);
+                                    expect(rendererScope.selectedLanguage).toEqual(chinese);
                                 });
                             });
 
                             it('on close', function () {
-                                child.close();
+                                rendererScope.close();
 
                                 expect(editModeRenderer.close).toHaveBeenCalled();
                             });
