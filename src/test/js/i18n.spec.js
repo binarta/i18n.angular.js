@@ -680,6 +680,12 @@ describe('i18n', function () {
                     expect($rootScope.locale).toEqual('');
                 });
 
+                it('main locale is empty string', function () {
+                    goToPath('/foo/bar');
+
+                    expect($rootScope.mainLocale).toEqual('');
+                });
+
                 it('remembered locale is default', function () {
                     goToPath('/foo/bar');
 
@@ -744,6 +750,10 @@ describe('i18n', function () {
                     expect($rootScope.localePrefix).toEqual('/' + locale);
                 });
 
+                it('expose main locale on rootScope', function () {
+                    expect($rootScope.mainLocale).toEqual(locale);
+                });
+
                 it('remember locale', function () {
                     expect(local.locale).toEqual(locale);
                 });
@@ -777,6 +787,10 @@ describe('i18n', function () {
 
                 it('expose localePrefix on rootScope', function () {
                     expect($rootScope.localePrefix).toEqual('/' + locale);
+                });
+
+                it('expose main locale on rootScope', function () {
+                    expect($rootScope.mainLocale).toEqual(locale);
                 });
 
                 it('remember default locale', function () {

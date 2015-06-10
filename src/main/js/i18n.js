@@ -81,6 +81,10 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
         $rootScope.unlocalizedPath = exposeUnlocalizedPath(locale);
         $rootScope.locale = locale || '';
         $rootScope.localePrefix = locale ? '/' + locale : '';
+
+        i18n.getMainLanguage().then(function (lang) {
+            $rootScope.mainLocale = lang || '';
+        });
     }
 
     function exposeUnlocalizedPath(locale) {
