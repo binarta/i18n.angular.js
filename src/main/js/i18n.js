@@ -8,8 +8,8 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
     .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
     .factory('localeSwapper', ['localStorage', 'sessionStorage', 'topicMessageDispatcher', LocaleSwapperFactory])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
-    .directive('i18nTranslate', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
-    .directive('i18n', ['i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'activeUserHasPermission', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
@@ -291,7 +291,7 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, a
     };
 }
 
-function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
+function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
     return {
         restrict: ['E', 'A'],
         scope: true,
@@ -318,7 +318,7 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
                     translation: angular.copy(scope.var),
                     editor: attrs.editor,
                     submit: translate,
-                    template: i18nDirectiveTemplate(attrs.editor, scope.isEditable)
+                    template: i18nDirectiveTemplate(attrs.editor, scope.isTranslatable())
                 });
             };
 
@@ -335,14 +335,20 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
                 });
             }
 
-            scope.isEditable = useDefaultLocale() ? currentLocaleIsDefault() : true;
+            scope.isTranslatable = function() {
+                return useDefaultLocale() ? (currentLocaleIsDefault() || currentLocaleIsMain()) : true;
+            };
 
             function useDefaultLocale() {
                 return attrs.noLocale != undefined;
             }
 
             function currentLocaleIsDefault() {
-                return localeResolver() == defaultLocale;
+                return localeResolver() == defaultLocale ;
+            }
+
+            function currentLocaleIsMain() {
+                return localeResolver() == $rootScope.mainLocale;
             }
 
             function bindClickEvent(editMode) {
@@ -356,17 +362,17 @@ function i18nDirectiveFactory(i18n, i18nRenderer, ngRegisterTopicHandler, active
                 }
             }
 
-            function isTranslatable() {
+            function isReadOnly() {
                 return attrs.readOnly == undefined;
             }
 
             var toggleEditMode = function (editMode) {
                 activeUserHasPermission({
                     no: function () {
-                        if (isTranslatable()) bindClickEvent(false);
+                        if (isReadOnly()) bindClickEvent(false);
                     },
                     yes: function () {
-                        if (isTranslatable()) bindClickEvent(editMode);
+                        if (isReadOnly()) bindClickEvent(editMode);
                     },
                     scope: scope
                 }, 'i18n.message.add');
