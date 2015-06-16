@@ -4,6 +4,10 @@ describe('i18n', function () {
     var resourceLoaderSpy = [];
 
     angular.module('checkpoint', []);
+    angular.module('toggle.edit.mode', [])
+        .service('editMode', function () {
+            this.bindEvent = jasmine.createSpy('bindEvent');
+        });
     angular.module('angularx', [])
         .service('resourceLoader', function () {
             this.add = function (href) {
@@ -947,10 +951,10 @@ describe('i18n', function () {
 
     describe('bin-link directive', function () {
         var element, scope, $rootScope, i18n, link, registry, topics, permitter, $compile, $q;
-        var rendererOpenCalled, rendererArgs;
+        var rendererOpenCalled, rendererArgs, editMode;
 
         beforeEach(inject(function (_$rootScope_, _i18n_, topicRegistryMock, topicMessageDispatcherMock,
-                                    activeUserHasPermissionHelper, _$compile_, _$q_, i18nRendererInstaller) {
+                                    activeUserHasPermissionHelper, _$compile_, _$q_, i18nRendererInstaller, _editMode_) {
             i18n = _i18n_;
             i18n.resolve = function (args) {
                 i18n.resolveArgsSpy = args;
@@ -986,6 +990,7 @@ describe('i18n', function () {
                     rendererArgs = args;
                 }
             };
+            editMode = _editMode_;
 
             i18nRendererInstaller(renderer);
         }));
@@ -1079,59 +1084,52 @@ describe('i18n', function () {
                 createElement('<bin-link code="code"  default-url="http://binarta.com"></bin-link>');
             });
 
-            describe('when edit.mode topic received', function () {
+            it('install editMode event binder', function () {
+                expect(editMode.bindEvent).toHaveBeenCalledWith({
+                    scope: scope,
+                    element: element,
+                    permission: 'i18n.message.add',
+                    onClick: scope.open
+                });
+            });
+
+            describe('and element is clicked', function () {
                 beforeEach(function () {
-                    registry['edit.mode'](true);
+                    editMode.bindEvent.calls[0].args[0].onClick();
                 });
 
-                describe('and user has permission', function () {
-                    beforeEach(function () {
-                        permitter.yes();
+                it('renderer is opened', function () {
+                    expect(rendererOpenCalled).toBeTruthy();
+                    expect(rendererArgs).toEqual({
+                        code: 'code',
+                        translation: link,
+                        editor: 'bin-link',
+                        submit: jasmine.any(Function),
+                        template: jasmine.any(String)
                     });
+                });
 
-                    it('with permission', function () {
-                        expect(permitter.permission).toEqual('i18n.message.add');
+                it('translation is a copy', function () {
+                    scope.link.name = 'updated name';
+
+                    expect(rendererArgs.translation.name).toEqual('link');
+                });
+
+                it('on submit', function () {
+                    rendererArgs.submit(link);
+
+                    expect(i18n.translateArgsSpy).toEqual({
+                        code: 'code',
+                        translation: JSON.stringify(link)
                     });
+                });
 
-                    describe('and element is clicked', function () {
-                        beforeEach(function () {
-                             element.triggerHandler('click');
-                        });
+                it('notification is sent', function () {var promise = rendererArgs.submit(link);
+                    $rootScope.$digest();
 
-                        it('renderer is opened', function () {
-                            expect(rendererOpenCalled).toBeTruthy();
-                            expect(rendererArgs).toEqual({
-                                code: 'code',
-                                translation: link,
-                                editor: 'bin-link',
-                                submit: jasmine.any(Function),
-                                template: jasmine.any(String)
-                            });
-                        });
-
-                        it('translation is a copy', function () {
-                            scope.link.name = 'updated name';
-
-                            expect(rendererArgs.translation.name).toEqual('link');
-                        });
-
-                        it('on submit', function () {
-                            rendererArgs.submit(link);
-
-                            expect(i18n.translateArgsSpy).toEqual({
-                                code: 'code',
-                                translation: JSON.stringify(link)
-                            });
-                        });
-
-                        it('notification is sent', function () {var promise = rendererArgs.submit(link);
-                            $rootScope.$digest();
-
-                            expect(topics['link.updated']).toEqual({
-                                code: 'code',
-                                translation: JSON.stringify(link)
-                            });
-                        });
+                    expect(topics['link.updated']).toEqual({
+                        code: 'code',
+                        translation: JSON.stringify(link)
                     });
                 });
             });
@@ -1142,30 +1140,8 @@ describe('i18n', function () {
                 createElement('<bin-link code="code" read-only></bin-link>');
             });
 
-            describe('when edit.mode topic received', function () {
-                beforeEach(function () {
-                    registry['edit.mode'](true);
-                });
-
-                describe('and user has permission', function () {
-                    beforeEach(function () {
-                        permitter.yes();
-                    });
-
-                    it('with permission', function () {
-                        expect(permitter.permission).toEqual('i18n.message.add');
-                    });
-
-                    describe('and element is clicked', function () {
-                        beforeEach(function () {
-                            element.triggerHandler('click');
-                        });
-
-                        it('renderer is not opened', function () {
-                            expect(rendererOpenCalled).toBeFalsy();
-                        });
-                    });
-                });
+            it('editMode event binder is not installed', function () {
+                expect(editMode.bindEvent).not.toHaveBeenCalled();
             });
         });
 
@@ -1194,13 +1170,12 @@ describe('i18n', function () {
     });
 
     describe('i18n directive', function () {
-        var directive, $rootScope, scope, resolver, registry, permitter, dispatcher, topics, locale;
-        var attrs, rendererOpenCalled, rendererArgs;
+        var directive, $rootScope, scope, resolver, registry, dispatcher, topics, locale;
+        var attrs, rendererOpenCalled, rendererArgs, editMode;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock,
                                     topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, _$rootScope_, $q) {
             attrs = {};
-            permitter = activeUserHasPermissionHelper;
             $rootScope = _$rootScope_;
             scope = $rootScope.$new();
             scope.$apply = function(arg){};
@@ -1243,8 +1218,9 @@ describe('i18n', function () {
                     rendererArgs = args;
                 }
             };
+            editMode = jasmine.createSpyObj('editMode', ['bindEvent']);
 
-            directive = i18nDirectiveFactory($rootScope, resolver, renderer, ngRegisterTopicHandler, activeUserHasPermission, dispatcher, localeResolver);
+            directive = i18nDirectiveFactory($rootScope, resolver, renderer, ngRegisterTopicHandler, editMode, dispatcher, localeResolver);
         }));
 
         it('restricted to', function () {
@@ -1256,90 +1232,41 @@ describe('i18n', function () {
         });
 
         describe('when linked', function () {
-            var bindClickEvent;
-            var unbindClickEvent;
-            var clickHandler;
-            var element = {
-                bind: function(event, handler){
-                    bindClickEvent = event;
-                    clickHandler = handler;
-                },
-                unbind: function(event) {
-                    unbindClickEvent = event;
-                }
-            };
+            var element = {};
 
-            beforeEach(function () {
-                attrs.code = 'code';
-                attrs.default = 'default';
-                attrs.readOnly = undefined;
-                scope.var = 'var';
-
-                directive.link(scope, element, attrs);
-            });
-
-            it('initialize var on scope', function () {
-                expect(scope.var).toBeUndefined();
-            });
-
-            describe('and attribute watch is triggered', function () {
+            describe('and element is read-only', function () {
                 beforeEach(function () {
-                    scope.$digest();
-                });
-
-                it('triggers message resolution', function () {
-                    expect(resolver.args).toEqual({
-                        code: 'code',
-                        default: 'default'
-                    });
-                });
-
-                it('with default locale', function () {
-                    attrs.noLocale = '';
-                    directive.link(scope, element, attrs);
-                    scope.$digest();
-
-                    expect(resolver.args).toEqual({
+                    attrs = {
                         code: 'code',
                         default: 'default',
-                        locale: 'default'
-                    });
+                        readOnly: ''
+                    };
+
+                    directive.link(scope, element, attrs);
                 });
 
-                describe('and code is changed', function () {
-                    beforeEach(function () {
-                        resolver.args = {};
-                        attrs.code = 'changed';
-                        scope.$digest();
-                    });
+                it('editMode event binder is not installed', function () {
+                    expect(editMode.bindEvent).not.toHaveBeenCalled();
+                });
+            });
 
-                    it('triggers message resolution', function () {
-                        expect(resolver.args).toEqual({
-                            code: 'changed',
-                            default: 'default'
-                        });
-                    });
+            describe('and element is not read-only', function () {
+                beforeEach(function () {
+                    attrs = {
+                        code: 'code',
+                        default: 'default'
+                    };
+                    scope.var = 'var';
+
+                    directive.link(scope, element, attrs);
                 });
 
-                describe('and default is changed', function () {
-                    beforeEach(function () {
-                        resolver.args = {};
-                        attrs.default = 'changed';
-                        scope.$digest();
-                    });
-
-                    it('triggers message resolution', function () {
-                        expect(resolver.args).toEqual({
-                            code: 'code',
-                            default: 'changed'
-                        });
-                    });
+                it('initialize var on scope', function () {
+                    expect(scope.var).toBeUndefined();
                 });
 
-                describe('and locale is changed', function () {
+                describe('and attribute watch is triggered', function () {
                     beforeEach(function () {
-                        resolver.args = {};
-                        locale = 'en';
                         scope.$digest();
                     });
 
@@ -1349,205 +1276,131 @@ describe('i18n', function () {
                             default: 'default'
                         });
                     });
-                });
 
-                describe('and message resolution completes without var defined on attributes', function () {
-                    it('exposes translation on scope', function () {
-                        scope.$digest();
-                        expect(scope.var).toEqual('translation');
-                    });
-
-                    it('does not exposes translation on parent scope', function () {
-                        expect(scope.$parent[attrs.var]).toEqual(undefined);
-                    });
-                });
-
-                describe('and message resolution completes with var defined on attributes', function () {
-                    beforeEach(function () {
-                        attrs.var = 'var';
+                    it('with default locale', function () {
+                        attrs.noLocale = '';
                         directive.link(scope, element, attrs);
                         scope.$digest();
-                    });
 
-                    it('exposes translation on scope', function () {
-                        expect(scope.var).toEqual('translation');
-                    });
-
-                    it('exposes translation on parent scope', function () {
-                        expect(scope.$parent[attrs.var]).toEqual('translation');
-                    });
-                });
-            });
-
-            describe('and received edit.mode enabled notification', function () {
-                beforeEach(function () {
-                    registry['edit.mode'](true);
-                });
-
-                it('current scope should be passed to the permission check', function () {
-                    expect(permitter.scope).toEqual(scope);
-                });
-
-                it('the directive should check if the active user has i18n.message.add permission', function () {
-                    expect(permitter.permission).toEqual('i18n.message.add');
-                });
-
-                describe('and active user has i18n.message.add permission', function () {
-                    beforeEach(function () {
-                        permitter.yes();
-                    });
-
-                    describe('and element receives click event', function () {
-                        it('linker calls open function', function() {
-                            scope.var = 'var';
-
-                            var clickResponse = clickHandler();
-
-                            expect(clickResponse).toEqual(false);
-                            expect(bindClickEvent).toEqual('click');
-                            expect(rendererArgs.code).toEqual('code');
-                            expect(rendererArgs.translation).toEqual(scope.var);
+                        expect(resolver.args).toEqual({
+                            code: 'code',
+                            default: 'default',
+                            locale: 'default'
                         });
                     });
 
-                    describe('and element is not translatable', function () {
+                    describe('and code is changed', function () {
                         beforeEach(function () {
-                            attrs.readOnly = "";
-                            bindClickEvent = undefined;
-                            unbindClickEvent = undefined;
-                            clickHandler = undefined;
+                            resolver.args = {};
+                            attrs.code = 'changed';
+                            scope.$digest();
+                        });
 
+                        it('triggers message resolution', function () {
+                            expect(resolver.args).toEqual({
+                                code: 'changed',
+                                default: 'default'
+                            });
+                        });
+                    });
+
+                    describe('and default is changed', function () {
+                        beforeEach(function () {
+                            resolver.args = {};
+                            attrs.default = 'changed';
+                            scope.$digest();
+                        });
+
+                        it('triggers message resolution', function () {
+                            expect(resolver.args).toEqual({
+                                code: 'code',
+                                default: 'changed'
+                            });
+                        });
+                    });
+
+                    describe('and locale is changed', function () {
+                        beforeEach(function () {
+                            resolver.args = {};
+                            locale = 'en';
+                            scope.$digest();
+                        });
+
+                        it('triggers message resolution', function () {
+                            expect(resolver.args).toEqual({
+                                code: 'code',
+                                default: 'default'
+                            });
+                        });
+                    });
+
+                    describe('and message resolution completes without var defined on attributes', function () {
+                        it('exposes translation on scope', function () {
+                            scope.$digest();
+                            expect(scope.var).toEqual('translation');
+                        });
+
+                        it('does not exposes translation on parent scope', function () {
+                            expect(scope.$parent[attrs.var]).toEqual(undefined);
+                        });
+                    });
+
+                    describe('and message resolution completes with var defined on attributes', function () {
+                        beforeEach(function () {
+                            attrs.var = 'var';
                             directive.link(scope, element, attrs);
-                            registry['edit.mode'](true);
-                            permitter.yes();
+                            scope.$digest();
                         });
 
-                        it('click event is not bound', function () {
-                            expect(bindClickEvent).toBeUndefined();
-                            expect(clickHandler).toBeUndefined();
+                        it('exposes translation on scope', function () {
+                            expect(scope.var).toEqual('translation');
+                        });
+
+                        it('exposes translation on parent scope', function () {
+                            expect(scope.$parent[attrs.var]).toEqual('translation');
                         });
                     });
                 });
 
-                describe('and active user does not has i18n.message.add permission', function () {
+                it('install editMode event binder', function () {
+                    expect(editMode.bindEvent).toHaveBeenCalledWith({
+                        scope: scope,
+                        element: element,
+                        permission: 'i18n.message.add',
+                        onClick: scope.open
+                    });
+                });
+
+                it('linker registers an open function', function () {
+                    attrs = {
+                        code: 'code',
+                        editor: 'editor'
+                    };
+                    directive.link(scope, null, attrs);
+                    scope.var = 'var';
+                    scope.open();
+                    expect(rendererArgs.code).toEqual('code');
+                    expect(rendererArgs.translation).toEqual('var');
+                    expect(rendererArgs.editor).toEqual('editor');
+                    expect(rendererArgs.submit).toEqual(jasmine.any(Function));
+                    expect(rendererArgs.template).toEqual(jasmine.any(String));
+                });
+
+                describe('with main locale', function () {
                     beforeEach(function () {
-                        permitter.no();
+                        $rootScope.mainLocale = 'main';
                     });
 
-                    describe('and element is translatable', function () {
-                        it('click event is unbound', function () {
-                            expect(unbindClickEvent).toEqual('click');
-                        });
-                    });
-
-                    describe('and element is not translatable', function () {
+                    describe('when no multilingualism is supported', function () {
                         beforeEach(function () {
-                            attrs.readOnly = "";
-                            bindClickEvent = undefined;
-                            unbindClickEvent = undefined;
-                            clickHandler = undefined;
-
-                            directive.link(scope, element, attrs);
-                            registry['edit.mode'](true);
-                            permitter.no();
+                            attrs = {
+                                noLocale: ''
+                            };
                         });
 
-                        it('should do nothing', function () {
-                            expect(unbindClickEvent).toBeUndefined();
-                        });
-                    });
-                });
-            });
-
-            describe('and received edit.mode disabled notification', function () {
-                beforeEach(function () {
-                    registry['edit.mode'](false);
-                });
-
-                describe('and active user has i18n.message.add permission', function () {
-                    beforeEach(function () {
-                        permitter.yes();
-                    });
-
-                    it('element should unbind click event', function () {
-                        expect(unbindClickEvent).toEqual('click');
-                    });
-                });
-            });
-
-            it('linker registers an open function', function () {
-                attrs = {
-                    code: 'code',
-                    editor: 'editor'
-                };
-                directive.link(scope, null, attrs);
-                scope.var = 'var';
-                scope.open();
-                expect(rendererArgs.code).toEqual('code');
-                expect(rendererArgs.translation).toEqual('var');
-                expect(rendererArgs.editor).toEqual('editor');
-                expect(rendererArgs.submit).toEqual(jasmine.any(Function));
-                expect(rendererArgs.template).toEqual(jasmine.any(String));
-            });
-
-            describe('with main locale', function () {
-                beforeEach(function () {
-                    $rootScope.mainLocale = 'main';
-                });
-
-                describe('when no multilingualism is supported', function () {
-                    beforeEach(function () {
-                        attrs = {
-                            noLocale: ''
-                        };
-                    });
-
-                    describe('and locale is default', function () {
-                        beforeEach(function () {
-                            locale = 'default';
-                        });
-
-                        it('should be editable', function () {
-                            directive.link(scope, null, attrs);
-
-                            expect(scope.isTranslatable()).toBeTruthy();
-                        });
-                    });
-
-                    describe('or locale is main locale', function () {
-                        beforeEach(function () {
-                            locale = 'main';
-                        });
-
-                        it('should be editable', function () {
-                            directive.link(scope, null, attrs);
-
-                            expect(scope.isTranslatable()).toBeTruthy();
-                        });
-                    });
-
-                    describe('and locale is not default and not main locale', function () {
-                        beforeEach(function () {
-                            locale = 'unknown';
-                        });
-
-                        it('should not be editable', function () {
-                            directive.link(scope, null, attrs);
-
-                            expect(scope.isTranslatable()).toBeFalsy();
-                        });
-                    });
-                });
-
-                describe('when multilingualism is supported', function () {
-                    beforeEach(function () {
-                        attrs = {};
-                    });
-
-                    ['default', 'main', 'unknown'].forEach(function (value) {
-                        describe('and locale is ' + value, function () {
+                        describe('and locale is default', function () {
                             beforeEach(function () {
-                                locale = value;
+                                locale = 'default';
                             });
 
                             it('should be editable', function () {
@@ -1556,80 +1409,124 @@ describe('i18n', function () {
                                 expect(scope.isTranslatable()).toBeTruthy();
                             });
                         });
+
+                        describe('or locale is main locale', function () {
+                            beforeEach(function () {
+                                locale = 'main';
+                            });
+
+                            it('should be editable', function () {
+                                directive.link(scope, null, attrs);
+
+                                expect(scope.isTranslatable()).toBeTruthy();
+                            });
+                        });
+
+                        describe('and locale is not default and not main locale', function () {
+                            beforeEach(function () {
+                                locale = 'unknown';
+                            });
+
+                            it('should not be editable', function () {
+                                directive.link(scope, null, attrs);
+
+                                expect(scope.isTranslatable()).toBeFalsy();
+                            });
+                        });
                     });
-                });
-            });
 
-            describe('on translation success', function () {
-                beforeEach(function () {
-                    attrs.code = 'code';
-                    directive.link(scope, null, attrs);
-                    scope.$digest();
-                    scope.open();
-                    rendererArgs.submit('translation');
-                });
-
-                it('message is translated', function () {
-                    expect(resolver.translateArgsSpy).toEqual({
-                        code: 'code',
-                        translation: 'translation'
-                    });
-                });
-
-                it('raises i18n.updated notification', function () {
-                    scope.$digest();
-
-                    expect(topics['i18n.updated']).toEqual({
-                        code: 'code',
-                        translation: 'translation'
-                    });
-                });
-
-                describe('and received i18n.updated notification', function () {
-                    describe('and code matches', function () {
+                    describe('when multilingualism is supported', function () {
                         beforeEach(function () {
-                            directive.link(scope, null, attrs);
-
-                            registry['i18n.updated']({code: 'code', translation: 'foo'});
+                            attrs = {};
                         });
 
-                        it('update translation', function() {
-                            expect(scope.var).toEqual('foo');
-                        });
-                    });
+                        ['default', 'main', 'unknown'].forEach(function (value) {
+                            describe('and locale is ' + value, function () {
+                                beforeEach(function () {
+                                    locale = value;
+                                });
 
-                    describe('and code is different', function () {
-                        beforeEach(function () {
-                            attrs.code = 'code';
-                            attrs.var = 'var';
-                            directive.link(scope, null, attrs);
-                            scope.var = 'translation';
+                                it('should be editable', function () {
+                                    directive.link(scope, null, attrs);
 
-                            registry['i18n.updated']({code: 'other.code', translation: 'foo'});
-                        });
-
-                        it('translation should not be altered', function() {
-                            expect(scope.var).toEqual('translation');
+                                    expect(scope.isTranslatable()).toBeTruthy();
+                                });
+                            });
                         });
                     });
                 });
-            });
 
-            describe('on translation success with custom locale', function () {
-                beforeEach(function () {
-                    attrs.code = 'code';
-                    attrs.noLocale = '';
-                    directive.link(scope, null, attrs);
-                    scope.$digest();
-                    scope.open();
-                    rendererArgs.submit('translation');
+                describe('on translation success', function () {
+                    beforeEach(function () {
+                        attrs.code = 'code';
+                        directive.link(scope, null, attrs);
+                        scope.$digest();
+                        scope.open();
+                        rendererArgs.submit('translation');
+                    });
+
+                    it('message is translated', function () {
+                        expect(resolver.translateArgsSpy).toEqual({
+                            code: 'code',
+                            translation: 'translation'
+                        });
+                    });
+
+                    it('raises i18n.updated notification', function () {
+                        scope.$digest();
+
+                        expect(topics['i18n.updated']).toEqual({
+                            code: 'code',
+                            translation: 'translation'
+                        });
+                    });
+
+                    describe('and received i18n.updated notification', function () {
+                        describe('and code matches', function () {
+                            beforeEach(function () {
+                                directive.link(scope, null, attrs);
+
+                                registry['i18n.updated']({code: 'code', translation: 'foo'});
+                            });
+
+                            it('update translation', function() {
+                                expect(scope.var).toEqual('foo');
+                            });
+                        });
+
+                        describe('and code is different', function () {
+                            beforeEach(function () {
+                                attrs.code = 'code';
+                                attrs.var = 'var';
+                                directive.link(scope, null, attrs);
+                                scope.var = 'translation';
+
+                                registry['i18n.updated']({code: 'other.code', translation: 'foo'});
+                            });
+
+                            it('translation should not be altered', function() {
+                                expect(scope.var).toEqual('translation');
+                            });
+                        });
+                    });
                 });
 
-                it('message is translated', function () {
-                    expect(resolver.translateArgsSpy).toEqual({
-                        code: 'code',
-                        translation: 'translation',
-                        locale: 'default'
+                describe('on translation success with custom locale', function () {
+                    beforeEach(function () {
+                        attrs.code = 'code';
+                        attrs.noLocale = '';
+                        directive.link(scope, null, attrs);
+                        scope.$digest();
+                        scope.open();
+                        rendererArgs.submit('translation');
+                    });
+
+                    it('message is translated', function () {
+                        expect(resolver.translateArgsSpy).toEqual({
+                            code: 'code',
+                            translation: 'translation',
+                            locale: 'default'
+                        });
                     });
                 });
             });

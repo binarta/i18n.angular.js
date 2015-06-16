@@ -1,4 +1,4 @@
-angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'angularx'])
+angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'angularx', 'toggle.edit.mode'])
     .service('i18n', ['$q', 'config', 'i18nMessageReader', 'localeResolver', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
@@ -8,9 +8,9 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
     .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
     .factory('localeSwapper', ['localStorage', 'sessionStorage', 'topicMessageDispatcher', LocaleSwapperFactory])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
-    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
-    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
-    .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'activeUserHasPermission', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
+    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'editMode', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'editMode', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'activeUserHasPermission', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
@@ -187,7 +187,7 @@ function LocaleSwapperFactory(localStorage, sessionStorage, topicMessageDispatch
     }
 }
 
-function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, activeUserHasPermission, i18nRenderer, topicMessageDispatcher) {
+function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, editMode, i18nRenderer, topicMessageDispatcher) {
     return {
         restrict: ['E', 'A'],
         scope: true,
@@ -224,25 +224,17 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, a
                 });
             };
 
-            ngRegisterTopicHandler(scope, 'edit.mode', toggleEditMode);
             ngRegisterTopicHandler(scope, 'link.updated', function (args) {
                 if (scope.code == args.code) updateTranslation(args.translation);
             });
 
-            function toggleEditMode(editMode) {
-                activeUserHasPermission({
-                    no: function () {
-                        if (isTranslatable()) bindClickEvent(false);
-                    },
-                    yes: function () {
-                        if (isTranslatable()) bindClickEvent(editMode);
-                    },
-                    scope: scope
-                }, 'i18n.message.add');
-            }
-
-            function isTranslatable() {
-                return attrs.readOnly == undefined;
+            if (attrs.readOnly == undefined) {
+                editMode.bindEvent({
+                    scope: scope,
+                    element: element,
+                    permission: 'i18n.message.add',
+                    onClick: scope.open
+                });
             }
 
             function translate(link) {
@@ -255,17 +247,6 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, a
                 promise.then(function () {
                     topicMessageDispatcher.fire('link.updated', {code: scope.code, translation: translationString});
                 });
-            }
-
-            function bindClickEvent(editMode) {
-                if (editMode) {
-                    element.bind("click", function () {
-                        scope.$apply(scope.open());
-                        return false;
-                    });
-                } else {
-                    element.unbind("click");
-                }
             }
 
             function updateTranslation(translation) {
@@ -291,7 +272,7 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, a
     };
 }
 
-function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHandler, activeUserHasPermission, topicMessageDispatcher, localeResolver) {
+function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHandler, editMode, topicMessageDispatcher, localeResolver) {
     return {
         restrict: ['E', 'A'],
         scope: true,
@@ -351,34 +332,15 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
                 return localeResolver() == $rootScope.mainLocale;
             }
 
-            function bindClickEvent(editMode) {
-                if (editMode) {
-                    element.bind("click", function () {
-                        scope.$apply(scope.open());
-                        return false;
-                    });
-                } else {
-                    element.unbind("click");
-                }
+            if (attrs.readOnly == undefined) {
+                editMode.bindEvent({
+                    scope: scope,
+                    element: element,
+                    permission: 'i18n.message.add',
+                    onClick: scope.open
+                });
             }
 
-            function isReadOnly() {
-                return attrs.readOnly == undefined;
-            }
-
-            var toggleEditMode = function (editMode) {
-                activeUserHasPermission({
-                    no: function () {
-                        if (isReadOnly()) bindClickEvent(false);
-                    },
-                    yes: function () {
-                        if (isReadOnly()) bindClickEvent(editMode);
-                    },
-                    scope: scope
-                }, 'i18n.message.add');
-            };
-
-            ngRegisterTopicHandler(scope, 'edit.mode', toggleEditMode);
             ngRegisterTopicHandler(scope, 'i18n.updated', function (t) {
                 if (attrs.code == t.code) updateTranslation(t.translation);
             });
