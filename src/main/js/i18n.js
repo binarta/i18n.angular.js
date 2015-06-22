@@ -1,5 +1,5 @@
 angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'angularx', 'toggle.edit.mode'])
-    .service('i18n', ['$q', 'config', 'i18nMessageReader', 'localeResolver', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', I18nService])
+    .service('i18n', ['$q', 'config', 'i18nMessageReader', 'localeResolver', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -567,22 +567,50 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
     };
 }
 
-function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter) {
+function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
     var supportedLanguages;
+    var metadataPromise;
+
+    function getMetadata() {
+        if (!metadataPromise) {
+            metadataPromise = $q.all([
+                $http.get('metadata-app.json'),
+                $http.get('metadata-system.json')
+            ]);
+        }
+        return metadataPromise;
+    }
 
     this.resolve = function (context) {
         var deferred = $q.defer();
+        var fallbackMessage = 'place your text here';
 
         function isUnknown(translation) {
-            return context.default && translation == '???' + context.code + '???';
+            return translation == '???' + context.code + '???';
         }
 
         function fallbackToDefaultWhenUnknown(translation) {
+            isUnknown(translation) ? resolveDefaultTranslation() : resolve(translation);
+        }
+
+        function resolveDefaultTranslation() {
             if (context.default == '') context.default = ' ';
-            if (!context.default) context.default = 'place your text here';
-            return isUnknown(translation) ? context.default : translation;
+            if (context.default) resolve(context.default);
+            else config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : resolve(fallbackMessage);
+        }
+
+        function resolveDefaultTranslationFromMetadata() {
+            var translation = fallbackMessage;
+            getMetadata().then(function (data) {
+                angular.forEach(data, function (metadata) {
+                    var messages = metadata.data.msgs[config.defaultLocaleFromMetadata];
+                    if (messages && messages[context.code]) translation = messages[context.code];
+                });
+            }).finally(function () {
+                resolve(translation);
+            });
         }
 
         if (config.namespace) context.namespace = config.namespace;
@@ -606,11 +634,15 @@ function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFacto
 
         function getFromGateway() {
             i18nMessageGateway(context, function (translation) {
-                deferred.resolve(fallbackToDefaultWhenUnknown(translation));
-                storeInCache(fallbackToDefaultWhenUnknown(translation));
+                fallbackToDefaultWhenUnknown(translation);
             }, function () {
-                deferred.resolve(context.default);
+                resolveDefaultTranslation();
             });
+        }
+
+        function resolve(msg) {
+            deferred.resolve(msg);
+            storeInCache(msg);
         }
 
         function storeInCache(msg) {

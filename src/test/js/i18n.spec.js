@@ -81,9 +81,9 @@ describe('i18n', function () {
     });
 
     describe('i18n service', function () {
-        var $rootScope, config, i18n, localStorage, publicConfigReader, publicConfigWriter, $location;
+        var $rootScope, config, i18n, localStorage, publicConfigReader, publicConfigWriter, $location, $httpBackend;
 
-        beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_, _publicConfigReader_, _publicConfigWriter_, _$location_) {
+        beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_, _publicConfigReader_, _publicConfigWriter_, _$location_, _$httpBackend_) {
             $rootScope = _$rootScope_;
             config = _config_;
             i18n = _i18n_;
@@ -91,6 +91,7 @@ describe('i18n', function () {
             publicConfigReader = _publicConfigReader_;
             publicConfigWriter = _publicConfigWriter_;
             $location = _$location_;
+            $httpBackend = _$httpBackend_;
         }));
 
         it('i18n service should be defined', function () {
@@ -279,12 +280,107 @@ describe('i18n', function () {
                     expect(cache.get('default:default:translation.code')).toEqual(' ');
                 });
 
-                it('resolution without fallback to default available', function () {
-                    context.code = code;
-                    i18n.resolve(context).then(presenter);
-                    resolveTo(unknownCode);
-                    expect(receivedTranslation).toEqual('place your text here');
-                    expect(cache.get('default:default:translation.code')).toEqual('place your text here');
+                describe('resolution without fallback to default available', function () {
+                    beforeEach(function () {
+                        context.code = code;
+                    });
+
+                    describe('without metadata', function () {
+                        it('use fallback text', function () {
+                            i18n.resolve(context).then(presenter);
+                            resolveTo(unknownCode);
+
+                            expect(receivedTranslation).toEqual('place your text here');
+                            expect(cache.get('default:default:translation.code')).toEqual('place your text here');
+                        });
+                    });
+
+                    describe('when using metadata as fallback', function () {
+                        describe ('and code is in metadata-app', function () {
+                            beforeEach(function () {
+                                var metadataApp = {
+                                    'msgs': {
+                                        'en': {
+                                            'translation.code': 'translation from app metadata'
+                                        }
+                                    }
+                                }, metadataSystem = {
+                                    'msgs': {
+                                        'en': {
+                                            'unknown': 'translation from system metadata'
+                                        }
+                                    }
+                                };
+
+                                $httpBackend.expectGET('metadata-app.json').respond(metadataApp);
+                                $httpBackend.expectGET('metadata-system.json').respond(metadataSystem);
+                                config.defaultLocaleFromMetadata = 'en';
+                            });
+
+                            it('use translation from metadata', function () {
+                                i18n.resolve(context).then(presenter);
+                                resolveTo(unknownCode);
+                                $httpBackend.flush();
+
+                                expect(receivedTranslation).toEqual('translation from app metadata');
+                                expect(cache.get('default:default:translation.code')).toEqual('translation from app metadata');
+                            });
+                        });
+
+                        describe ('and code is in metadata-system', function () {
+                            beforeEach(function () {
+                                var metadataApp = {
+                                    'msgs': {
+                                        'en': {
+                                            'unknown': 'translation from app metadata'
+                                        }
+                                    }
+                                }, metadataSystem = {
+                                    'msgs': {
+                                        'en': {
+                                            'translation.code': 'translation from system metadata'
+                                        }
+                                    }
+                                };
+
+                                $httpBackend.expectGET('metadata-app.json').respond(metadataApp);
+                                $httpBackend.expectGET('metadata-system.json').respond(metadataSystem);
+                                config.defaultLocaleFromMetadata = 'en';
+                            });
+
+                            it('use translation from metadata', function () {
+                                i18n.resolve(context).then(presenter);
+                                resolveTo(unknownCode);
+                                $httpBackend.flush();
+
+                                expect(receivedTranslation).toEqual('translation from system metadata');
+                                expect(cache.get('default:default:translation.code')).toEqual('translation from system metadata');
+                            });
+                        });
+
+                        describe('and code is in neither', function () {
+                            beforeEach(function () {
+                                var metadata = {
+                                    'msgs': {
+                                        'en': {}
+                                    }
+                                };
+
+                                $httpBackend.expectGET('metadata-app.json').respond(metadata);
+                                $httpBackend.expectGET('metadata-system.json').respond(metadata);
+                                config.defaultLocaleFromMetadata = 'en';
+                            });
+
+                            it('use translation from metadata', function () {
+                                i18n.resolve(context).then(presenter);
+                                resolveTo(unknownCode);
+                                $httpBackend.flush();
+
+                                expect(receivedTranslation).toEqual('place your text here');
+                                expect(cache.get('default:default:translation.code')).toEqual('place your text here');
+                            });
+                        });
+                    });
                 });
 
                 it('failed resolution fallback to default', function () {
