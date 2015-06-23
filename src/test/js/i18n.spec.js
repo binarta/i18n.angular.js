@@ -1482,6 +1482,18 @@ describe('i18n', function () {
                     expect(rendererArgs.template).toEqual(jasmine.any(String));
                 });
 
+                describe('when element is a link', function () {
+                    beforeEach(function () {
+                        attrs.href = '#!/path/';
+                        directive.link(scope, null, attrs);
+                        scope.open();
+                    });
+
+                    it('pass href to renderer', function () {
+                        expect(rendererArgs.href).toEqual('#!/path/');
+                    });
+                });
+
                 describe('with main locale', function () {
                     beforeEach(function () {
                         $rootScope.mainLocale = 'main';

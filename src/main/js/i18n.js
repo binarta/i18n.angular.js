@@ -294,13 +294,16 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
             }, true);
 
             scope.open = function () {
-                i18nRenderer.open({
+                var ctx = {
                     code: attrs.code,
                     translation: angular.copy(scope.var),
                     editor: attrs.editor,
                     submit: translate,
                     template: i18nDirectiveTemplate(attrs.editor, scope.isTranslatable())
-                });
+                };
+                if (attrs.href) ctx.href = attrs.href;
+
+                i18nRenderer.open(ctx);
             };
 
             function translate(translation) {
@@ -781,36 +784,39 @@ function SelectLocaleController($scope, $routeParams, localeResolver, localeSwap
 function i18nDirectiveTemplate(editor, isEditable) {
     switch (editor) {
         case 'full':
-            return '<form>' +
-                '<textarea ui-tinymce=\"{' +
+            return '<form name="i18nForm">' +
+                topMenuControls() +
+                '<textarea ui-tinymce="{' +
                 'plugins: [\'link fullscreen textcolor paste table\'],' +
                 'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | link | fullscreen\',' +
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
                 'height:\'180\',' +
                 (isEditable ? '' : 'readonly: 1,') +
-                'menubar:false}\"' +
-                'ng-model=\"translation\">' +
+                'menubar:false}"' +
+                'ng-model="translation" name="translation">' +
                 '</textarea>' +
                 '</form>' +
-                menuButtons();
+                bottomMenuControls();
         case 'media':
-            return '<form>' +
-                '<textarea ui-tinymce=\"{' +
+            return '<form name="i18nForm">' +
+                topMenuControls() +
+                '<textarea ui-tinymce="{' +
                 'plugins: [\'fullscreen media paste\'],' +
                 'toolbar: \'undo redo | media | fullscreen\',' +
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
                 'height:\'180\',' +
                 (isEditable ? '' : 'readonly: 1,') +
-                'menubar:false}\"' +
-                'ng-model=\"translation\">' +
+                'menubar:false}"' +
+                'ng-model="translation" name="translation">' +
                 '</textarea>' +
                 '</form>' +
-                menuButtons();
+                bottomMenuControls();
         case 'full-media':
-            return '<form>' +
-                '<textarea ui-tinymce=\"{' +
+            return '<form name="i18nForm">' +
+                topMenuControls() +
+                '<textarea ui-tinymce="{' +
                 'plugins: [\'link fullscreen media binartax.img textcolor paste table\'],' +
                 'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | link | binartax.img media | fullscreen\',' +
                 'theme_advanced_resizing: true,' +
@@ -819,11 +825,11 @@ function i18nDirectiveTemplate(editor, isEditable) {
                 'media_poster: false,' +
                 'height:\'180\',' +
                 (isEditable ? '' : 'readonly: 1,') +
-                'menubar:false}\"' +
-                'ng-model=\"translation\">' +
+                'menubar:false}"' +
+                'ng-model="translation" name="translation">' +
                 '</textarea>' +
                 '</form>' +
-                menuButtons();
+                bottomMenuControls();
         case 'icon':
             var icons = ['', 'adjust', 'anchor', 'archive', 'area-chart', 'arrows', 'arrows-h', 'arrows-v', 'asterisk', 'at', 'ban', 'bar-chart', 'barcode', 'bars', 'beer', 'bell',
                 'bell-o', 'bell-slash', 'bell-slash-o', 'bicycle', 'binoculars', 'birthday-cake', 'bolt', 'bomb', 'book', 'bookmark', 'bookmark-o', 'briefcase', 'bug',
@@ -846,7 +852,7 @@ function i18nDirectiveTemplate(editor, isEditable) {
                 'thumb-tack', 'thumbs-down', 'thumbs-o-down', 'thumbs-o-up', 'thumbs-up', 'ticket', 'times', 'times-circle', 'times-circle-o', 'tint', 'toggle-off', 'toggle-on', 'trash', 'trash-o',
                 'tree', 'trophy', 'truck', 'tty', 'umbrella', 'university', 'unlock', 'unlock-alt', 'upload', 'user', 'users', 'video-camera', 'volume-down', 'volume-off', 'volume-up',
                 'wheelchair', 'wifi', 'wrench'];
-            var iconTemplate = '<form><div class="icons-list">';
+            var iconTemplate = '<form name="i18nForm"><div class="icons-list">';
             for (var i in icons) {
                 iconTemplate += '<button ng-click="submit(\'fa-' + icons[i] + '\')" title="' + icons[i] + '" ng-class="{\'active\':translation == \'fa-' + icons[i] + '\'}">' +
                 '<i class="fa fa-' + icons[i] + ' fa-fw"></i></button>';
@@ -857,24 +863,30 @@ function i18nDirectiveTemplate(editor, isEditable) {
             '</div>';
             return iconTemplate;
         default:
-            return '<form>' +
-                '<textarea rows=\"12\" ng-model=\"translation\" ' +
-                (isEditable ? '' : 'disabled="true"') +
-                '></textarea>' +
+            return '<form name="i18nForm">' +
+                topMenuControls() +
+                '<textarea name="translation" rows="12" ng-model="translation" ' + (isEditable ? '' : 'disabled="true"') + '></textarea>' +
                 '</form>' +
-                menuButtons();
+                bottomMenuControls();
     }
 
-    function menuButtons() {
+    function topMenuControls() {
+        return '<div class="clearfix margin-bottom" ng-show="followLink || locale">' +
+            '<button ng-if="followLink" ng-disabled="i18nForm.$dirty" type="button" class="btn btn-primary pull-left" ng-click="followLink()" i18n code="i18n.menu.follow.link" read-only>' +
+            '{{var}}' +
+            '</button>' +
+            '<span class="pull-right" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
+            '</div>';
+    }
+
+    function bottomMenuControls() {
         return '<div class=\"dropdown-menu-buttons\">' +
             (
                 isEditable
-                    ? '<span class="pull-left" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
+                    ? '<button type="reset" class="btn btn-danger pull-left" ng-click="erase()" i18n code="i18n.menu.erase.text.button" read-only>{{var}}</button>' +
                 '<button type="submit" class="btn btn-primary" ng-click="submit(translation)" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
-                '<hr class="visible-xs">' +
-                '<button type="reset" class="btn btn-danger" ng-click="erase()" i18n code="i18n.menu.erase.text.button" read-only>{{var}}</button>' +
                 '<button type="reset" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>'
-                    : '<span class="pull-left" i18n code="i18n.menu.no.multilingualism.message" read-only><i class="fa fa-info-circle fa-fw"></i> {{var}}</span>' +
+                    : '<span class="pull-left margin-bottom" i18n code="i18n.menu.no.multilingualism.message" read-only><i class="fa fa-info-circle fa-fw"></i> {{var}}</span>' +
                 '<button type="button" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.close.button" read-only>{{var}}</button>'
             ) +
             '</div>';
