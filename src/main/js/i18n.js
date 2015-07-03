@@ -784,7 +784,7 @@ function SelectLocaleController($scope, $routeParams, localeResolver, localeSwap
 function i18nDirectiveTemplate(editor, isEditable) {
     switch (editor) {
         case 'full':
-            return '<form name="i18nForm">' +
+            return '<form name="i18nForm" ng-submit="submit()">' +
                 topMenuControls() +
                 '<textarea ui-tinymce="{' +
                 'plugins: [\'link fullscreen textcolor paste table\'],' +
@@ -796,10 +796,10 @@ function i18nDirectiveTemplate(editor, isEditable) {
                 'menubar:false}"' +
                 'ng-model="translation" name="translation">' +
                 '</textarea>' +
-                '</form>' +
-                bottomMenuControls();
+                bottomMenuControls() +
+                '</form>';
         case 'media':
-            return '<form name="i18nForm">' +
+            return '<form name="i18nForm" ng-submit="submit()">' +
                 topMenuControls() +
                 '<textarea ui-tinymce="{' +
                 'plugins: [\'fullscreen media paste\'],' +
@@ -811,10 +811,10 @@ function i18nDirectiveTemplate(editor, isEditable) {
                 'menubar:false}"' +
                 'ng-model="translation" name="translation">' +
                 '</textarea>' +
-                '</form>' +
-                bottomMenuControls();
+                bottomMenuControls() +
+                '</form>';
         case 'full-media':
-            return '<form name="i18nForm">' +
+            return '<form name="i18nForm" ng-submit="submit()">' +
                 topMenuControls() +
                 '<textarea ui-tinymce="{' +
                 'plugins: [\'link fullscreen media binartax.img textcolor paste table\'],' +
@@ -828,8 +828,8 @@ function i18nDirectiveTemplate(editor, isEditable) {
                 'menubar:false}"' +
                 'ng-model="translation" name="translation">' +
                 '</textarea>' +
-                '</form>' +
-                bottomMenuControls();
+                bottomMenuControls() +
+                '</form>';
         case 'icon':
             var icons = ['', 'adjust', 'anchor', 'archive', 'area-chart', 'arrows', 'arrows-h', 'arrows-v', 'asterisk', 'at', 'ban', 'bar-chart', 'barcode', 'bars', 'beer', 'bell',
                 'bell-o', 'bell-slash', 'bell-slash-o', 'bicycle', 'binoculars', 'birthday-cake', 'bolt', 'bomb', 'book', 'bookmark', 'bookmark-o', 'briefcase', 'bug',
@@ -852,22 +852,22 @@ function i18nDirectiveTemplate(editor, isEditable) {
                 'thumb-tack', 'thumbs-down', 'thumbs-o-down', 'thumbs-o-up', 'thumbs-up', 'ticket', 'times', 'times-circle', 'times-circle-o', 'tint', 'toggle-off', 'toggle-on', 'trash', 'trash-o',
                 'tree', 'trophy', 'truck', 'tty', 'umbrella', 'university', 'unlock', 'unlock-alt', 'upload', 'user', 'users', 'video-camera', 'volume-down', 'volume-off', 'volume-up',
                 'wheelchair', 'wifi', 'wrench'];
-            var iconTemplate = '<form name="i18nForm"><div class="icons-list">';
+            var iconTemplate = '<form name="i18nForm" ng-submit="submit()"><div class="icons-list">';
             for (var i in icons) {
-                iconTemplate += '<button ng-click="submit(\'fa-' + icons[i] + '\')" title="' + icons[i] + '" ng-class="{\'active\':translation == \'fa-' + icons[i] + '\'}">' +
+                iconTemplate += '<button ng-click="translation = \'fa-' + icons[i] + '\'" title="' + icons[i] + '" ng-class="{\'active\':translation == \'fa-' + icons[i] + '\'}">' +
                 '<i class="fa fa-' + icons[i] + ' fa-fw"></i></button>';
             }
-            iconTemplate += '</div></form>' +
+            iconTemplate += '</div>' +
             '<div class="dropdown-menu-buttons">' +
             '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
-            '</div>';
+            '</div></form>';
             return iconTemplate;
         default:
-            return '<form name="i18nForm">' +
+            return '<form name="i18nForm" ng-submit="submit()">' +
                 topMenuControls() +
                 '<textarea name="translation" rows="12" ng-model="translation" ' + (isEditable ? '' : 'disabled="true"') + '></textarea>' +
-                '</form>' +
-                bottomMenuControls();
+                bottomMenuControls() +
+                '</form>';
     }
 
     function topMenuControls() {
@@ -884,7 +884,7 @@ function i18nDirectiveTemplate(editor, isEditable) {
             (
                 isEditable
                     ? '<button type="reset" class="btn btn-danger pull-left" ng-click="erase()" i18n code="i18n.menu.erase.text.button" read-only>{{var}}</button>' +
-                '<button type="submit" class="btn btn-primary" ng-click="submit(translation)" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
+                '<button type="submit" class="btn btn-primary" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
                 '<button type="reset" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>'
                     : '<span class="pull-left margin-bottom" i18n code="i18n.menu.no.multilingualism.message" read-only><i class="fa fa-info-circle fa-fw"></i> {{var}}</span>' +
                 '<button type="button" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.close.button" read-only>{{var}}</button>'
