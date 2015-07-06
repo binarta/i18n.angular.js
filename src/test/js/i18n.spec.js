@@ -98,20 +98,6 @@ describe('i18n', function () {
             expect(i18n).toBeDefined();
         });
 
-        describe('get current locale', function () {
-            it('with known locale', function () {
-                $rootScope.locale = 'l';
-
-                expect(i18n.getCurrentLocale()).toEqual('l');
-            });
-
-            it('no locale', function () {
-                $rootScope.locale = '';
-
-                expect(i18n.getCurrentLocale()).toEqual('default');
-            });
-        });
-
         describe('on translate', function () {
             var writer, context, usecaseAdapter;
 

@@ -1,5 +1,5 @@
 angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'angularx', 'toggle.edit.mode'])
-    .service('i18n', ['$rootScope', '$q', 'config', 'i18nMessageReader', 'localeResolver', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', I18nService])
+    .service('i18n', ['$q', 'config', 'i18nMessageReader', 'localeResolver', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -570,15 +570,11 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
     };
 }
 
-function I18nService($rootScope, $q, config, i18nMessageGateway, localeResolver, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http) {
+function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
     var supportedLanguages;
     var metadataPromise;
-
-    this.getCurrentLocale = function () {
-        return $rootScope.locale || 'default';
-    };
 
     function getMetadata() {
         if (!metadataPromise) {
