@@ -699,7 +699,7 @@ function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFacto
     this.updateSupportedLanguages = function (updatedLanguages, onSuccess) {
         return publicConfigWriter({
             key: 'supportedLanguages',
-            value: JSON.stringify(updatedLanguages)
+            value: updatedLanguages
         }, {
             success: function () {
                 config.supportedLanguages = updatedLanguages;

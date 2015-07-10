@@ -537,7 +537,7 @@ describe('i18n', function () {
                         it('write to public config', function () {
                             expect(publicConfigWriter.calls[0].args[0]).toEqual({
                                 key: 'supportedLanguages',
-                                value: JSON.stringify(lang.value)
+                                value: lang.value
                             });
                         });
 
@@ -1818,7 +1818,7 @@ describe('i18n', function () {
                                     it('write to public config', function () {
                                         expect(publicConfigWriter.calls[0].args[0]).toEqual({
                                             key: 'supportedLanguages',
-                                            value: '[]'
+                                            value: []
                                         });
                                     });
 
@@ -1843,7 +1843,7 @@ describe('i18n', function () {
                                     it('write to public config', function () {
                                         expect(publicConfigWriter.calls[0].args[0]).toEqual({
                                             key: 'supportedLanguages',
-                                            value: '["en","ch","nl"]'
+                                            value: ['en', 'ch' ,'nl']
                                         });
                                     });
 
