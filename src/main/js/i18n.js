@@ -1,4 +1,4 @@
-angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'angularx', 'toggle.edit.mode'])
+angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'toggle.edit.mode'])
     .service('i18n', ['$q', 'config', 'i18nMessageReader', 'localeResolver', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
@@ -15,15 +15,6 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
-    }])
-    .run(['$rootScope', 'resourceLoader', 'activeUserHasPermission', function ($rootScope, resourceLoader, activeUserHasPermission) {
-        activeUserHasPermission({
-            yes: function () {
-                resourceLoader.add('//cdn.binarta.com/js/tinymce/4.1.7/tinymce.min.js');
-                resourceLoader.add('//cdn.binarta.com/js/tinymce/4.1.7/skins/lightgray/skin.min.css'); //pre-loading skin
-            },
-            scope: $rootScope
-        }, 'edit.mode');
     }])
     .filter('trust', ['$sce', function ($sce) {
         return function (val) {

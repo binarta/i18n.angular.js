@@ -1,18 +1,10 @@
 describe('i18n', function () {
     var cache;
 
-    var resourceLoaderSpy = [];
-
     angular.module('checkpoint', []);
     angular.module('toggle.edit.mode', [])
         .service('editMode', function () {
             this.bindEvent = jasmine.createSpy('bindEvent');
-        });
-    angular.module('angularx', [])
-        .service('resourceLoader', function () {
-            this.add = function (href) {
-                resourceLoaderSpy.push(href);
-            };
         });
 
     beforeEach(module('ngRoute'));
@@ -54,30 +46,6 @@ describe('i18n', function () {
         it('cache for i18n is created', inject(function($cacheFactory) {
             expect($cacheFactory.get('i18n')).toBeDefined();
         }))
-    });
-
-    describe('load tinymce', function () {
-        describe('when active user has permission', function () {
-            var permitter;
-
-            beforeEach(inject(function (activeUserHasPermissionHelper) {
-                resourceLoaderSpy = [];
-
-                permitter = activeUserHasPermissionHelper;
-                permitter.yes();
-            }));
-
-            it('user has edit.mode permission', function () {
-                expect(permitter.permission).toEqual('edit.mode');
-            });
-
-            it('resources are loaded', function () {
-                expect(resourceLoaderSpy).toEqual([
-                    '//cdn.binarta.com/js/tinymce/4.1.7/tinymce.min.js',
-                    '//cdn.binarta.com/js/tinymce/4.1.7/skins/lightgray/skin.min.css'
-                ]);
-            });
-        });
     });
 
     describe('i18n service', function () {

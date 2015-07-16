@@ -14,7 +14,6 @@
     "binarta.web.storage.angular": "0.*.*",
     "binarta.notifications.angular": "1.*.*",
     "binarta.checkpoint.angular": "0.*.*",
-    "binarta.angularx": "0.*.*",
     "binarta.toggle.edit.mode.angular": "1.*.*"
   },
   "devDependencies": {
