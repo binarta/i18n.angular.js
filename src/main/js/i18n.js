@@ -787,8 +787,8 @@ function i18nDirectiveTemplate(editor, isEditable) {
             return '<form name="i18nForm" ng-submit="submit()">' +
                 topMenuControls() +
                 '<textarea ui-tinymce="{' +
-                'plugins: [\'link fullscreen textcolor paste table\'],' +
-                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | link | fullscreen\',' +
+                'plugins: [\'link fullscreen textcolor paste table binartax.link\'],' +
+                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | binartax.link | fullscreen\',' +
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
                 'height:\'180\',' +
@@ -817,8 +817,8 @@ function i18nDirectiveTemplate(editor, isEditable) {
             return '<form name="i18nForm" ng-submit="submit()">' +
                 topMenuControls() +
                 '<textarea ui-tinymce="{' +
-                'plugins: [\'link fullscreen media binartax.img textcolor paste table\'],' +
-                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | link | binartax.img media | fullscreen\',' +
+                'plugins: [\'link fullscreen media binartax.img textcolor paste table binartax.link\'],' +
+                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | binartax.link | binartax.img media | fullscreen\',' +
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
                 'extended_valid_elements : \'img[src|alt|title|width|height|bin-image]\',' +
@@ -855,12 +855,12 @@ function i18nDirectiveTemplate(editor, isEditable) {
             var iconTemplate = '<form name="i18nForm" ng-submit="submit()"><div class="icons-list">';
             for (var i in icons) {
                 iconTemplate += '<button ng-click="translation = \'fa-' + icons[i] + '\'" title="' + icons[i] + '" ng-class="{\'active\':translation == \'fa-' + icons[i] + '\'}">' +
-                '<i class="fa fa-' + icons[i] + ' fa-fw"></i></button>';
+                    '<i class="fa fa-' + icons[i] + ' fa-fw"></i></button>';
             }
             iconTemplate += '</div>' +
-            '<div class="dropdown-menu-buttons">' +
-            '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
-            '</div></form>';
+                '<div class="dropdown-menu-buttons">' +
+                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
+                '</div></form>';
             return iconTemplate;
         default:
             return '<form name="i18nForm" ng-submit="submit()">' +
