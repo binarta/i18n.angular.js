@@ -810,11 +810,12 @@ function i18nDirectiveTemplate(editor, isEditable) {
             return '<form name="i18nForm" ng-submit="submit()">' +
                 topMenuControls() +
                 '<textarea ui-tinymce="{' +
-                'plugins: [\'link fullscreen media binartax.img textcolor paste table binartax.link\'],' +
-                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | binartax.link | binartax.img media | fullscreen\',' +
+                'plugins: [\'link fullscreen binartax.img textcolor paste table binartax.link\'],' +
+                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | binartax.link | binartax.img | fullscreen\',' +
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
-                'extended_valid_elements : \'img[src|alt|title|width|height|bin-image]\',' +
+                'object_resizing: false,' +
+                'extended_valid_elements : \'img[src|alt|title|width|height|original-width]\',' +
                 'media_poster: false,' +
                 'height:\'180\',' +
                 (isEditable ? '' : 'readonly: 1,') +
