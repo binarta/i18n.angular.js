@@ -1238,7 +1238,8 @@ describe('i18n', function () {
         var attrs, rendererOpenCalled, rendererArgs, editMode;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock,
-                                    topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, _$rootScope_, $q) {
+                                    topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, _$rootScope_, $q,
+                                    i18nRendererTemplate) {
             attrs = {};
             $rootScope = _$rootScope_;
             scope = $rootScope.$new();
@@ -1284,7 +1285,7 @@ describe('i18n', function () {
             };
             editMode = jasmine.createSpyObj('editMode', ['bindEvent']);
 
-            directive = i18nDirectiveFactory($rootScope, resolver, renderer, ngRegisterTopicHandler, editMode, dispatcher, localeResolver);
+            directive = i18nDirectiveFactory($rootScope, resolver, renderer, ngRegisterTopicHandler, editMode, dispatcher, localeResolver, i18nRendererTemplate);
         }));
 
         it('restricted to', function () {

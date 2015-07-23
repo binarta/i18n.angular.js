@@ -7,9 +7,11 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
     .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
     .factory('localeSwapper', ['localStorage', 'sessionStorage', 'topicMessageDispatcher', LocaleSwapperFactory])
+    .factory('i18nRendererTemplate', I18nRendererTemplateFactory)
+    .factory('i18nRendererTemplateInstaller', ['i18nRendererTemplate', I18nRendererTemplateInstallerFactory])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
-    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'editMode', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
-    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'editMode', 'topicMessageDispatcher', 'localeResolver', i18nDirectiveFactory])
+    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'editMode', 'topicMessageDispatcher', 'localeResolver', 'i18nRendererTemplate', i18nDirectiveFactory])
+    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'editMode', 'topicMessageDispatcher', 'localeResolver', 'i18nRendererTemplate', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'activeUserHasPermission', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
@@ -31,6 +33,57 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
                 }
             }
             return lang;
+        }
+    }])
+    .run(['i18nRendererTemplateInstaller', 'ngRegisterTopicHandler', function (installer, ngRegisterTopicHandler) {
+        ngRegisterTopicHandler({
+            topic: 'edit.mode',
+            handler: installTemplates,
+            executeHandlerOnce: true
+        });
+
+        function installTemplates() {
+            installer.add('default', function (args) {
+                return '<form name=\"i18nForm\" ng-submit=\"submit()\">' +
+                    installer.topMenuControls() +
+                    '<textarea name=\"translation\" rows=\"12\" ng-model=\"translation\" ' + (args.isEditable ? '' : 'disabled=\"true\"') + '></textarea>' +
+                    installer.bottomMenuControls(args.isEditable) +
+                    '</form>';
+            });
+
+            installer.add('icon', function () {
+                var icons = ['', 'adjust', 'anchor', 'archive', 'area-chart', 'arrows', 'arrows-h', 'arrows-v', 'asterisk', 'at', 'ban', 'bar-chart', 'barcode', 'bars', 'beer', 'bell',
+                    'bell-o', 'bell-slash', 'bell-slash-o', 'bicycle', 'binoculars', 'birthday-cake', 'bolt', 'bomb', 'book', 'bookmark', 'bookmark-o', 'briefcase', 'bug',
+                    'building', 'building-o', 'bullhorn', 'bullseye', 'bus', 'calculator', 'calendar', 'calendar-o', 'camera', 'camera-retro', 'car', 'caret-square-o-down', 'caret-square-o-left',
+                    'caret-square-o-right', 'caret-square-o-up', 'cc', 'certificate', 'check', 'check-circle', 'check-circle-o', 'check-square', 'check-square-o', 'child', 'circle', 'circle-o',
+                    'circle-o-notch', 'circle-thin', 'clock-o', 'cloud', 'cloud-download', 'cloud-upload', 'code', 'code-fork', 'coffee', 'cog', 'cogs', 'comment', 'comment-o', 'comments',
+                    'comments-o', 'compass', 'copyright', 'credit-card', 'crop', 'crosshairs', 'cube', 'cubes', 'cutlery', 'database', 'desktop', 'dot-circle-o', 'download', 'ellipsis-h',
+                    'ellipsis-v', 'envelope', 'envelope-o', 'envelope-square', 'eraser', 'exchange', 'exclamation', 'exclamation-circle', 'exclamation-triangle', 'external-link', 'external-link-square',
+                    'eye', 'eye-slash', 'eyedropper', 'fax', 'female', 'fighter-jet', 'file', 'file-o', 'file-text', 'file-text-o', 'file-archive-o', 'file-audio-o', 'file-code-o', 'file-excel-o',
+                    'file-image-o', 'file-pdf-o', 'file-powerpoint-o', 'file-video-o', 'file-word-o', 'film', 'filter', 'fire', 'fire-extinguisher', 'flag', 'flag-checkered', 'flag-o', 'flask',
+                    'folder', 'folder-o', 'folder-open', 'folder-open-o', 'frown-o', 'futbol-o', 'gamepad', 'gavel', 'gift', 'glass', 'globe', 'graduation-cap', 'hdd-o', 'headphones',
+                    'heart', 'heart-o', 'history', 'home', 'inbox', 'info', 'info-circle', 'key', 'keyboard-o', 'language', 'laptop', 'leaf', 'lemon-o', 'level-down', 'level-up',
+                    'life-ring', 'lightbulb-o', 'line-chart', 'location-arrow', 'lock', 'magic', 'magnet', 'male', 'map-marker', 'meh-o', 'microphone', 'microphone-slash', 'minus', 'minus-circle',
+                    'minus-square', 'minus-square-o', 'mobile', 'money', 'moon-o', 'music', 'newspaper-o', 'paint-brush', 'paper-plane', 'paper-plane-o', 'paw', 'pencil', 'pencil-square',
+                    'pencil-square-o', 'phone', 'phone-square', 'picture-o', 'pie-chart', 'plane', 'plug', 'plus', 'plus-circle', 'plus-square', 'plus-square-o', 'power-off', 'print', 'puzzle-piece',
+                    'qrcode', 'question', 'question-circle', 'quote-left', 'quote-right', 'random', 'recycle', 'refresh', 'reply', 'reply-all', 'retweet', 'road', 'rocket', 'rss', 'rss-square',
+                    'search', 'search-minus', 'search-plus', 'share', 'share-alt', 'share-alt-square', 'share-square', 'share-square-o', 'shield', 'shopping-cart', 'sign-in', 'sign-out', 'signal',
+                    'sitemap', 'sliders', 'smile-o', 'sort', 'sort-alpha-asc', 'sort-alpha-desc', 'sort-amount-asc', 'sort-amount-desc', 'sort-asc', 'sort-desc', 'sort-numeric-asc', 'sort-numeric-desc', 'space-shuttle',
+                    'spinner', 'spoon', 'square', 'square-o', 'star', 'star-half', 'star-half-o', 'star-o', 'suitcase', 'sun-o', 'tablet', 'tachometer', 'tag', 'tags', 'tasks', 'taxi', 'terminal',
+                    'thumb-tack', 'thumbs-down', 'thumbs-o-down', 'thumbs-o-up', 'thumbs-up', 'ticket', 'times', 'times-circle', 'times-circle-o', 'tint', 'toggle-off', 'toggle-on', 'trash', 'trash-o',
+                    'tree', 'trophy', 'truck', 'tty', 'umbrella', 'university', 'unlock', 'unlock-alt', 'upload', 'user', 'users', 'video-camera', 'volume-down', 'volume-off', 'volume-up',
+                    'wheelchair', 'wifi', 'wrench'];
+                var iconTemplate = '<form name=\"i18nForm\" ng-submit=\"submit()\"><div class=\"icons-list\">';
+                for (var i in icons) {
+                    iconTemplate += '<button ng-click=\"translation = \'fa-' + icons[i] + '\'\" title=\"' + icons[i] + '\" ng-class=\"{\'active\':translation == \'fa-' + icons[i] + '\'}\">' +
+                        '<i class=\"fa fa-' + icons[i] + ' fa-fw\"></i></button>';
+                }
+                iconTemplate += '</div>' +
+                    '<div class=\"dropdown-menu-buttons\">' +
+                    '<button type=\"reset\" class=\"btn btn-default inline\" ng-click=\"cancel()\" i18n code=\"i18n.menu.cancel.button\" default=\"Annuleren\" read-only ng-bind="var"></button>' +
+                    '</div></form>';
+                return iconTemplate;
+            });
         }
     }])
     .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', 'i18n', '$q', I18nSupportController]);
@@ -263,7 +316,7 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, e
     };
 }
 
-function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHandler, editMode, topicMessageDispatcher, localeResolver) {
+function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHandler, editMode, topicMessageDispatcher, localeResolver, i18nRendererTemplate) {
     return {
         restrict: ['E', 'A'],
         scope: true,
@@ -290,7 +343,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
                     translation: angular.copy(scope.var),
                     editor: attrs.editor,
                     submit: translate,
-                    template: i18nDirectiveTemplate(attrs.editor, scope.isTranslatable())
+                    template: i18nRendererTemplate.getTemplate({editor: attrs.editor, isEditable: scope.isTranslatable()})
                 };
                 if (attrs.href) ctx.href = attrs.href;
 
@@ -772,117 +825,44 @@ function SelectLocaleController($scope, $routeParams, localeResolver, localeSwap
     }
 }
 
-function i18nDirectiveTemplate(editor, isEditable) {
-    switch (editor) {
-        case 'full':
-            return '<form name="i18nForm" ng-submit="submit()">' +
-                topMenuControls() +
-                '<textarea ui-tinymce="{' +
-                'plugins: [\'link fullscreen textcolor paste table binartax.link\'],' +
-                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | binartax.link | fullscreen\',' +
-                'theme_advanced_resizing: true,' +
-                'theme_advanced_resizing_use_cookie : false,' +
-                'object_resizing: false,' +
-                'height:\'180\',' +
-                (isEditable ? '' : 'readonly: 1,') +
-                'menubar:false}"' +
-                'ng-model="translation" name="translation">' +
-                '</textarea>' +
-                bottomMenuControls() +
-                '</form>';
-        case 'media':
-            return '<form name="i18nForm" ng-submit="submit()">' +
-                topMenuControls() +
-                '<textarea ui-tinymce="{' +
-                'plugins: [\'fullscreen media paste\'],' +
-                'toolbar: \'undo redo | media | fullscreen\',' +
-                'theme_advanced_resizing: true,' +
-                'theme_advanced_resizing_use_cookie : false,' +
-                'object_resizing: false,' +
-                'height:\'180\',' +
-                (isEditable ? '' : 'readonly: 1,') +
-                'menubar:false}"' +
-                'ng-model="translation" name="translation">' +
-                '</textarea>' +
-                bottomMenuControls() +
-                '</form>';
-        case 'full-media':
-            return '<form name="i18nForm" ng-submit="submit()">' +
-                topMenuControls() +
-                '<textarea ui-tinymce="{' +
-                'plugins: [\'link fullscreen binartax.img textcolor paste table binartax.link\'],' +
-                'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | binartax.link | binartax.img | fullscreen\',' +
-                'theme_advanced_resizing: true,' +
-                'theme_advanced_resizing_use_cookie : false,' +
-                'object_resizing: false,' +
-                'extended_valid_elements : \'img[src|alt|title|width|height|original-width]\',' +
-                'media_poster: false,' +
-                'height:\'180\',' +
-                (isEditable ? '' : 'readonly: 1,') +
-                'menubar:false}"' +
-                'ng-model="translation" name="translation">' +
-                '</textarea>' +
-                bottomMenuControls() +
-                '</form>';
-        case 'icon':
-            var icons = ['', 'adjust', 'anchor', 'archive', 'area-chart', 'arrows', 'arrows-h', 'arrows-v', 'asterisk', 'at', 'ban', 'bar-chart', 'barcode', 'bars', 'beer', 'bell',
-                'bell-o', 'bell-slash', 'bell-slash-o', 'bicycle', 'binoculars', 'birthday-cake', 'bolt', 'bomb', 'book', 'bookmark', 'bookmark-o', 'briefcase', 'bug',
-                'building', 'building-o', 'bullhorn', 'bullseye', 'bus', 'calculator', 'calendar', 'calendar-o', 'camera', 'camera-retro', 'car', 'caret-square-o-down', 'caret-square-o-left',
-                'caret-square-o-right', 'caret-square-o-up', 'cc', 'certificate', 'check', 'check-circle', 'check-circle-o', 'check-square', 'check-square-o', 'child', 'circle', 'circle-o',
-                'circle-o-notch', 'circle-thin', 'clock-o', 'cloud', 'cloud-download', 'cloud-upload', 'code', 'code-fork', 'coffee', 'cog', 'cogs', 'comment', 'comment-o', 'comments',
-                'comments-o', 'compass', 'copyright', 'credit-card', 'crop', 'crosshairs', 'cube', 'cubes', 'cutlery', 'database', 'desktop', 'dot-circle-o', 'download', 'ellipsis-h',
-                'ellipsis-v', 'envelope', 'envelope-o', 'envelope-square', 'eraser', 'exchange', 'exclamation', 'exclamation-circle', 'exclamation-triangle', 'external-link', 'external-link-square',
-                'eye', 'eye-slash', 'eyedropper', 'fax', 'female', 'fighter-jet', 'file', 'file-o', 'file-text', 'file-text-o', 'file-archive-o', 'file-audio-o', 'file-code-o', 'file-excel-o',
-                'file-image-o', 'file-pdf-o', 'file-powerpoint-o', 'file-video-o', 'file-word-o', 'film', 'filter', 'fire', 'fire-extinguisher', 'flag', 'flag-checkered', 'flag-o', 'flask',
-                'folder', 'folder-o', 'folder-open', 'folder-open-o', 'frown-o', 'futbol-o', 'gamepad', 'gavel', 'gift', 'glass', 'globe', 'graduation-cap', 'hdd-o', 'headphones',
-                'heart', 'heart-o', 'history', 'home', 'inbox', 'info', 'info-circle', 'key', 'keyboard-o', 'language', 'laptop', 'leaf', 'lemon-o', 'level-down', 'level-up',
-                'life-ring', 'lightbulb-o', 'line-chart', 'location-arrow', 'lock', 'magic', 'magnet', 'male', 'map-marker', 'meh-o', 'microphone', 'microphone-slash', 'minus', 'minus-circle',
-                'minus-square', 'minus-square-o', 'mobile', 'money', 'moon-o', 'music', 'newspaper-o', 'paint-brush', 'paper-plane', 'paper-plane-o', 'paw', 'pencil', 'pencil-square',
-                'pencil-square-o', 'phone', 'phone-square', 'picture-o', 'pie-chart', 'plane', 'plug', 'plus', 'plus-circle', 'plus-square', 'plus-square-o', 'power-off', 'print', 'puzzle-piece',
-                'qrcode', 'question', 'question-circle', 'quote-left', 'quote-right', 'random', 'recycle', 'refresh', 'reply', 'reply-all', 'retweet', 'road', 'rocket', 'rss', 'rss-square',
-                'search', 'search-minus', 'search-plus', 'share', 'share-alt', 'share-alt-square', 'share-square', 'share-square-o', 'shield', 'shopping-cart', 'sign-in', 'sign-out', 'signal',
-                'sitemap', 'sliders', 'smile-o', 'sort', 'sort-alpha-asc', 'sort-alpha-desc', 'sort-amount-asc', 'sort-amount-desc', 'sort-asc', 'sort-desc', 'sort-numeric-asc', 'sort-numeric-desc', 'space-shuttle',
-                'spinner', 'spoon', 'square', 'square-o', 'star', 'star-half', 'star-half-o', 'star-o', 'suitcase', 'sun-o', 'tablet', 'tachometer', 'tag', 'tags', 'tasks', 'taxi', 'terminal',
-                'thumb-tack', 'thumbs-down', 'thumbs-o-down', 'thumbs-o-up', 'thumbs-up', 'ticket', 'times', 'times-circle', 'times-circle-o', 'tint', 'toggle-off', 'toggle-on', 'trash', 'trash-o',
-                'tree', 'trophy', 'truck', 'tty', 'umbrella', 'university', 'unlock', 'unlock-alt', 'upload', 'user', 'users', 'video-camera', 'volume-down', 'volume-off', 'volume-up',
-                'wheelchair', 'wifi', 'wrench'];
-            var iconTemplate = '<form name="i18nForm" ng-submit="submit()"><div class="icons-list">';
-            for (var i in icons) {
-                iconTemplate += '<button ng-click="translation = \'fa-' + icons[i] + '\'" title="' + icons[i] + '" ng-class="{\'active\':translation == \'fa-' + icons[i] + '\'}">' +
-                    '<i class="fa fa-' + icons[i] + ' fa-fw"></i></button>';
-            }
-            iconTemplate += '</div>' +
-                '<div class="dropdown-menu-buttons">' +
-                '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
-                '</div></form>';
-            return iconTemplate;
-        default:
-            return '<form name="i18nForm" ng-submit="submit()">' +
-                topMenuControls() +
-                '<textarea name="translation" rows="12" ng-model="translation" ' + (isEditable ? '' : 'disabled="true"') + '></textarea>' +
-                bottomMenuControls() +
-                '</form>';
-    }
+function I18nRendererTemplateFactory() {
+    var templates = [];
 
-    function topMenuControls() {
-        return '<div class="clearfix margin-bottom" ng-show="followLink || locale">' +
-            '<button ng-if="followLink" ng-disabled="i18nForm.$dirty" type="button" class="btn btn-primary pull-left" ng-click="followLink()" i18n code="i18n.menu.follow.link" read-only>' +
-            '{{var}}' +
-            '</button>' +
-            '<span class="pull-right" ng-if="locale"><i class="fa fa-globe fa-fw"></i> {{locale | toLanguageName}}</span>' +
-            '</div>';
+    return {
+        getTemplate: function (args) {
+            var template = templates[args.editor || 'default'];
+            if (template) return template(args);
+            else return '';
+        },
+        addTemplate: function (name, template) {
+            templates[name] = template;
+        }
     }
+}
 
-    function bottomMenuControls() {
-        return '<div class=\"dropdown-menu-buttons\">' +
-            (
-                isEditable
-                    ? '<button type="reset" class="btn btn-danger pull-left" ng-click="erase()" i18n code="i18n.menu.erase.text.button" read-only>{{var}}</button>' +
-                '<button type="submit" class="btn btn-primary" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
-                '<button type="reset" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>'
-                    : '<span class="pull-left margin-bottom" i18n code="i18n.menu.no.multilingualism.message" read-only><i class="fa fa-info-circle fa-fw"></i> {{var}}</span>' +
-                '<button type="button" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.close.button" read-only>{{var}}</button>'
-            ) +
-            '</div>';
+function I18nRendererTemplateInstallerFactory(i18nRendererTemplate) {
+    return {
+        add: function (name, template) {
+            i18nRendererTemplate.addTemplate(name, template);
+        },
+        topMenuControls: function () {
+            return '<div class=\"clearfix margin-bottom\" ng-show=\"followLink || locale\">' +
+                '<button ng-if=\"followLink\" ng-disabled=\"i18nForm.$dirty\" type=\"button\" class=\"btn btn-primary pull-left\" ng-click=\"followLink()\" i18n code=\"i18n.menu.follow.link\" read-only ng-bind="var">' +
+                '</button>' +
+                '<span class=\"pull-right\" ng-if=\"locale\"><i class=\"fa fa-globe fa-fw\"></i> {{locale | toLanguageName}}</span>' +
+                '</div>';
+        },
+        bottomMenuControls: function (isEditable) {
+            return '<div class=\"dropdown-menu-buttons\">' +
+                (
+                    isEditable
+                        ? '<button type=\"reset\" class=\"btn btn-danger pull-left\" ng-click=\"erase()\" i18n code=\"i18n.menu.erase.text.button\" read-only ng-bind="var"></button>' +
+                    '<button type=\"submit\" class=\"btn btn-primary\" i18n code=\"i18n.menu.save.button\" read-only ng-bind="var"></button>' +
+                    '<button type=\"reset\" class=\"btn btn-default\" ng-click=\"cancel()\" i18n code=\"i18n.menu.cancel.button\" read-only ng-bind="var"></button>'
+                        : '<span class=\"pull-left margin-bottom\" i18n code=\"i18n.menu.no.multilingualism.message\" read-only><i class=\"fa fa-info-circle fa-fw\"></i> <span ng-bind="var"></span></span>' +
+                    '<button type=\"button\" class=\"btn btn-default\" ng-click=\"cancel()\" i18n code=\"i18n.menu.close.button\" read-only ng-bind="var"></button>'
+                ) +
+                '</div>';
+        }
     }
 }
