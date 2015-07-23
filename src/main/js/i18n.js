@@ -782,6 +782,7 @@ function i18nDirectiveTemplate(editor, isEditable) {
                 'toolbar: \'undo redo | styleselect | bold italic | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent table | binartax.link | fullscreen\',' +
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
+                'object_resizing: false,' +
                 'height:\'180\',' +
                 (isEditable ? '' : 'readonly: 1,') +
                 'menubar:false}"' +
@@ -797,6 +798,7 @@ function i18nDirectiveTemplate(editor, isEditable) {
                 'toolbar: \'undo redo | media | fullscreen\',' +
                 'theme_advanced_resizing: true,' +
                 'theme_advanced_resizing_use_cookie : false,' +
+                'object_resizing: false,' +
                 'height:\'180\',' +
                 (isEditable ? '' : 'readonly: 1,') +
                 'menubar:false}"' +
