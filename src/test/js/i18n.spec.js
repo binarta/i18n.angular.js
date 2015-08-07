@@ -182,9 +182,9 @@ describe('i18n', function () {
             var translation = 'translation message';
             var defaultTranslation = 'default translation';
             var unknownCode = '???' + code + '???';
-            var receivedTranslation;
-            var presenter = function (translation) {
-                receivedTranslation = translation;
+            var receivedContext;
+            var presenter = function (ctx) {
+                receivedContext = ctx;
             };
             var context;
             var reader;
@@ -193,8 +193,10 @@ describe('i18n', function () {
                 reader = i18nMessageReader;
             }));
             beforeEach(inject(function (localStorage, topicRegistryMock, activeUserHasPermissionHelper) {
-                receivedTranslation = '';
-                context = {};
+                receivedContext = {};
+                context = {
+                    useExtendedResponse: true
+                };
                 registry = topicRegistryMock;
                 permitter = activeUserHasPermissionHelper;
             }));
@@ -206,7 +208,7 @@ describe('i18n', function () {
             it('on resolve construct context with namespace', function () {
                 context.code = code;
                 i18n.resolve(context).then(presenter);
-                expectContextEquals({code:code, namespace:config.namespace});
+                expectContextEquals({useExtendedResponse: true, code:code, namespace:config.namespace});
             });
 
             function resolveTo(translation) {
@@ -226,9 +228,27 @@ describe('i18n', function () {
                     context.code = code;
                 });
 
+                describe('legacy support for simple message response', function () {
+                    beforeEach(function () {
+                        context.useExtendedResponse = false;
+                    });
+
+                    it('resolve to translation', inject(function () {
+                        i18n.resolve(context).then(presenter);
+                        reader.calls[0].args[1](translation);
+                        $rootScope.$digest();
+
+                        expect(receivedContext).toEqual(translation);
+                        expect(cache.get('default:default:translation.code')).toEqual(translation);
+                    }));
+                });
+
                 it('resolve to translation', inject(function () {
                     resolveTo(translation);
-                    expect(receivedTranslation).toEqual(translation);
+                    expect(receivedContext).toEqual({
+                        translation: translation,
+                        code: code
+                    });
                     expect(cache.get('default:default:translation.code')).toEqual(translation);
                 }));
 
@@ -236,7 +256,11 @@ describe('i18n', function () {
                     context.code = code;
                     context.default = defaultTranslation;
                     resolveTo(unknownCode);
-                    expect(receivedTranslation).toEqual(defaultTranslation);
+                    expect(receivedContext).toEqual({
+                        translation: defaultTranslation,
+                        code: code,
+                        default: defaultTranslation
+                    });
                     expect(cache.get('default:default:translation.code')).toEqual(defaultTranslation);
                 });
 
@@ -244,7 +268,11 @@ describe('i18n', function () {
                     context.code = code;
                     context.default = '';
                     resolveTo(unknownCode);
-                    expect(receivedTranslation).toEqual(' ');
+                    expect(receivedContext).toEqual({
+                        translation: ' ',
+                        code: code,
+                        default: ''
+                    });
                     expect(cache.get('default:default:translation.code')).toEqual(' ');
                 });
 
@@ -258,7 +286,10 @@ describe('i18n', function () {
                             i18n.resolve(context).then(presenter);
                             resolveTo(unknownCode);
 
-                            expect(receivedTranslation).toEqual('place your text here');
+                            expect(receivedContext).toEqual({
+                                translation: 'place your text here',
+                                code: code
+                            });
                             expect(cache.get('default:default:translation.code')).toEqual('place your text here');
                         });
                     });
@@ -290,7 +321,10 @@ describe('i18n', function () {
                                 resolveTo(unknownCode);
                                 $httpBackend.flush();
 
-                                expect(receivedTranslation).toEqual('translation from app metadata');
+                                expect(receivedContext).toEqual({
+                                    translation: 'translation from app metadata',
+                                    code: code
+                                });
                                 expect(cache.get('default:default:translation.code')).toEqual('translation from app metadata');
                             });
                         });
@@ -321,7 +355,10 @@ describe('i18n', function () {
                                 resolveTo(unknownCode);
                                 $httpBackend.flush();
 
-                                expect(receivedTranslation).toEqual('translation from system metadata');
+                                expect(receivedContext).toEqual({
+                                    translation: 'translation from system metadata',
+                                    code: code
+                                });
                                 expect(cache.get('default:default:translation.code')).toEqual('translation from system metadata');
                             });
                         });
@@ -344,7 +381,10 @@ describe('i18n', function () {
                                 resolveTo(unknownCode);
                                 $httpBackend.flush();
 
-                                expect(receivedTranslation).toEqual('place your text here');
+                                expect(receivedContext).toEqual({
+                                    translation: 'place your text here',
+                                    code: code
+                                });
                                 expect(cache.get('default:default:translation.code')).toEqual('place your text here');
                             });
                         });
@@ -354,23 +394,34 @@ describe('i18n', function () {
                 it('failed resolution fallback to default', function () {
                     context.default = defaultTranslation;
                     failed();
-                    expect(receivedTranslation).toEqual(defaultTranslation);
+                    expect(receivedContext).toEqual({
+                        translation: defaultTranslation,
+                        code: code,
+                        default: defaultTranslation
+                    });
+                });
+
+                describe('given a previously selected locale', function () {
+                    var locale;
+
+                    beforeEach(function () {
+                        locale = 'lang';
+                        localStorage.locale = locale;
+                    });
+
+                    it('resolution includes the locale on context', function () {
+                        resolveTo(translation);
+
+                        expectContextEquals({useExtendedResponse: true, code:code, locale:locale});
+                        expect(receivedContext).toEqual({
+                            translation: translation,
+                            code: code,
+                            locale: locale
+                        });
+                    });
                 });
             });
 
-            describe('given a previously selected locale', function () {
-                var locale;
-
-                beforeEach(function () {
-                    locale = 'lang';
-                    localStorage.locale = locale;
-                });
-
-                it('resolution includes the locale on context', function () {
-                    i18n.resolve(context, presenter);
-                    expectContextEquals({locale:locale});
-                });
-            });
 
             describe('with namespace and locale', function() {
                 beforeEach(function() {
@@ -396,7 +447,12 @@ describe('i18n', function () {
 
                         it('then no gateway calls are done', function() {
                             expect(reader.calls[0]).toBeUndefined();
-                        })
+                            expect(receivedContext).toEqual({
+                                translation: translation,
+                                code: 'C',
+                                locale: 'L'
+                            });
+                        });
                     });
                 });
 
@@ -1249,12 +1305,19 @@ describe('i18n', function () {
             };
             scope.on = {};
             scope.$parent = [];
+
             resolver = {
                 resolve: function (args) {
                     var deferred = $q.defer();
                     resolver.args = args;
-                    deferred.resolve('translation');
+                    deferred.resolve(resolver.resolverResponse);
                     return deferred.promise;
+                },
+                resolverResponse: {
+                    translation: 'translation',
+                    code: 'code',
+                    default: 'default',
+                    locale: 'locale'
                 },
                 translationMode: false,
                 addListener: function (callback) {
@@ -1360,7 +1423,9 @@ describe('i18n', function () {
                     it('triggers message resolution', function () {
                         expect(resolver.args).toEqual({
                             code: 'code',
-                            default: 'default'
+                            default: 'default',
+                            locale: 'locale',
+                            useExtendedResponse: true
                         });
                     });
 
@@ -1372,7 +1437,8 @@ describe('i18n', function () {
                         expect(resolver.args).toEqual({
                             code: 'code',
                             default: 'default',
-                            locale: 'default'
+                            locale: 'default',
+                            useExtendedResponse: true
                         });
                     });
 
@@ -1386,7 +1452,9 @@ describe('i18n', function () {
                         it('triggers message resolution', function () {
                             expect(resolver.args).toEqual({
                                 code: 'changed',
-                                default: 'default'
+                                default: 'default',
+                                locale: 'locale',
+                                useExtendedResponse: true
                             });
                         });
                     });
@@ -1401,7 +1469,9 @@ describe('i18n', function () {
                         it('triggers message resolution', function () {
                             expect(resolver.args).toEqual({
                                 code: 'code',
-                                default: 'changed'
+                                default: 'changed',
+                                locale: 'locale',
+                                useExtendedResponse: true
                             });
                         });
                     });
@@ -1416,7 +1486,9 @@ describe('i18n', function () {
                         it('triggers message resolution', function () {
                             expect(resolver.args).toEqual({
                                 code: 'code',
-                                default: 'default'
+                                default: 'default',
+                                locale: 'en',
+                                useExtendedResponse: true
                             });
                         });
                     });
@@ -1445,6 +1517,19 @@ describe('i18n', function () {
 
                         it('exposes translation on parent scope', function () {
                             expect(scope.$parent[attrs.var]).toEqual('translation');
+                        });
+                    });
+
+                    describe('and response does not match actual context', function () {
+                        beforeEach(function () {
+                            resolver.resolverResponse.code = 'other';
+
+                            directive.link(scope, element, attrs);
+                            scope.$digest();
+                        });
+
+                        it('do not put translation on scope', function () {
+                            expect(scope.var).toBeUndefined();
                         });
                     });
                 });

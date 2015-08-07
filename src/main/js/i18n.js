@@ -323,20 +323,23 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
         link: function (scope, element, attrs) {
             scope.var = undefined;
             var defaultLocale = 'default';
+            var ctx;
 
             scope.$watch(function () {
                 return [attrs.code, attrs.default, localeResolver()];
             }, function (value) {
                 if (!value[2]) return;
 
-                var ctx = {
-                    code: attrs.code,
-                    default: attrs.default
+                ctx = {
+                    code: value[0],
+                    default: value[1],
+                    locale: value[2],
+                    useExtendedResponse: true
                 };
                 if (useDefaultLocale()) ctx.locale = defaultLocale;
 
                 var promise = i18n.resolve(ctx);
-                promise.then(updateTranslation);
+                promise.then(updateContext);
             }, true);
 
             scope.open = function () {
@@ -397,6 +400,12 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
             function updateTranslation(translation) {
                 scope.var = translation;
                 if (attrs.var) scope.$parent[attrs.var] = translation;
+            }
+
+            function updateContext(update) {
+                if (update.locale == ctx.locale && update.code == ctx.code && update.default == ctx.default) {
+                    updateTranslation(update.translation);
+                }
             }
         }
     };
@@ -641,13 +650,13 @@ function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFacto
         }
 
         function fallbackToDefaultWhenUnknown(translation) {
-            isUnknown(translation) ? resolveDefaultTranslation() : resolve(translation);
+            isUnknown(translation) ? resolveDefaultTranslation() : resolveAndCache(translation);
         }
 
         function resolveDefaultTranslation() {
-            if (context.default == '') context.default = ' ';
-            if (context.default) resolve(context.default);
-            else config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : resolve(fallbackMessage);
+            if (context.default == '') resolveAndCache(' ');
+            else if (context.default) resolveAndCache(context.default);
+            else config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : resolveAndCache(fallbackMessage);
         }
 
         function resolveDefaultTranslationFromMetadata() {
@@ -658,16 +667,13 @@ function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFacto
                     if (messages && messages[context.code]) translation = messages[context.code];
                 });
             }).finally(function () {
-                resolve(translation);
+                resolveAndCache(translation);
             });
         }
 
         if (config.namespace) context.namespace = config.namespace;
         if (!context.locale) context.locale = localeResolver();
-        if (isCached())
-            deferred.resolve(getFromCache());
-        else
-            getFromGateway();
+        isCached() ? resolve(getFromCache()) : getFromGateway();
 
         function isCached() {
             return getFromCache() != undefined;
@@ -689,9 +695,22 @@ function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFacto
             });
         }
 
-        function resolve(msg) {
-            deferred.resolve(msg);
+        function resolveAndCache(msg) {
+            resolve(msg);
             storeInCache(msg);
+        }
+
+        function resolve(msg) {
+            if (context.useExtendedResponse) {
+                deferred.resolve({
+                    translation: msg,
+                    code: context.code,
+                    default: context.default,
+                    locale: context.locale
+                });
+            } else {
+                deferred.resolve(msg);
+            }
         }
 
         function storeInCache(msg) {
