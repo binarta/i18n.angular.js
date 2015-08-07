@@ -1299,6 +1299,27 @@ describe('i18n', function () {
         describe('when linked', function () {
             var element = {};
 
+            describe('and locale is still undefined', function () {
+                beforeEach(function () {
+                    attrs = {
+                        code: 'code'
+                    };
+                    locale = undefined;
+
+                    directive.link(scope, element, attrs);
+                });
+
+                describe('and attribute watch is triggered', function () {
+                    beforeEach(function () {
+                        scope.$digest();
+                    });
+
+                    it('should do nothing', function () {
+                        expect(resolver.args).toBeUndefined();
+                    });
+                });
+            });
+
             describe('and element is read-only', function () {
                 beforeEach(function () {
                     attrs = {
@@ -1322,6 +1343,7 @@ describe('i18n', function () {
                         default: 'default'
                     };
                     scope.var = 'var';
+                    locale = 'locale';
 
                     directive.link(scope, element, attrs);
                 });

@@ -326,7 +326,9 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
 
             scope.$watch(function () {
                 return [attrs.code, attrs.default, localeResolver()];
-            }, function () {
+            }, function (value) {
+                if (!value[2]) return;
+
                 var ctx = {
                     code: attrs.code,
                     default: attrs.default
