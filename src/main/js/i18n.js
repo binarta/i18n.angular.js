@@ -44,9 +44,11 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
 
         function installTemplates() {
             installer.add('default', function (args) {
-                return '<form name=\"i18nForm\" ng-submit=\"submit()\">' +
+                return '<form name="i18nForm" ng-submit="submit()">' +
+                    '<div class="bin-menu-edit-body">' +
                     installer.topMenuControls() +
-                    '<textarea name=\"translation\" rows=\"12\" ng-model=\"translation\" ' + (args.isEditable ? '' : 'disabled=\"true\"') + '></textarea>' +
+                    '<textarea name="translation" rows="12" ng-model="translation" ' + (args.isEditable ? '' : 'disabled="true"') + '></textarea>' +
+                    '</div>' +
                     installer.bottomMenuControls(args.isEditable) +
                     '</form>';
             });
@@ -73,14 +75,14 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
                     'thumb-tack', 'thumbs-down', 'thumbs-o-down', 'thumbs-o-up', 'thumbs-up', 'ticket', 'times', 'times-circle', 'times-circle-o', 'tint', 'toggle-off', 'toggle-on', 'trash', 'trash-o',
                     'tree', 'trophy', 'truck', 'tty', 'umbrella', 'university', 'unlock', 'unlock-alt', 'upload', 'user', 'users', 'video-camera', 'volume-down', 'volume-off', 'volume-up',
                     'wheelchair', 'wifi', 'wrench'];
-                var iconTemplate = '<form name=\"i18nForm\" ng-submit=\"submit()\"><div class=\"icons-list\">';
+                var iconTemplate = '<form name="i18nForm" ng-submit="submit()"><div class="bin-menu-edit-body"><div class="icons-list">';
                 for (var i in icons) {
-                    iconTemplate += '<button ng-click=\"translation = \'fa-' + icons[i] + '\'\" title=\"' + icons[i] + '\" ng-class=\"{\'active\':translation == \'fa-' + icons[i] + '\'}\">' +
-                        '<i class=\"fa fa-' + icons[i] + ' fa-fw\"></i></button>';
+                    iconTemplate += '<button ng-click="translation = \'fa-' + icons[i] + '\'" title="' + icons[i] + '" ng-class="{\'active\':translation == \'fa-' + icons[i] + '\'}">' +
+                        '<i class="fa fa-' + icons[i] + ' fa-fw"></i></button>';
                 }
-                iconTemplate += '</div>' +
-                    '<div class=\"dropdown-menu-buttons\">' +
-                    '<button type=\"reset\" class=\"btn btn-default inline\" ng-click=\"cancel()\" i18n code=\"i18n.menu.cancel.button\" default=\"Annuleren\" read-only ng-bind="var"></button>' +
+                iconTemplate += '</div></div>' +
+                    '<div class="bin-menu-edit-actions">' +
+                    '<button type="reset" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.cancel.button" read-only ng-bind="var"></button>' +
                     '</div></form>';
                 return iconTemplate;
             });
@@ -443,9 +445,9 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
 
                 function unauthorized() {
                     editModeRenderer.open({
-                        template: '<form><p i18n code="i18n.menu.update.language.unauthorized.message" read-only>{{var}}</p></form>' +
-                        '<div class="dropdown-menu-buttons">' +
-                        '<a class="btn btn-success" href="https://binarta.com/#!/applications" target="_blank" i18n code="i18n.menu.upgrade.button" read-only>{{var}}</a>' +
+                        template: '<div class="bin-menu-edit-body"><p i18n code="i18n.menu.update.language.unauthorized.message" read-only>{{var}}</p></div>' +
+                        '<div class="bin-menu-actions">' +
+                        '<a class="btn btn-success pull-left" href="https://binarta.com/#!/applications" target="_blank" i18n code="i18n.menu.upgrade.button" read-only>{{var}}</a>' +
                         '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.close.button" read-only>{{var}}</button>' +
                         '</div>',
                         scope: rendererScope
@@ -496,6 +498,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
 
                     editModeRenderer.open({
                         template: '<form ng-submit="save()">' +
+                        '<div class="bin-menu-edit-body">' +
                         '<div class="form-group">' +
                         '<table class="table">' +
                         '<tr ng-if="languages.length == 0">' +
@@ -536,8 +539,8 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                         '</tfoot>' +
                         '</table>' +
                         '</div>' +
-                        '<hr>' +
-                        '<div class="dropdown-menu-buttons">' +
+                        '</div>' +
+                        '<div class="bin-menu-edit-actions">' +
                         '<button type="submit" class="btn btn-primary" i18n code="i18n.menu.save.button" read-only>{{var}}</button>' +
                         '<button type="reset" class="btn btn-default" ng-click="close()" i18n code="i18n.menu.cancel.button" read-only>{{var}}</button>' +
                         '</div>' +
@@ -874,7 +877,7 @@ function I18nRendererTemplateInstallerFactory(i18nRendererTemplate) {
                 '</div>';
         },
         bottomMenuControls: function (isEditable) {
-            return '<div class=\"dropdown-menu-buttons\">' +
+            return '<div class=\"bin-menu-edit-actions\">' +
                 (
                     isEditable
                         ? '<button type=\"reset\" class=\"btn btn-danger pull-left\" ng-click=\"erase()\" i18n code=\"i18n.menu.erase.text.button\" read-only ng-bind="var"></button>' +
