@@ -1,5 +1,5 @@
 angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'toggle.edit.mode'])
-    .service('i18n', ['$q', 'config', 'i18nMessageReader', 'localeResolver', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', I18nService])
+    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', 'localeResolver', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -628,11 +628,16 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
     };
 }
 
-function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http) {
+function I18nService($rootScope, $q, $location, config, i18nMessageGateway, localeResolver, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
     var supportedLanguages;
     var metadataPromise;
+    var internalLocale;
+
+    $rootScope.$on('$routeChangeStart', function () {
+        internalLocale = undefined;
+    });
 
     function getMetadata() {
         if (!metadataPromise) {
@@ -642,6 +647,16 @@ function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFacto
             ]);
         }
         return metadataPromise;
+    }
+
+    function getLocaleFromPath(languages) {
+        var param = getFirstRouteParam($location.path());
+        if (languages.indexOf(param) != -1) return param;
+    }
+
+    function getFirstRouteParam(path) {
+        var param = path.match(/^\/[^\/]+\//);
+        if (param) return param[0].replace(/\//g,'');
     }
 
     this.resolve = function (context) {
@@ -775,6 +790,24 @@ function I18nService($q, config, i18nMessageGateway, localeResolver, $cacheFacto
                 if (onSuccess) onSuccess();
             }
         });
+    };
+
+    this.getInternalLocale = function () {
+        if(angular.isUndefined(internalLocale)) {
+            var deferred = $q.defer();
+            $q.all([
+                self.getSupportedLanguages(),
+                self.getMainLanguage()
+            ]).then(function (result) {
+                if (result[0].length > 0) {
+                    var locale = getLocaleFromPath(result[0]);
+                    if (locale && !(config.useDefaultAsMainLocale && locale == result[1])) deferred.resolve(locale);
+                    else deferred.resolve('default');
+                } else deferred.resolve('default');
+            });
+            internalLocale = deferred.promise;
+        }
+        return internalLocale;
     };
 }
 

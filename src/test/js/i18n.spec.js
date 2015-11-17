@@ -648,6 +648,135 @@ describe('i18n', function () {
                 });
             });
         });
+
+        describe('get internal locale', function () {
+            var locale;
+
+            function changeRoute(route) {
+                $location.path(route);
+                $rootScope.$broadcast("$routeChangeStart");
+            }
+
+            beforeEach(function () {
+                locale = undefined;
+            });
+
+            describe('when no multilanguage', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.resolve([]);
+                    i18n.getSupportedLanguages = function () {
+                        return deferred.promise;
+                    }
+                }));
+
+                it('should return default locale', function () {
+                    i18n.getInternalLocale().then(function (l) {
+                        locale = l
+                    });
+                    $rootScope.$digest();
+
+                    expect(locale).toEqual('default');
+                });
+            });
+
+            describe('with multilanguage', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.resolve(['en', 'nl', 'fr']);
+                    i18n.getSupportedLanguages = function () {
+                        return deferred.promise;
+                    }
+                }));
+
+                describe('and do not use default as main locale', function () {
+                    beforeEach(function () {
+                        config.useDefaultAsMainLocale = false;
+                    });
+
+                    describe('and main locale is in path', function () {
+                        beforeEach(function () {
+                            changeRoute('/en/some/path');
+                        });
+
+                        it('should return locale', function () {
+                            i18n.getInternalLocale().then(function (l) {
+                                locale = l
+                            });
+                            $rootScope.$digest();
+
+                            expect(locale).toEqual('en');
+                        });
+                    });
+                });
+
+                describe('and use default as main locale', function () {
+                    beforeEach(function () {
+                        config.useDefaultAsMainLocale = true;
+                    });
+
+                    describe('and main locale is in path', function () {
+                        beforeEach(function () {
+                            changeRoute('/en/some/path');
+                        });
+
+                        it('should return default locale', function () {
+                            i18n.getInternalLocale().then(function (l) {
+                                locale = l
+                            });
+                            $rootScope.$digest();
+
+                            expect(locale).toEqual('default');
+                        });
+                    });
+
+                    describe('locale is not in path', function () {
+                        beforeEach(function () {
+                            changeRoute('/some/path');
+                        });
+
+                        it('should return default locale', function () {
+                            i18n.getInternalLocale().then(function (l) {
+                                locale = l
+                            });
+                            $rootScope.$digest();
+
+                            expect(locale).toEqual('default');
+                        });
+                    });
+
+                    describe('locale is in path', function () {
+                        beforeEach(function () {
+                            changeRoute('/nl/some/path');
+                        });
+
+                        it('should return locale', function () {
+                            i18n.getInternalLocale().then(function (l) {
+                                locale = l
+                            });
+                            $rootScope.$digest();
+
+                            expect(locale).toEqual('nl');
+                        });
+                    });
+
+                    it('on route change should return new locale', function () {
+                        changeRoute('/nl/some/path');
+                        i18n.getInternalLocale().then(function (l) {
+                            locale = l
+                        });
+                        $rootScope.$digest();
+                        changeRoute('/fr/some/path');
+                        i18n.getInternalLocale().then(function (l) {
+                            locale = l
+                        });
+                        $rootScope.$digest();
+
+                        expect(locale).toEqual('fr');
+                    });
+                });
+            });
+        });
     });
 
     describe('I18nDefaultRendererService', function () {
