@@ -321,20 +321,16 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
             var ctx;
 
             scope.$watch(function () {
-                return [attrs.code, attrs.default, localeResolver()];
+                return [attrs.code, attrs.default];
             }, function (value) {
-                if (!value[2]) return;
-
                 ctx = {
                     code: value[0],
                     default: value[1],
-                    locale: value[2],
                     useExtendedResponse: true
                 };
                 if (useDefaultLocale()) ctx.locale = defaultLocale;
 
-                var promise = i18n.resolve(ctx);
-                promise.then(updateContext);
+                i18n.resolve(ctx).then(updateContext);
             }, true);
 
             scope.open = function () {
@@ -398,7 +394,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
             }
 
             function updateContext(update) {
-                if (update.locale == ctx.locale && update.code == ctx.code && update.default == ctx.default) {
+                if (update.code == ctx.code && update.default == ctx.default) {
                     updateTranslation(update.translation);
                 }
             }
