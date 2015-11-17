@@ -631,12 +631,11 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
 function I18nService($rootScope, $q, $location, config, i18nMessageGateway, localeResolver, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
-    var supportedLanguages;
-    var metadataPromise;
-    var internalLocale;
+    var supportedLanguages, metadataPromise, internalLocalePromise, externalLocalePromise;
 
     $rootScope.$on('$routeChangeStart', function () {
-        internalLocale = undefined;
+        internalLocalePromise = undefined;
+        externalLocalePromise = undefined;
     });
 
     function getMetadata() {
@@ -793,7 +792,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageGateway, loca
     };
 
     this.getInternalLocale = function () {
-        if(angular.isUndefined(internalLocale)) {
+        if(angular.isUndefined(internalLocalePromise)) {
             var deferred = $q.defer();
             $q.all([
                 self.getSupportedLanguages(),
@@ -805,9 +804,21 @@ function I18nService($rootScope, $q, $location, config, i18nMessageGateway, loca
                     else deferred.resolve('default');
                 } else deferred.resolve('default');
             });
-            internalLocale = deferred.promise;
+            internalLocalePromise = deferred.promise;
         }
-        return internalLocale;
+        return internalLocalePromise;
+    };
+
+    this.getExternalLocale = function () {
+        if(angular.isUndefined(externalLocalePromise)) {
+            var deferred = $q.defer();
+            self.getSupportedLanguages().then(function (languages) {
+                var locale = getLocaleFromPath(languages);
+                locale ? deferred.resolve(locale) : deferred.reject();
+            });
+            externalLocalePromise = deferred.promise;
+        }
+        return externalLocalePromise;
     };
 }
 

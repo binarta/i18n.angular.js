@@ -777,6 +777,80 @@ describe('i18n', function () {
                 });
             });
         });
+
+        describe('get external locale', function () {
+            var locale, rejected;
+
+            function changeRoute(route) {
+                $location.path(route);
+                $rootScope.$broadcast("$routeChangeStart");
+            }
+
+            function getExternalLocale() {
+                locale = undefined;
+                rejected = undefined;
+
+                i18n.getExternalLocale().then(function (l) {
+                    locale = l
+                }, function () {
+                    rejected = true;
+                });
+                $rootScope.$digest();
+            }
+
+            describe('when no multilanguage', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.resolve([]);
+                    i18n.getSupportedLanguages = function () {
+                        return deferred.promise;
+                    }
+                }));
+
+                it('should be rejected', function () {
+                    getExternalLocale();
+
+                    expect(locale).toEqual(undefined);
+                    expect(rejected).toEqual(true);
+                });
+            });
+
+            describe('with multilanguage', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.resolve(['en', 'nl', 'fr']);
+                    i18n.getSupportedLanguages = function () {
+                        return deferred.promise;
+                    }
+                }));
+
+                it('and locale is not in path should be rejected', function () {
+                    changeRoute('/some/path');
+                    getExternalLocale();
+
+                    expect(locale).toEqual(undefined);
+                    expect(rejected).toEqual(true);
+                });
+
+                it('and locale is in path should return locale', function () {
+                    changeRoute('/en/some/path');
+                    getExternalLocale();
+
+                    expect(locale).toEqual('en');
+                    expect(rejected).toBeUndefined();
+                });
+
+                it('on route change should return new locale', function () {
+                    changeRoute('/nl/some/path');
+                    getExternalLocale();
+                    changeRoute('/fr/some/path');
+                    getExternalLocale();
+
+                    expect(locale).toEqual('fr');
+                    expect(rejected).toBeUndefined();
+                });
+            });
+        });
     });
 
     describe('I18nDefaultRendererService', function () {
