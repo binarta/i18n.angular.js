@@ -3,7 +3,7 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
-    .factory('i18nLocation', ['$location', 'localeResolver', I18nLocationFactory])
+    .factory('i18nLocation', ['$q', '$location', 'localeResolver', 'i18n', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
     .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
     .factory('localeSwapper', ['localStorage', 'sessionStorage', 'topicMessageDispatcher', LocaleSwapperFactory])
@@ -192,7 +192,7 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
     }
 }
 
-function I18nLocationFactory($location, localeResolver) {
+function I18nLocationFactory($q, $location, localeResolver, i18n) {
     return {
         search: function (it) {
             $location.search(it);
@@ -200,6 +200,16 @@ function I18nLocationFactory($location, localeResolver) {
         path: function (path) {
             var locale = localeResolver();
             $location.path((locale && locale != 'default' ? '/' + locale : '') + path);
+        },
+        unlocalizedPath: function () {
+            var deferred = $q.defer();
+            var path = $location.path();
+            i18n.getExternalLocale().then(function (locale) {
+                deferred.resolve(path.replace('/' + locale, ''));
+            }, function () {
+                deferred.resolve(path.replace(/^\/[^\/]+\/$/, path.slice(0,-1)));
+            });
+            return deferred.promise;
         }
     }
 }

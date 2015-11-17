@@ -2410,12 +2410,14 @@ describe('i18n', function () {
     });
 
     describe('i18nLocation', function() {
-        var location, target, session;
+        var location, target, session, i18n, $rootScope;
 
-        beforeEach(inject(function(i18nLocation, $location, sessionStorage) {
+        beforeEach(inject(function(i18nLocation, $location, sessionStorage, _i18n_, _$rootScope_) {
             location = i18nLocation;
             target = $location;
             session = sessionStorage;
+            i18n = _i18n_;
+            $rootScope = _$rootScope_;
         }));
 
         it('search params fall through to $location', function() {
@@ -2438,6 +2440,64 @@ describe('i18n', function () {
             session.locale = 'default';
             location.path('/');
             expect(target.path()).toEqual('/');
+        });
+
+        describe('get unlocalized path', function () {
+            beforeEach(inject(function ($q) {
+                var deferred = $q.defer();
+                deferred.resolve(['en', 'nl', 'fr']);
+                i18n.getSupportedLanguages = function () {
+                    return deferred.promise;
+                }
+            }));
+
+            describe('and locale is in path', function () {
+                beforeEach(function () {
+                    target.path('/en/path');
+                });
+
+                it('return unlocalized path', function () {
+                    var path;
+                    location.unlocalizedPath().then(function (p) {
+                        path = p;
+                    });
+                    $rootScope.$digest();
+
+                    expect(path).toEqual('/path');
+                });
+            });
+
+            describe('and locale is not in path', function () {
+                beforeEach(function () {
+                    target.path('/some/path');
+                });
+
+                it('return unlocalized path', function () {
+                    var path;
+                    location.unlocalizedPath().then(function (p) {
+                        path = p;
+                    });
+                    $rootScope.$digest();
+
+                    expect(path).toEqual('/some/path');
+                });
+            });
+
+            describe('with one path param, remove trailing slash', function () {
+                beforeEach(function () {
+                    target.path('/path/');
+                });
+
+                it('return unlocalized path', function () {
+                    var path;
+                    location.unlocalizedPath().then(function (p) {
+                        path = p;
+                    });
+                    $rootScope.$digest();
+
+                    expect(path).toEqual('/path');
+                });
+            });
         });
     });
 
