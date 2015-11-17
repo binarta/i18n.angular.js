@@ -88,62 +88,45 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
             });
         }
     }])
-    .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', 'i18n', '$q', I18nSupportController]);
+    .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', 'i18n', 'i18nLocation', I18nSupportController]);
 
-function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config, $window, i18n, $q) {
-    $rootScope.$on('$routeChangeStart', function () {
-        var locale;
-        isLocalizationSupported().then(function () {
-            locale = getLocaleFromPath();
-            locale ? remember(locale) : localeNotInPath();
-        }, function () {
-            remember('default');
-        }).finally(function () {
-            expose(locale);
-        });
-    });
+function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config, $window, i18n, i18nLocation) {
+    var supportedLanguages;
 
     if (localeResolver()) localeSwapper(localeResolver());
 
-    function isLocalizationSupported() {
-        var deferred = $q.defer();
-        i18n.getSupportedLanguages().then(function (languages) {
-            languages.length > 0 ? deferred.resolve() : deferred.reject();
+    $rootScope.$on('$routeChangeStart', function () {
+        i18n.getExternalLocale().then(function (locale) {
+            exposeExternalLocale(locale);
+        }, function () {
+            exposeExternalLocale();
+
+            i18n.getSupportedLanguages().then(function (languages) {
+                if (languages.length > 0) {
+                    supportedLanguages = languages;
+                    localeNotInPath();
+                }
+            });
         });
-        return deferred.promise;
-    }
 
-    function getLocaleFromPath() {
-        var param = getFirstRouteParam($location.path());
-        if (isLocaleSupported(param)) return param;
-    }
+        i18n.getInternalLocale().then(function (locale) {
+            rememberInternalLocale(locale);
+        });
+    });
 
-    function getFirstRouteParam(path) {
-        var param = path.match(/^\/[^\/]+\//);
-        if (param) return param[0].replace(/\//g,'');
-    }
-
-    function expose(locale) {
-        $rootScope.unlocalizedPath = exposeUnlocalizedPath(locale);
+    function exposeExternalLocale(locale) {
+        i18nLocation.unlocalizedPath().then(function (path) {
+            $rootScope.unlocalizedPath = path;
+        });
         $rootScope.locale = locale || '';
         $rootScope.localePrefix = locale ? '/' + locale : '';
-
         i18n.getMainLanguage().then(function (lang) {
             $rootScope.mainLocale = lang || '';
         });
     }
 
-    function exposeUnlocalizedPath(locale) {
-        var path = $location.path();
-        if (locale) return path.replace('/' + locale, '');
-        else return path.replace(/^\/[^\/]+\/$/, path.slice(0,-1));
-    }
-
-    function remember(locale) {
-        i18n.getMainLanguage().then(function (mainLanguage) {
-            if (config.useDefaultAsMainLocale && locale == mainLanguage) locale = 'default';
-            if (!isLocaleRemembered(locale)) localeSwapper(locale);
-        });
+    function rememberInternalLocale(locale) {
+        if (!isLocaleRemembered(locale)) localeSwapper(locale);
     }
 
     function isLocaleRemembered(locale) {
@@ -156,7 +139,7 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
     }
 
     function isLocaleSupported(locale) {
-        return config.supportedLanguages.indexOf(locale) != -1;
+        return supportedLanguages.indexOf(locale) != -1;
     }
 
     function initializeLocaleByConfig() {
@@ -178,7 +161,7 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
     }
 
     function isBrowserLanguageSupported() {
-        return config.supportedLanguages.indexOf(browserLanguage()) > -1;
+        return supportedLanguages.indexOf(browserLanguage()) > -1;
     }
 
     function browserLanguage() {
@@ -186,9 +169,9 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
     }
 
     function redirectToLocalizedPage(locale) {
-        var prefix = '/' + locale;
-        var suffix = exposeUnlocalizedPath(locale) || '/';
-        $location.path(prefix + suffix);
+        i18nLocation.unlocalizedPath().then(function (path) {
+            $location.path('/' + locale + path);
+        });
     }
 }
 
