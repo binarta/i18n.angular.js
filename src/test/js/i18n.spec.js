@@ -1543,12 +1543,10 @@ describe('i18n', function () {
     });
 
     describe('i18n directive', function () {
-        var directive, $rootScope, scope, resolver, registry, dispatcher, topics, locale;
+        var directive, $rootScope, scope, resolver, locale;
         var attrs, rendererOpenCalled, rendererArgs, editMode;
 
-        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, topicMessageDispatcherMock,
-                                    topicMessageDispatcher, topicRegistryMock, ngRegisterTopicHandler, _$rootScope_, $q,
-                                    i18nRendererTemplate) {
+        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, _$rootScope_, $q, i18nRendererTemplate) {
             attrs = {};
             $rootScope = _$rootScope_;
             scope = $rootScope.$new();
@@ -1584,9 +1582,6 @@ describe('i18n', function () {
                     return deferred.promise;
                 }
             };
-            registry = topicRegistryMock;
-            dispatcher = topicMessageDispatcher;
-            topics = topicMessageDispatcherMock;
 
             var localeResolver = function () {
                 return locale;
@@ -1602,7 +1597,7 @@ describe('i18n', function () {
             };
             editMode = jasmine.createSpyObj('editMode', ['bindEvent']);
 
-            directive = i18nDirectiveFactory($rootScope, resolver, renderer, ngRegisterTopicHandler, editMode, dispatcher, localeResolver, i18nRendererTemplate);
+            directive = i18nDirectiveFactory($rootScope, resolver, renderer, editMode, localeResolver, i18nRendererTemplate);
         }));
 
         it('restricted to', function () {
@@ -1674,38 +1669,6 @@ describe('i18n', function () {
                         });
                     });
 
-                    describe('and code is changed', function () {
-                        beforeEach(function () {
-                            resolver.args = {};
-                            attrs.code = 'changed';
-                            scope.$digest();
-                        });
-
-                        it('triggers message resolution', function () {
-                            expect(resolver.args).toEqual({
-                                code: 'changed',
-                                default: 'default',
-                                useExtendedResponse: true
-                            });
-                        });
-                    });
-
-                    describe('and default is changed', function () {
-                        beforeEach(function () {
-                            resolver.args = {};
-                            attrs.default = 'changed';
-                            scope.$digest();
-                        });
-
-                        it('triggers message resolution', function () {
-                            expect(resolver.args).toEqual({
-                                code: 'code',
-                                default: 'changed',
-                                useExtendedResponse: true
-                            });
-                        });
-                    });
-
                     describe('and message resolution completes without var defined on attributes', function () {
                         it('exposes translation on scope', function () {
                             scope.$digest();
@@ -1730,19 +1693,6 @@ describe('i18n', function () {
 
                         it('exposes translation on parent scope', function () {
                             expect(scope.$parent[attrs.var]).toEqual('translation');
-                        });
-                    });
-
-                    describe('and response does not match actual context', function () {
-                        beforeEach(function () {
-                            resolver.resolverResponse.code = 'other';
-
-                            directive.link(scope, element, attrs);
-                            scope.$digest();
-                        });
-
-                        it('do not put translation on scope', function () {
-                            expect(scope.var).toBeUndefined();
                         });
                     });
                 });
@@ -1859,52 +1809,16 @@ describe('i18n', function () {
                         directive.link(scope, null, attrs);
                         scope.$digest();
                         scope.open();
-                        rendererArgs.submit('translation');
+                        rendererArgs.submit('updated translation');
+                        scope.$digest();
                     });
 
                     it('message is translated', function () {
                         expect(resolver.translateArgsSpy).toEqual({
                             code: 'code',
-                            translation: 'translation'
+                            translation: 'updated translation'
                         });
-                    });
-
-                    it('raises i18n.updated notification', function () {
-                        scope.$digest();
-
-                        expect(topics['i18n.updated']).toEqual({
-                            code: 'code',
-                            translation: 'translation'
-                        });
-                    });
-
-                    describe('and received i18n.updated notification', function () {
-                        describe('and code matches', function () {
-                            beforeEach(function () {
-                                directive.link(scope, null, attrs);
-
-                                registry['i18n.updated']({code: 'code', translation: 'foo'});
-                            });
-
-                            it('update translation', function () {
-                                expect(scope.var).toEqual('foo');
-                            });
-                        });
-
-                        describe('and code is different', function () {
-                            beforeEach(function () {
-                                attrs.code = 'code';
-                                attrs.var = 'var';
-                                directive.link(scope, null, attrs);
-                                scope.var = 'translation';
-
-                                registry['i18n.updated']({code: 'other.code', translation: 'foo'});
-                            });
-
-                            it('translation should not be altered', function () {
-                                expect(scope.var).toEqual('translation');
-                            });
-                        });
+                        expect(scope.var).toEqual('success');
                     });
                 });
 

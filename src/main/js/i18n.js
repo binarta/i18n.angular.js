@@ -10,8 +10,8 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
     .factory('i18nRendererTemplate', I18nRendererTemplateFactory)
     .factory('i18nRendererTemplateInstaller', ['i18nRendererTemplate', I18nRendererTemplateInstallerFactory])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
-    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'editMode', 'topicMessageDispatcher', 'localeResolver', 'i18nRendererTemplate', i18nDirectiveFactory])
-    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'ngRegisterTopicHandler', 'editMode', 'topicMessageDispatcher', 'localeResolver', 'i18nRendererTemplate', i18nDirectiveFactory])
+    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', i18nDirectiveFactory])
+    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'activeUserHasPermission', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
@@ -311,27 +311,23 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, e
     };
 }
 
-function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHandler, editMode, topicMessageDispatcher, localeResolver, i18nRendererTemplate) {
+function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeResolver, i18nRendererTemplate) {
     return {
         restrict: ['E', 'A'],
         scope: true,
         link: function (scope, element, attrs) {
             scope.var = undefined;
             var defaultLocale = 'default';
-            var ctx;
+            var ctx = {
+                code: attrs.code,
+                default: attrs.default,
+                useExtendedResponse: true
+            };
+            if (useDefaultLocale()) ctx.locale = defaultLocale;
 
-            scope.$watch(function () {
-                return [attrs.code, attrs.default];
-            }, function (value) {
-                ctx = {
-                    code: value[0],
-                    default: value[1],
-                    useExtendedResponse: true
-                };
-                if (useDefaultLocale()) ctx.locale = defaultLocale;
-
-                i18n.resolve(ctx).then(updateContext);
-            }, true);
+            i18n.resolve(ctx).then(function (update) {
+                updateTranslation(update.translation);
+            });
 
             scope.open = function () {
                 var ctx = {
@@ -353,9 +349,8 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
                 };
                 if (useDefaultLocale()) ctx.locale = defaultLocale;
 
-                var promise = i18n.translate(ctx);
-                promise.then(function () {
-                    topicMessageDispatcher.fire('i18n.updated', ctx);
+                i18n.translate(ctx).then(function (translation) {
+                    updateTranslation(translation);
                 });
             }
 
@@ -384,19 +379,9 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, ngRegisterTopicHan
                 });
             }
 
-            ngRegisterTopicHandler(scope, 'i18n.updated', function (t) {
-                if (attrs.code == t.code) updateTranslation(t.translation);
-            });
-
             function updateTranslation(translation) {
                 scope.var = translation;
                 if (attrs.var) scope.$parent[attrs.var] = translation;
-            }
-
-            function updateContext(update) {
-                if (update.code == ctx.code && update.default == ctx.default) {
-                    updateTranslation(update.translation);
-                }
             }
         }
     };
