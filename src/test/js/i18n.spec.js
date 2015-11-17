@@ -38,12 +38,12 @@ describe('i18n', function () {
         });
     });
 
-    beforeEach(inject(function($cacheFactory) {
+    beforeEach(inject(function ($cacheFactory) {
         cache = $cacheFactory.get('i18n');
     }));
 
-    describe('on module loaded', function() {
-        it('cache for i18n is created', inject(function($cacheFactory) {
+    describe('on module loaded', function () {
+        it('cache for i18n is created', inject(function ($cacheFactory) {
             expect($cacheFactory.get('i18n')).toBeDefined();
         }))
     });
@@ -67,9 +67,10 @@ describe('i18n', function () {
         });
 
         describe('on translate', function () {
-            var writer, context, usecaseAdapter;
+            var $rootScope, writer, context, usecaseAdapter;
 
-            beforeEach(inject(function (i18nMessageWriter, usecaseAdapterFactory) {
+            beforeEach(inject(function (_$rootScope_, i18nMessageWriter, usecaseAdapterFactory, $q) {
+                $rootScope = _$rootScope_;
                 writer = i18nMessageWriter;
                 usecaseAdapter = usecaseAdapterFactory;
                 context = {
@@ -82,93 +83,118 @@ describe('i18n', function () {
                 expect(writer.calls[0].args[0]).toEqual(ctx);
             }
 
-            describe('construct context', function () {
-                it('default', function () {
-                    i18n.translate(context);
+            describe('with default locale', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.resolve('default');
+                    i18n.getInternalLocale = function () {
+                        return deferred.promise;
+                    }
+                }));
 
-                    expectContextEquals({
-                        key: 'code',
-                        message: 'translation',
-                        locale: 'default'
+                describe('construct context', function () {
+                    it('default', function () {
+                        i18n.translate(context);
+                        $rootScope.$digest();
+
+                        expectContextEquals({
+                            key: 'code',
+                            message: 'translation',
+                            locale: 'default'
+                        });
+                    });
+
+                    it('with namespace', function () {
+                        config.namespace = 'test';
+
+                        i18n.translate(context);
+                        $rootScope.$digest();
+
+                        expectContextEquals({
+                            key: 'code',
+                            message: 'translation',
+                            namespace: 'test',
+                            locale: 'default'
+                        });
+                    });
+
+                    it('with custom locale on context', function () {
+                        context.locale = 'custom';
+
+                        i18n.translate(context);
+                        $rootScope.$digest();
+
+                        expectContextEquals({
+                            key: 'code',
+                            message: 'translation',
+                            locale: 'custom'
+                        });
                     });
                 });
 
-                it('with namespace', function () {
-                    config.namespace = 'test';
-
+                it('context is passed to usecaseAdapter', function () {
                     i18n.translate(context);
+                    $rootScope.$digest();
 
-                    expectContextEquals({
-                        key: 'code',
-                        message: 'translation',
-                        namespace: 'test',
-                        locale: 'default'
-                    });
+                    expect(usecaseAdapter.calls[0].args[0]).toEqual(context);
                 });
 
-                it('with locale', function () {
-                    localStorage.locale = 'nl';
+                describe('on success', function () {
+                    it('default', function () {
+                        i18n.translate(context);
+                        $rootScope.$digest();
+                        usecaseAdapter.calls[0].args[1]();
 
-                    i18n.translate(context);
-
-                    expectContextEquals({
-                        key: 'code',
-                        message: 'translation',
-                        locale: 'nl'
+                        expect(cache.get('default:default:code')).toEqual('translation');
                     });
-                });
 
-                it('with custom locale on context', function () {
-                    localStorage.locale = 'nl';
-                    context.locale = 'custom';
+                    it('with namespace', function () {
+                        config.namespace = 'N';
 
-                    i18n.translate(context);
+                        i18n.translate(context);
+                        $rootScope.$digest();
+                        usecaseAdapter.calls[0].args[1]();
 
-                    expectContextEquals({
-                        key: 'code',
-                        message: 'translation',
-                        locale: 'custom'
+                        expect(cache.get('N:default:code')).toEqual('translation');
                     });
                 });
             });
 
-            it('context is passed to usecaseAdapter', function () {
-                i18n.translate(context);
-
-                expect(usecaseAdapter.calls[0].args[0]).toEqual(context);
-            });
-
-            describe('on success', function () {
-                it('default', function () {
-                    i18n.translate(context);
-                    usecaseAdapter.calls[0].args[1]();
-
-                    expect(cache.get('default:default:code')).toEqual('translation');
-                });
-
-                it('with namespace', function () {
-                    config.namespace = 'N';
-
-                    i18n.translate(context);
-                    usecaseAdapter.calls[0].args[1]();
-
-                    expect(cache.get('N:default:code')).toEqual('translation');
-                });
+            describe('with locale', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.resolve('L');
+                    i18n.getInternalLocale = function () {
+                        return deferred.promise;
+                    }
+                }));
 
                 it('with locale', function () {
+                    i18n.translate(context);
+                    $rootScope.$digest();
+
+                    expectContextEquals({
+                        key: 'code',
+                        message: 'translation',
+                        locale: 'L'
+                    });
+                });
+
+                it('on success', function () {
                     localStorage.locale = 'L';
 
                     i18n.translate(context);
+                    $rootScope.$digest();
                     usecaseAdapter.calls[0].args[1]();
 
                     expect(cache.get('default:L:code')).toEqual('translation');
                 });
 
                 it('with custom locale on context', function () {
-                    localStorage.locale = 'L';
                     context.locale = 'custom';
 
                     i18n.translate(context);
+                    $rootScope.$digest();
                     usecaseAdapter.calls[0].args[1]();
 
                     expect(cache.get('default:custom:code')).toEqual('translation');
@@ -189,43 +215,56 @@ describe('i18n', function () {
             var context;
             var reader;
 
-            beforeEach(inject(function(i18nMessageReader) {
+            beforeEach(inject(function (i18nMessageReader) {
                 reader = i18nMessageReader;
             }));
-            beforeEach(inject(function (localStorage, topicRegistryMock, activeUserHasPermissionHelper) {
+            beforeEach(inject(function (topicRegistryMock, activeUserHasPermissionHelper) {
                 receivedContext = {};
                 context = {
-                    useExtendedResponse: true
+                    useExtendedResponse: true,
+                    code: code
                 };
                 registry = topicRegistryMock;
                 permitter = activeUserHasPermissionHelper;
+                config.namespace = 'namespace';
             }));
-
-            function expectContextEquals(ctx) {
-                expect(reader.calls[0].args[0]).toEqual(ctx);
-            }
-
-            it('on resolve construct context with namespace', function () {
-                context.code = code;
-                i18n.resolve(context).then(presenter);
-                expectContextEquals({useExtendedResponse: true, code:code, namespace:config.namespace});
-            });
 
             function resolveTo(translation) {
                 i18n.resolve(context).then(presenter);
+                $rootScope.$digest();
                 reader.calls[0].args[1](translation);
                 $rootScope.$digest();
             }
 
             function failed() {
                 i18n.resolve(context).then(presenter);
+                $rootScope.$digest();
                 reader.calls[0].args[2]();
                 $rootScope.$digest();
             }
 
-            describe('given translation code', function() {
-                beforeEach(function() {
-                    context.code = code;
+            describe('no supported languages', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.resolve([]);
+                    i18n.getSupportedLanguages = function () {
+                        return deferred.promise;
+                    }
+                }));
+
+                function expectContextEquals(ctx) {
+                    expect(reader.calls[0].args[0]).toEqual(ctx);
+                }
+
+                it('on resolve construct context', function () {
+                    i18n.resolve(context).then(presenter);
+                    $rootScope.$digest();
+                    expectContextEquals({
+                        useExtendedResponse: true,
+                        code: code,
+                        locale: 'default',
+                        namespace: 'namespace'
+                    });
                 });
 
                 describe('legacy support for simple message response', function () {
@@ -235,21 +274,49 @@ describe('i18n', function () {
 
                     it('resolve to translation', inject(function () {
                         i18n.resolve(context).then(presenter);
+                        $rootScope.$digest();
                         reader.calls[0].args[1](translation);
                         $rootScope.$digest();
 
                         expect(receivedContext).toEqual(translation);
-                        expect(cache.get('default:default:translation.code')).toEqual(translation);
+                        expect(cache.get('namespace:default:translation.code')).toEqual(translation);
                     }));
+                });
+
+                describe('when resolving a message for the first time', function () {
+                    beforeEach(function () {
+                        resolveTo(translation);
+                    });
+
+                    it('then namespace locale and code are embedded in cache key', function () {
+                        expect(cache.get('namespace:default:translation.code')).toEqual(translation);
+                    });
+
+                    describe('and subsequent calls', function () {
+                        beforeEach(function () {
+                            reader.reset();
+                            i18n.resolve(context, presenter);
+                        });
+
+                        it('then no gateway calls are done', function () {
+                            expect(reader.calls[0]).toBeUndefined();
+                            expect(receivedContext).toEqual({
+                                translation: translation,
+                                code: code,
+                                locale: 'default'
+                            });
+                        });
+                    });
                 });
 
                 it('resolve to translation', inject(function () {
                     resolveTo(translation);
                     expect(receivedContext).toEqual({
                         translation: translation,
-                        code: code
+                        code: code,
+                        locale: 'default'
                     });
-                    expect(cache.get('default:default:translation.code')).toEqual(translation);
+                    expect(cache.get('namespace:default:translation.code')).toEqual(translation);
                 }));
 
                 it('resolution fallback to default', function () {
@@ -259,9 +326,10 @@ describe('i18n', function () {
                     expect(receivedContext).toEqual({
                         translation: defaultTranslation,
                         code: code,
+                        locale: 'default',
                         default: defaultTranslation
                     });
-                    expect(cache.get('default:default:translation.code')).toEqual(defaultTranslation);
+                    expect(cache.get('namespace:default:translation.code')).toEqual(defaultTranslation);
                 });
 
                 it('resolution fallback to empty default', function () {
@@ -271,9 +339,10 @@ describe('i18n', function () {
                     expect(receivedContext).toEqual({
                         translation: ' ',
                         code: code,
+                        locale: 'default',
                         default: ''
                     });
-                    expect(cache.get('default:default:translation.code')).toEqual(' ');
+                    expect(cache.get('namespace:default:translation.code')).toEqual(' ');
                 });
 
                 describe('resolution without fallback to default available', function () {
@@ -288,14 +357,15 @@ describe('i18n', function () {
 
                             expect(receivedContext).toEqual({
                                 translation: 'place your text here',
-                                code: code
+                                code: code,
+                                locale: 'default'
                             });
-                            expect(cache.get('default:default:translation.code')).toEqual('place your text here');
+                            expect(cache.get('namespace:default:translation.code')).toEqual('place your text here');
                         });
                     });
 
                     describe('when using metadata as fallback', function () {
-                        describe ('and code is in metadata-app', function () {
+                        describe('and code is in metadata-app', function () {
                             beforeEach(function () {
                                 var metadataApp = {
                                     'msgs': {
@@ -323,13 +393,14 @@ describe('i18n', function () {
 
                                 expect(receivedContext).toEqual({
                                     translation: 'translation from app metadata',
-                                    code: code
+                                    code: code,
+                                    locale: 'default'
                                 });
-                                expect(cache.get('default:default:translation.code')).toEqual('translation from app metadata');
+                                expect(cache.get('namespace:default:translation.code')).toEqual('translation from app metadata');
                             });
                         });
 
-                        describe ('and code is in metadata-system', function () {
+                        describe('and code is in metadata-system', function () {
                             beforeEach(function () {
                                 var metadataApp = {
                                     'msgs': {
@@ -357,9 +428,10 @@ describe('i18n', function () {
 
                                 expect(receivedContext).toEqual({
                                     translation: 'translation from system metadata',
-                                    code: code
+                                    code: code,
+                                    locale: 'default'
                                 });
-                                expect(cache.get('default:default:translation.code')).toEqual('translation from system metadata');
+                                expect(cache.get('namespace:default:translation.code')).toEqual('translation from system metadata');
                             });
                         });
 
@@ -383,9 +455,10 @@ describe('i18n', function () {
 
                                 expect(receivedContext).toEqual({
                                     translation: 'place your text here',
-                                    code: code
+                                    code: code,
+                                    locale: 'default'
                                 });
-                                expect(cache.get('default:default:translation.code')).toEqual('place your text here');
+                                expect(cache.get('namespace:default:translation.code')).toEqual('place your text here');
                             });
                         });
                     });
@@ -397,76 +470,52 @@ describe('i18n', function () {
                     expect(receivedContext).toEqual({
                         translation: defaultTranslation,
                         code: code,
+                        locale: 'default',
                         default: defaultTranslation
-                    });
-                });
-
-                describe('given a previously selected locale', function () {
-                    var locale;
-
-                    beforeEach(function () {
-                        locale = 'lang';
-                        localStorage.locale = locale;
-                    });
-
-                    it('resolution includes the locale on context', function () {
-                        resolveTo(translation);
-
-                        expectContextEquals({useExtendedResponse: true, code:code, locale:locale});
-                        expect(receivedContext).toEqual({
-                            translation: translation,
-                            code: code,
-                            locale: locale
-                        });
-                    });
-                });
-            });
-
-
-            describe('with namespace and locale', function() {
-                beforeEach(function() {
-                    localStorage.locale = 'L';
-                    config.namespace = 'N';
-                    context.code = 'C';
-                });
-
-                describe('when resolving a message for the first time', function() {
-                    beforeEach(function() {
-                        resolveTo(translation);
-                    });
-
-                    it('then namespace locale and code are embedded in cache key', function() {
-                        expect(cache.get('N:L:C')).toEqual(translation);
-                    });
-
-                    describe('and subsequent calls', function() {
-                        beforeEach(function() {
-                            reader.reset();
-                            i18n.resolve(context, presenter);
-                        });
-
-                        it('then no gateway calls are done', function() {
-                            expect(reader.calls[0]).toBeUndefined();
-                            expect(receivedContext).toEqual({
-                                translation: translation,
-                                code: 'C',
-                                locale: 'L'
-                            });
-                        });
                     });
                 });
 
                 describe('when using a custom locale', function () {
                     beforeEach(function () {
                         context.locale = 'custom';
-
-                        i18n.resolve(context, presenter);
                     });
 
-                    it('resolution includes the custom locale on context', function () {
-                        expect(reader.calls[0].args[0].locale).toEqual('custom');
+                    it('resolution includes the locale on context', function () {
+                        resolveTo(translation);
+
+                        expectContextEquals({
+                            useExtendedResponse: true,
+                            code: code,
+                            locale: 'custom',
+                            namespace: 'namespace'
+                        });
+                        expect(receivedContext).toEqual({
+                            translation: translation,
+                            code: code,
+                            locale: 'custom'
+                        });
                     });
                 });
+            });
+
+            describe('with supported languages', function () {
+                beforeEach(inject(function ($q) {
+                    var deferred = $q.defer();
+                    deferred.resolve('L');
+                    i18n.getInternalLocale = function () {
+                        return deferred.promise;
+                    }
+                }));
+
+                it('resolve to translation', inject(function () {
+                    resolveTo(translation);
+                    expect(receivedContext).toEqual({
+                        translation: translation,
+                        code: code,
+                        locale: 'L'
+                    });
+                    expect(cache.get('namespace:L:translation.code')).toEqual(translation);
+                }));
             });
         });
 
@@ -552,59 +601,59 @@ describe('i18n', function () {
                 {name: 'empty', value: []},
                 {name: '["nl", "en"]', value: ["nl", "en"]}
             ].forEach(function (lang) {
-                describe('with languages equal to ' + lang.name, function () {
-                    describe('without callback', function () {
-                        beforeEach(function () {
-                            i18n.updateSupportedLanguages(lang.value);
-                        });
-
-                        it('write to public config', function () {
-                            expect(publicConfigWriter.calls[0].args[0]).toEqual({
-                                key: 'supportedLanguages',
-                                value: lang.value
-                            });
-                        });
-
-                        describe('on success', function () {
+                    describe('with languages equal to ' + lang.name, function () {
+                        describe('without callback', function () {
                             beforeEach(function () {
-                                $rootScope.unlocalizedPath = '/path';
-                                publicConfigWriter.calls[0].args[1].success();
+                                i18n.updateSupportedLanguages(lang.value);
                             });
 
-                            it('supported languages on config are updated', function () {
-                                expect(config.supportedLanguages).toEqual(lang.value);
+                            it('write to public config', function () {
+                                expect(publicConfigWriter.calls[0].args[0]).toEqual({
+                                    key: 'supportedLanguages',
+                                    value: lang.value
+                                });
                             });
 
-                            it('reader returns updated languages', function () {
-                                i18n.getSupportedLanguages();
-                                $rootScope.$digest();
+                            describe('on success', function () {
+                                beforeEach(function () {
+                                    $rootScope.unlocalizedPath = '/path';
+                                    publicConfigWriter.calls[0].args[1].success();
+                                });
 
-                                expect(publicConfigReader.callCount).toEqual(2);
+                                it('supported languages on config are updated', function () {
+                                    expect(config.supportedLanguages).toEqual(lang.value);
+                                });
+
+                                it('reader returns updated languages', function () {
+                                    i18n.getSupportedLanguages();
+                                    $rootScope.$digest();
+
+                                    expect(publicConfigReader.callCount).toEqual(2);
+                                });
                             });
                         });
-                    });
 
-                    describe('with callback', function () {
-                        var callback;
+                        describe('with callback', function () {
+                            var callback;
 
-                        beforeEach(function () {
-                            i18n.updateSupportedLanguages(lang.value, function () {
-                                callback = true;
-                            });
-                        });
-
-                        describe('on success', function () {
                             beforeEach(function () {
-                                publicConfigWriter.calls[0].args[1].success();
+                                i18n.updateSupportedLanguages(lang.value, function () {
+                                    callback = true;
+                                });
                             });
 
-                            it('callback is executed', function () {
-                                expect(callback).toBeTruthy();
+                            describe('on success', function () {
+                                beforeEach(function () {
+                                    publicConfigWriter.calls[0].args[1].success();
+                                });
+
+                                it('callback is executed', function () {
+                                    expect(callback).toBeTruthy();
+                                });
                             });
                         });
                     });
                 });
-            });
         });
 
         describe('get main language', function () {
@@ -861,7 +910,7 @@ describe('i18n', function () {
             config = _config_;
         }));
 
-        describe('open dialog modal', function (){
+        describe('open dialog modal', function () {
             var submittedValue, canceled;
 
             beforeEach(function () {
@@ -964,7 +1013,7 @@ describe('i18n', function () {
             $rootScope.$digest();
         }
 
-        it('no i18n.locale notification should be raised yet', function() {
+        it('no i18n.locale notification should be raised yet', function () {
             expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
         });
 
@@ -986,75 +1035,75 @@ describe('i18n', function () {
             {name: 'undefined', value: undefined},
             {name: 'empty', value: []}
         ].forEach(function (lang) {
-            describe('when supportedLanguages is ' + lang.name, function () {
-                beforeEach(function () {
-                    config.supportedLanguages = lang.value;
-                });
-
-                it('localePrefix is empty string', function () {
-                    $rootScope.localePrefix = 'foo';
-
-                    goToPath('/foo/bar');
-
-                    expect($rootScope.localePrefix).toEqual('');
-                });
-
-                it('locale is empty string', function () {
-                    $rootScope.locale = 'foo';
-
-                    goToPath('/foo/bar');
-
-                    expect($rootScope.locale).toEqual('');
-                });
-
-                it('main locale is empty string', function () {
-                    goToPath('/foo/bar');
-
-                    expect($rootScope.mainLocale).toEqual('');
-                });
-
-                it('remembered locale is default', function () {
-                    goToPath('/foo/bar');
-
-                    expect(local.locale).toEqual('default');
-                    expect(dispatcher.persistent['i18n.locale']).toEqual('default');
-                });
-
-                it('with one path param, remove trailing slash', function () {
-                    goToPath('/foo/');
-
-                    expect($rootScope.unlocalizedPath).toEqual('/foo');
-                });
-
-                it('with more than one path param, do not remove trailing slash', inject(function() {
-                    goToPath('/foo/bar');
-
-                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
-                }));
-
-                describe('and default locale is remembered', function() {
-                    beforeEach(function() {
-                        local.locale = 'default';
-                        $rootScope.locale = 'previous';
-                        $rootScope.localePrefix = '/previous';
-
-                        goToPath('/foo/bar');
+                describe('when supportedLanguages is ' + lang.name, function () {
+                    beforeEach(function () {
+                        config.supportedLanguages = lang.value;
                     });
 
-                    it('update unlocalized path', inject(function() {
-                        expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
-                    }));
+                    it('localePrefix is empty string', function () {
+                        $rootScope.localePrefix = 'foo';
 
-                    it('locale is empty', function() {
+                        goToPath('/foo/bar');
+
+                        expect($rootScope.localePrefix).toEqual('');
+                    });
+
+                    it('locale is empty string', function () {
+                        $rootScope.locale = 'foo';
+
+                        goToPath('/foo/bar');
+
                         expect($rootScope.locale).toEqual('');
                     });
 
-                    it('locale prefix is empty', function() {
-                        expect($rootScope.localePrefix).toEqual('');
+                    it('main locale is empty string', function () {
+                        goToPath('/foo/bar');
+
+                        expect($rootScope.mainLocale).toEqual('');
+                    });
+
+                    it('remembered locale is default', function () {
+                        goToPath('/foo/bar');
+
+                        expect(local.locale).toEqual('default');
+                        expect(dispatcher.persistent['i18n.locale']).toEqual('default');
+                    });
+
+                    it('with one path param, remove trailing slash', function () {
+                        goToPath('/foo/');
+
+                        expect($rootScope.unlocalizedPath).toEqual('/foo');
+                    });
+
+                    it('with more than one path param, do not remove trailing slash', inject(function () {
+                        goToPath('/foo/bar');
+
+                        expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
+                    }));
+
+                    describe('and default locale is remembered', function () {
+                        beforeEach(function () {
+                            local.locale = 'default';
+                            $rootScope.locale = 'previous';
+                            $rootScope.localePrefix = '/previous';
+
+                            goToPath('/foo/bar');
+                        });
+
+                        it('update unlocalized path', inject(function () {
+                            expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
+                        }));
+
+                        it('locale is empty', function () {
+                            expect($rootScope.locale).toEqual('');
+                        });
+
+                        it('locale prefix is empty', function () {
+                            expect($rootScope.localePrefix).toEqual('');
+                        });
                     });
                 });
             });
-        });
 
         describe('locale is supported', function () {
             var locale;
@@ -1089,7 +1138,7 @@ describe('i18n', function () {
                     expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
                 });
 
-                it('broadcast locale', function() {
+                it('broadcast locale', function () {
                     expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
                 });
             });
@@ -1177,7 +1226,7 @@ describe('i18n', function () {
                             config.fallbackToBrowserLocale = true;
                         });
 
-                        it('and when no browser user language or browser language, fall back to main locale', function() {
+                        it('and when no browser user language or browser language, fall back to main locale', function () {
                             window.navigator.language = undefined;
                             window.navigator.userLanguage = undefined;
 
@@ -1186,12 +1235,12 @@ describe('i18n', function () {
                             expect($location.path()).toEqual('/lang/');
                         });
 
-                        describe('and browser user language is supported', function() {
-                            beforeEach(function() {
+                        describe('and browser user language is supported', function () {
+                            beforeEach(function () {
                                 window.navigator.userLanguage = 'en_BE';
                             });
 
-                            it('fallback to browser locale', function() {
+                            it('fallback to browser locale', function () {
                                 goToPath('/');
 
                                 expect($location.path()).toEqual('/en/');
@@ -1199,25 +1248,25 @@ describe('i18n', function () {
                             });
                         });
 
-                        describe('and browser user language is not supported', function() {
-                            beforeEach(function() {
+                        describe('and browser user language is not supported', function () {
+                            beforeEach(function () {
                                 window.navigator.userLanguage = 'un_SU';
                             });
 
-                            it('fall back to main locale', inject(function() {
+                            it('fall back to main locale', inject(function () {
                                 goToPath('/');
 
                                 expect($location.path()).toEqual('/lang/');
                             }));
                         });
 
-                        describe('and no browser user language with browser language', function() {
-                            beforeEach(function() {
+                        describe('and no browser user language with browser language', function () {
+                            beforeEach(function () {
                                 window.navigator.language = 'en_BE';
                                 window.navigator.userLanguage = undefined;
                             });
 
-                            it('with fallback to browser locale', function() {
+                            it('with fallback to browser locale', function () {
                                 goToPath('/');
 
                                 expect($location.path()).toEqual('/en/');
@@ -1231,24 +1280,24 @@ describe('i18n', function () {
                             config.fallbackToBrowserLocale = false;
                         });
 
-                        describe('and browser user language is supported', function() {
-                            beforeEach(function() {
+                        describe('and browser user language is supported', function () {
+                            beforeEach(function () {
                                 window.navigator.userLanguage = 'en_BE';
                             });
 
-                            it('fall back to first supported locale', function() {
+                            it('fall back to first supported locale', function () {
                                 goToPath('/');
 
                                 expect($location.path()).toEqual('/lang/');
                             });
                         });
 
-                        describe('and browser language is supported', function() {
-                            beforeEach(function() {
+                        describe('and browser language is supported', function () {
+                            beforeEach(function () {
                                 window.navigator.language = 'en_BE';
                             });
 
-                            it('fall back to first supported locale', function() {
+                            it('fall back to first supported locale', function () {
                                 goToPath('/');
 
                                 expect($location.path()).toEqual('/lang/');
@@ -1258,7 +1307,7 @@ describe('i18n', function () {
                 });
 
                 describe('and no fallback to default locale', function () {
-                    beforeEach(function() {
+                    beforeEach(function () {
                         config.fallbackToDefaultLocale = false;
                     });
 
@@ -1447,7 +1496,8 @@ describe('i18n', function () {
                     });
                 });
 
-                it('notification is sent', function () {var promise = rendererArgs.submit(link);
+                it('notification is sent', function () {
+                    var promise = rendererArgs.submit(link);
                     $rootScope.$digest();
 
                     expect(topics['link.updated']).toEqual({
@@ -1502,7 +1552,8 @@ describe('i18n', function () {
             attrs = {};
             $rootScope = _$rootScope_;
             scope = $rootScope.$new();
-            scope.$apply = function(arg){};
+            scope.$apply = function (arg) {
+            };
             scope.$on = function (event, callback) {
                 scope.on[event] = callback;
             };
@@ -1876,7 +1927,7 @@ describe('i18n', function () {
                                 registry['i18n.updated']({code: 'code', translation: 'foo'});
                             });
 
-                            it('update translation', function() {
+                            it('update translation', function () {
                                 expect(scope.var).toEqual('foo');
                             });
                         });
@@ -1891,7 +1942,7 @@ describe('i18n', function () {
                                 registry['i18n.updated']({code: 'other.code', translation: 'foo'});
                             });
 
-                            it('translation should not be altered', function() {
+                            it('translation should not be altered', function () {
                                 expect(scope.var).toEqual('translation');
                             });
                         });
@@ -1949,11 +2000,11 @@ describe('i18n', function () {
         }));
 
         describe('on link', function () {
-            var dutch = {name:'Dutch', code:'nl'},
-                english = {name:'English', code:'en'},
-                french = {name:'French', code:'fr'},
-                chinese = {name:'Chinese', code:'ch'},
-                arabic = {name:'Arabic', code:'ar'};
+            var dutch = {name: 'Dutch', code: 'nl'},
+                english = {name: 'English', code: 'en'},
+                french = {name: 'French', code: 'fr'},
+                chinese = {name: 'Chinese', code: 'ch'},
+                arabic = {name: 'Arabic', code: 'ar'};
 
             beforeEach(function () {
                 config.languages = [dutch, french, english, chinese, arabic];
@@ -2122,7 +2173,7 @@ describe('i18n', function () {
                                     it('write to public config', function () {
                                         expect(publicConfigWriter.calls[0].args[0]).toEqual({
                                             key: 'supportedLanguages',
-                                            value: ['en', 'ch' ,'nl']
+                                            value: ['en', 'ch', 'nl']
                                         });
                                     });
 
@@ -2314,35 +2365,35 @@ describe('i18n', function () {
         });
     });
 
-    describe('locale resolution', function() {
+    describe('locale resolution', function () {
         var resolve, swap, localStorage, sessionStorage;
 
-        beforeEach(inject(function(localeResolver, localeSwapper, _localStorage_, _sessionStorage_) {
+        beforeEach(inject(function (localeResolver, localeSwapper, _localStorage_, _sessionStorage_) {
             resolve = localeResolver;
             swap = localeSwapper;
             localStorage = _localStorage_;
             sessionStorage = _sessionStorage_;
         }));
 
-        it('starts out undefined', function() {
+        it('starts out undefined', function () {
             expect(resolve()).toEqual(undefined);
         });
 
-        describe('when locale is specified in local storage', function() {
-            beforeEach(function() {
+        describe('when locale is specified in local storage', function () {
+            beforeEach(function () {
                 localStorage.locale = 'from-local-storage';
             });
 
-            it('then resolves from local storage', function() {
+            it('then resolves from local storage', function () {
                 expect(resolve()).toEqual('from-local-storage');
             });
 
-            describe('and locale is specified in session storage', function() {
-                beforeEach(function() {
+            describe('and locale is specified in session storage', function () {
+                beforeEach(function () {
                     sessionStorage.locale = 'from-session-storage';
                 });
 
-                it('then resolves from session storage', function() {
+                it('then resolves from session storage', function () {
                     expect(resolve()).toEqual('from-session-storage');
                 });
 
@@ -2375,31 +2426,31 @@ describe('i18n', function () {
                 });
             });
 
-            describe('and resolving from local storage', function() {
-                beforeEach(function() {
+            describe('and resolving from local storage', function () {
+                beforeEach(function () {
                     resolve();
                 });
 
-                it('then local storage locale is promoted to session storage locale', inject(function(sessionStorage, localStorage) {
+                it('then local storage locale is promoted to session storage locale', inject(function (sessionStorage, localStorage) {
                     expect(sessionStorage.locale).toEqual(localStorage.locale);
                 }));
             });
         });
 
-        describe('when swapped locale', function() {
+        describe('when swapped locale', function () {
             var topics;
 
-            beforeEach(inject(function(topicMessageDispatcherMock) {
+            beforeEach(inject(function (topicMessageDispatcherMock) {
                 topics = topicMessageDispatcherMock;
 
                 swap('swapped-locale');
             }));
 
-            it('then locale is saved in local storage', function() {
+            it('then locale is saved in local storage', function () {
                 expect(localStorage.locale).toEqual('swapped-locale');
             });
 
-            it('then locale is saved in session storage', function() {
+            it('then locale is saved in session storage', function () {
                 expect(sessionStorage.locale).toEqual('swapped-locale');
             });
 
@@ -2409,10 +2460,10 @@ describe('i18n', function () {
         });
     });
 
-    describe('i18nLocation', function() {
+    describe('i18nLocation', function () {
         var location, target, session, i18n, $rootScope;
 
-        beforeEach(inject(function(i18nLocation, $location, sessionStorage, _i18n_, _$rootScope_) {
+        beforeEach(inject(function (i18nLocation, $location, sessionStorage, _i18n_, _$rootScope_) {
             location = i18nLocation;
             target = $location;
             session = sessionStorage;
@@ -2420,23 +2471,23 @@ describe('i18n', function () {
             $rootScope = _$rootScope_;
         }));
 
-        it('search params fall through to $location', function() {
-            location.search({a:'b'});
-            expect(target.search()).toEqual({a:'b'});
+        it('search params fall through to $location', function () {
+            location.search({a: 'b'});
+            expect(target.search()).toEqual({a: 'b'});
         });
 
-        it('path with no locale', function() {
+        it('path with no locale', function () {
             location.path('/');
             expect(target.path()).toEqual('/');
         });
 
-        it('path with locale', function() {
+        it('path with locale', function () {
             session.locale = 'en';
             location.path('/');
             expect(target.path()).toEqual('/en/');
         });
 
-        it('path with default locale', function() {
+        it('path with default locale', function () {
             session.locale = 'default';
             location.path('/');
             expect(target.path()).toEqual('/');
@@ -2512,7 +2563,7 @@ describe('i18n', function () {
         describe('with languages', function () {
             beforeEach(function () {
                 config.languages = [
-                    {code:'en', name:'English'}
+                    {code: 'en', name: 'English'}
                 ];
             });
 
