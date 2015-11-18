@@ -1543,10 +1543,10 @@ describe('i18n', function () {
     });
 
     describe('i18n directive', function () {
-        var directive, $rootScope, scope, resolver, locale;
-        var attrs, rendererOpenCalled, rendererArgs, editMode;
+        var directive, $rootScope, scope, resolver, locale, attrs, rendererOpenCalled, rendererArgs, editMode, registry;
 
-        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, _$rootScope_, $q, i18nRendererTemplate) {
+        beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, _$rootScope_, $q,
+                                    i18nRendererTemplate, topicRegistryMock, ngRegisterTopicHandler) {
             attrs = {};
             $rootScope = _$rootScope_;
             scope = $rootScope.$new();
@@ -1596,8 +1596,9 @@ describe('i18n', function () {
                 }
             };
             editMode = jasmine.createSpyObj('editMode', ['bindEvent']);
+            registry = topicRegistryMock;
 
-            directive = i18nDirectiveFactory($rootScope, resolver, renderer, editMode, localeResolver, i18nRendererTemplate);
+            directive = i18nDirectiveFactory($rootScope, resolver, renderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler);
         }));
 
         it('restricted to', function () {
@@ -1643,8 +1644,9 @@ describe('i18n', function () {
                     expect(scope.var).toBeUndefined();
                 });
 
-                describe('and attribute watch is triggered', function () {
+                describe('and i18n.locale event is triggered', function () {
                     beforeEach(function () {
+                        registry['i18n.locale']('L');
                         scope.$digest();
                     });
 
@@ -1652,6 +1654,7 @@ describe('i18n', function () {
                         expect(resolver.args).toEqual({
                             code: 'code',
                             default: 'default',
+                            locale: 'L',
                             useExtendedResponse: true
                         });
                     });
@@ -1659,6 +1662,7 @@ describe('i18n', function () {
                     it('with default locale', function () {
                         attrs.noLocale = '';
                         directive.link(scope, element, attrs);
+                        registry['i18n.locale']('L');
                         scope.$digest();
 
                         expect(resolver.args).toEqual({
@@ -1684,6 +1688,7 @@ describe('i18n', function () {
                         beforeEach(function () {
                             attrs.var = 'var';
                             directive.link(scope, element, attrs);
+                            registry['i18n.locale']('L');
                             scope.$digest();
                         });
 
