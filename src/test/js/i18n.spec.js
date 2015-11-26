@@ -1543,10 +1543,11 @@ describe('i18n', function () {
     });
 
     describe('i18n directive', function () {
-        var directive, $rootScope, scope, resolver, locale, attrs, rendererOpenCalled, rendererArgs, editMode, registry;
+        var directive, $rootScope, scope, resolver, locale, attrs, rendererOpenCalled, rendererArgs, editMode, registry, topics, dispatcher;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, _$rootScope_, $q,
-                                    i18nRendererTemplate, topicRegistryMock, ngRegisterTopicHandler) {
+                                    i18nRendererTemplate, topicRegistryMock, ngRegisterTopicHandler, topicMessageDispatcherMock,
+                                    topicMessageDispatcher) {
             attrs = {};
             $rootScope = _$rootScope_;
             scope = $rootScope.$new();
@@ -1583,6 +1584,10 @@ describe('i18n', function () {
                 }
             };
 
+            topics = topicMessageDispatcherMock;
+            dispatcher = topicMessageDispatcher;
+            registry = topicRegistryMock;
+
             var localeResolver = function () {
                 return locale;
             };
@@ -1596,9 +1601,8 @@ describe('i18n', function () {
                 }
             };
             editMode = jasmine.createSpyObj('editMode', ['bindEvent']);
-            registry = topicRegistryMock;
 
-            directive = i18nDirectiveFactory($rootScope, resolver, renderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler);
+            directive = i18nDirectiveFactory($rootScope, resolver, renderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler, topicMessageDispatcher);
         }));
 
         it('restricted to', function () {
@@ -1824,6 +1828,35 @@ describe('i18n', function () {
                             translation: 'updated translation'
                         });
                         expect(scope.var).toEqual('success');
+                    });
+
+                    it('raises i18n.updated notification', function () {
+                        expect(topics['i18n.updated']).toEqual({
+                            code: 'code',
+                            translation: 'updated translation'
+                        });
+                    });
+
+                    describe('and received i18n.updated notification', function () {
+                        describe('and code matches', function () {
+                            beforeEach(function () {
+                                registry['i18n.updated']({code: 'code', translation: 'foo'});
+                            });
+
+                            it('update translation', function () {
+                                expect(scope.var).toEqual('foo');
+                            });
+                        });
+
+                        describe('and code is different', function () {
+                            beforeEach(function () {
+                                registry['i18n.updated']({code: 'other.code', translation: 'foo'});
+                            });
+
+                            it('translation should not be altered', function () {
+                                expect(scope.var).toEqual('success');
+                            });
+                        });
                     });
                 });
 
