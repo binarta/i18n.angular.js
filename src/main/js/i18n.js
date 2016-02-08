@@ -102,7 +102,7 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
             exposeExternalLocale();
 
             i18n.getSupportedLanguages().then(function (languages) {
-                if (languages.length > 0) {
+                if (languages.length > 1) {
                     supportedLanguages = languages;
                     localeNotInPath();
                 }
@@ -468,7 +468,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                         i18n.updateSupportedLanguages(getLanguageCodes(rendererScope.languages), function () {
                             scope.supportedLanguages = rendererScope.languages;
                             sortLanguagesByName(scope.supportedLanguages);
-                            scope.supportedLanguages.length == 0 ? redirectToUnlocalizedPath() : redirectToMainLanguage();
+                            scope.supportedLanguages.length <= 1 ? redirectToUnlocalizedPath() : redirectToMainLanguage();
                             editModeRenderer.close();
                         });
                     };

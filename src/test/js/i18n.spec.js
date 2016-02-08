@@ -1108,213 +1108,228 @@ describe('i18n', function () {
         describe('locale is supported', function () {
             var locale;
 
-            beforeEach(function () {
-                locale = 'lang';
-                config.supportedLanguages = [locale, 'remembered', 'en'];
-            });
-
-            describe('and locale encoded in path then', function () {
+            describe('with only one supported language', function () {
                 beforeEach(function () {
-                    goToPath('/' + locale + '/foo/bar');
+                    locale = 'lang';
+                    config.supportedLanguages = [locale];
                 });
 
-                it('expose locale on rootScope', function () {
-                    expect($rootScope.locale).toEqual(locale);
-                });
+                it('do not redirect to localized page', function () {
+                    goToPath('/foo/bar');
 
-                it('expose localePrefix on rootScope', function () {
-                    expect($rootScope.localePrefix).toEqual('/' + locale);
-                });
-
-                it('expose main locale on rootScope', function () {
-                    expect($rootScope.mainLocale).toEqual(locale);
-                });
-
-                it('remember locale', function () {
-                    expect(local.locale).toEqual(locale);
-                });
-
-                it('expose unlocalized path on scope', function () {
-                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
-                });
-
-                it('broadcast locale', function () {
-                    expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
+                    expect($location.path()).toEqual('/foo/bar');
                 });
             });
 
-            it('when previously remembered do not broadcast again', function () {
-                local.locale = locale;
-                goToPath('/' + locale + '/foo/bar');
-
-                expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
-            });
-
-            describe('and use default locale as main locale', function () {
+            describe('with multiple supported languages', function () {
                 beforeEach(function () {
-                    config.useDefaultAsMainLocale = true;
+                    locale = 'lang';
+                    config.supportedLanguages = [locale, 'remembered', 'en'];
+                });
 
+                describe('and locale encoded in path then', function () {
+                    beforeEach(function () {
+                        goToPath('/' + locale + '/foo/bar');
+                    });
+
+                    it('expose locale on rootScope', function () {
+                        expect($rootScope.locale).toEqual(locale);
+                    });
+
+                    it('expose localePrefix on rootScope', function () {
+                        expect($rootScope.localePrefix).toEqual('/' + locale);
+                    });
+
+                    it('expose main locale on rootScope', function () {
+                        expect($rootScope.mainLocale).toEqual(locale);
+                    });
+
+                    it('remember locale', function () {
+                        expect(local.locale).toEqual(locale);
+                    });
+
+                    it('expose unlocalized path on scope', function () {
+                        expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
+                    });
+
+                    it('broadcast locale', function () {
+                        expect(dispatcher.persistent['i18n.locale']).toEqual(locale);
+                    });
+                });
+
+                it('when previously remembered do not broadcast again', function () {
+                    local.locale = locale;
                     goToPath('/' + locale + '/foo/bar');
+
+                    expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
                 });
 
-                it('expose locale on rootScope', function () {
-                    expect($rootScope.locale).toEqual(locale);
-                });
-
-                it('expose localePrefix on rootScope', function () {
-                    expect($rootScope.localePrefix).toEqual('/' + locale);
-                });
-
-                it('expose main locale on rootScope', function () {
-                    expect($rootScope.mainLocale).toEqual(locale);
-                });
-
-                it('remember default locale', function () {
-                    expect(local.locale).toEqual('default');
-                });
-
-                it('broadcast default locale', function () {
-                    expect(dispatcher.persistent['i18n.locale']).toEqual('default');
-                });
-            });
-
-            describe('and locale not encoded in path then', function () {
-                it('redirect to localized page', function () {
-                    goToPath('/foo/bar');
-
-                    expect($location.path()).toEqual('/lang/foo/bar');
-                });
-
-                it('unlocalized path is on scope', function () {
-                    goToPath('/foo/bar');
-
-                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
-                });
-
-
-                it('with more than one path param, do not remove trailing slash', function () {
-                    goToPath('/foo/bar/');
-
-                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar/');
-                });
-
-                it('redirect to main locale', function () {
-                    goToPath('/foo/bar');
-
-                    expect($location.path()).toEqual('/lang/foo/bar');
-                });
-
-                describe('and remembered locale', function () {
+                describe('and use default locale as main locale', function () {
                     beforeEach(function () {
-                        local.locale = 'remembered';
+                        config.useDefaultAsMainLocale = true;
+
+                        goToPath('/' + locale + '/foo/bar');
                     });
 
-                    it('redirects to localized page', function () {
-                        goToPath('/path');
+                    it('expose locale on rootScope', function () {
+                        expect($rootScope.locale).toEqual(locale);
+                    });
 
-                        expect($location.path()).toEqual('/remembered/path');
+                    it('expose localePrefix on rootScope', function () {
+                        expect($rootScope.localePrefix).toEqual('/' + locale);
+                    });
+
+                    it('expose main locale on rootScope', function () {
+                        expect($rootScope.mainLocale).toEqual(locale);
+                    });
+
+                    it('remember default locale', function () {
+                        expect(local.locale).toEqual('default');
+                    });
+
+                    it('broadcast default locale', function () {
+                        expect(dispatcher.persistent['i18n.locale']).toEqual('default');
                     });
                 });
 
-                describe('and no remembered locale', function () {
-                    beforeEach(function () {
-                        local.locale = undefined;
+                describe('and locale not encoded in path then', function () {
+                    it('redirect to localized page', function () {
+                        goToPath('/foo/bar');
+
+                        expect($location.path()).toEqual('/lang/foo/bar');
                     });
 
-                    describe('with fallback to browser locale', function () {
+                    it('unlocalized path is on scope', function () {
+                        goToPath('/foo/bar');
+
+                        expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
+                    });
+
+
+                    it('with more than one path param, do not remove trailing slash', function () {
+                        goToPath('/foo/bar/');
+
+                        expect($rootScope.unlocalizedPath).toEqual('/foo/bar/');
+                    });
+
+                    it('redirect to main locale', function () {
+                        goToPath('/foo/bar');
+
+                        expect($location.path()).toEqual('/lang/foo/bar');
+                    });
+
+                    describe('and remembered locale', function () {
                         beforeEach(function () {
-                            config.fallbackToBrowserLocale = true;
+                            local.locale = 'remembered';
                         });
 
-                        it('and when no browser user language or browser language, fall back to main locale', function () {
-                            window.navigator.language = undefined;
-                            window.navigator.userLanguage = undefined;
+                        it('redirects to localized page', function () {
+                            goToPath('/path');
 
+                            expect($location.path()).toEqual('/remembered/path');
+                        });
+                    });
+
+                    describe('and no remembered locale', function () {
+                        beforeEach(function () {
+                            local.locale = undefined;
+                        });
+
+                        describe('with fallback to browser locale', function () {
+                            beforeEach(function () {
+                                config.fallbackToBrowserLocale = true;
+                            });
+
+                            it('and when no browser user language or browser language, fall back to main locale', function () {
+                                window.navigator.language = undefined;
+                                window.navigator.userLanguage = undefined;
+
+                                goToPath('/');
+
+                                expect($location.path()).toEqual('/lang/');
+                            });
+
+                            describe('and browser user language is supported', function () {
+                                beforeEach(function () {
+                                    window.navigator.userLanguage = 'en_BE';
+                                });
+
+                                it('fallback to browser locale', function () {
+                                    goToPath('/');
+
+                                    expect($location.path()).toEqual('/en/');
+                                    expect(dispatcher.persistent['i18n.locale']).toEqual('en');
+                                });
+                            });
+
+                            describe('and browser user language is not supported', function () {
+                                beforeEach(function () {
+                                    window.navigator.userLanguage = 'un_SU';
+                                });
+
+                                it('fall back to main locale', inject(function () {
+                                    goToPath('/');
+
+                                    expect($location.path()).toEqual('/lang/');
+                                }));
+                            });
+
+                            describe('and no browser user language with browser language', function () {
+                                beforeEach(function () {
+                                    window.navigator.language = 'en_BE';
+                                    window.navigator.userLanguage = undefined;
+                                });
+
+                                it('with fallback to browser locale', function () {
+                                    goToPath('/');
+
+                                    expect($location.path()).toEqual('/en/');
+                                    expect(dispatcher.persistent['i18n.locale']).toEqual('en');
+                                });
+                            });
+                        });
+
+                        describe('without fallback to browser locale', function () {
+                            beforeEach(function () {
+                                config.fallbackToBrowserLocale = false;
+                            });
+
+                            describe('and browser user language is supported', function () {
+                                beforeEach(function () {
+                                    window.navigator.userLanguage = 'en_BE';
+                                });
+
+                                it('fall back to first supported locale', function () {
+                                    goToPath('/');
+
+                                    expect($location.path()).toEqual('/lang/');
+                                });
+                            });
+
+                            describe('and browser language is supported', function () {
+                                beforeEach(function () {
+                                    window.navigator.language = 'en_BE';
+                                });
+
+                                it('fall back to first supported locale', function () {
+                                    goToPath('/');
+
+                                    expect($location.path()).toEqual('/lang/');
+                                });
+                            });
+                        });
+                    });
+
+                    describe('and no fallback to default locale', function () {
+                        beforeEach(function () {
+                            config.fallbackToDefaultLocale = false;
+                        });
+
+                        it('do not redirect', function () {
                             goToPath('/');
 
-                            expect($location.path()).toEqual('/lang/');
+                            expect($location.path()).toEqual('/');
                         });
-
-                        describe('and browser user language is supported', function () {
-                            beforeEach(function () {
-                                window.navigator.userLanguage = 'en_BE';
-                            });
-
-                            it('fallback to browser locale', function () {
-                                goToPath('/');
-
-                                expect($location.path()).toEqual('/en/');
-                                expect(dispatcher.persistent['i18n.locale']).toEqual('en');
-                            });
-                        });
-
-                        describe('and browser user language is not supported', function () {
-                            beforeEach(function () {
-                                window.navigator.userLanguage = 'un_SU';
-                            });
-
-                            it('fall back to main locale', inject(function () {
-                                goToPath('/');
-
-                                expect($location.path()).toEqual('/lang/');
-                            }));
-                        });
-
-                        describe('and no browser user language with browser language', function () {
-                            beforeEach(function () {
-                                window.navigator.language = 'en_BE';
-                                window.navigator.userLanguage = undefined;
-                            });
-
-                            it('with fallback to browser locale', function () {
-                                goToPath('/');
-
-                                expect($location.path()).toEqual('/en/');
-                                expect(dispatcher.persistent['i18n.locale']).toEqual('en');
-                            });
-                        });
-                    });
-
-                    describe('without fallback to browser locale', function () {
-                        beforeEach(function () {
-                            config.fallbackToBrowserLocale = false;
-                        });
-
-                        describe('and browser user language is supported', function () {
-                            beforeEach(function () {
-                                window.navigator.userLanguage = 'en_BE';
-                            });
-
-                            it('fall back to first supported locale', function () {
-                                goToPath('/');
-
-                                expect($location.path()).toEqual('/lang/');
-                            });
-                        });
-
-                        describe('and browser language is supported', function () {
-                            beforeEach(function () {
-                                window.navigator.language = 'en_BE';
-                            });
-
-                            it('fall back to first supported locale', function () {
-                                goToPath('/');
-
-                                expect($location.path()).toEqual('/lang/');
-                            });
-                        });
-                    });
-                });
-
-                describe('and no fallback to default locale', function () {
-                    beforeEach(function () {
-                        config.fallbackToDefaultLocale = false;
-                    });
-
-                    it('do not redirect', function () {
-                        goToPath('/');
-
-                        expect($location.path()).toEqual('/');
                     });
                 });
             });
@@ -1951,6 +1966,17 @@ describe('i18n', function () {
                 });
             });
 
+            describe('when only one supported language', function () {
+                beforeEach(function () {
+                    config.supportedLanguages = ['en'];
+
+                    directive.link(scope, element);
+                    scope.$digest();
+                });
+
+
+            });
+
             describe('when supported languages', function () {
                 beforeEach(function () {
                     config.supportedLanguages = ['en', 'nl'];
@@ -2102,6 +2128,23 @@ describe('i18n', function () {
 
                                     describe('and main locale changes', function () {
                                         beforeEach(function () {
+                                            rendererScope.remove(english);
+                                            rendererScope.save();
+                                            publicConfigWriter.calls[1].args[1].success();
+                                            scope.$digest();
+                                        });
+
+                                        it('update supported languages on scope', function () {
+                                            expect(scope.supportedLanguages).toEqual([chinese, dutch]);
+                                        });
+
+                                        it('redirect to new main language', function () {
+                                            expect($location.path()).toEqual('/ch/foo/bar');
+                                        });
+                                    });
+
+                                    describe('and only one supported language', function () {
+                                        beforeEach(function () {
                                             rendererScope.remove(dutch);
                                             rendererScope.remove(chinese);
                                             rendererScope.save();
@@ -2109,12 +2152,8 @@ describe('i18n', function () {
                                             scope.$digest();
                                         });
 
-                                        it('update supported languages on scope', function () {
-                                            expect(scope.supportedLanguages).toEqual([english]);
-                                        });
-
-                                        it('redirect to new main language', function () {
-                                            expect($location.path()).toEqual('/en/foo/bar');
+                                        it('redirect to unlocalized path', function () {
+                                            expect($location.path()).toEqual('/foo/bar');
                                         });
                                     });
                                 });
