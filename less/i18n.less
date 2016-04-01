@@ -10,3 +10,10 @@ bin-link:not([read-only]) {
     display: inline-block;
   }
 }
+
+a, span, small, strong {
+  &[i18n]:not([read-only]),
+  [bin-link]:not([read-only]) {
+    display: inline-block;
+  }
+}
