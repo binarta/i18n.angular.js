@@ -319,16 +319,13 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             scope.var = undefined;
             var defaultLocale = 'default';
             var ctx = {
-                code: attrs.code,
-                default: attrs.default,
                 useExtendedResponse: true
             };
 
             ngRegisterTopicHandler(scope, 'i18n.locale', function (locale) {
                 ctx.locale = useDefaultLocale() ? defaultLocale : locale;
-                i18n.resolve(ctx).then(function (update) {
-                    updateTranslation(update.translation);
-                });
+                if (attrs.watchOnCode != undefined) watchOnCodeChange(ctx);
+                else resolveTranslation(ctx);
             });
 
             ngRegisterTopicHandler(scope, 'i18n.updated', function (ctx) {
@@ -347,6 +344,14 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
 
                 i18nRenderer.open(ctx);
             };
+
+            function watchOnCodeChange(ctx) {
+                scope.$watch(function () {
+                    return attrs.code;
+                }, function () {
+                    resolveTranslation(ctx);
+                });
+            }
 
             function translate(translation) {
                 var ctx = {
@@ -383,6 +388,14 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                     element: element,
                     permission: 'i18n.message.add',
                     onClick: scope.open
+                });
+            }
+
+            function resolveTranslation(ctx) {
+                ctx.code = attrs.code;
+                ctx.default = attrs.default;
+                i18n.resolve(ctx).then(function (update) {
+                    updateTranslation(update.translation);
                 });
             }
 

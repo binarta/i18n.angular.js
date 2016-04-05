@@ -1721,6 +1721,44 @@ describe('i18n', function () {
                     });
                 });
 
+                describe('and watch on code is enabled', function () {
+                    beforeEach(function () {
+                        attrs.watchOnCode = '';
+                    });
+
+                    describe('and i18n.locale event is triggered', function () {
+                        beforeEach(function () {
+                            registry['i18n.locale']('L');
+                            scope.$digest();
+                        });
+
+                        it('triggers message resolution', function () {
+                            expect(resolver.args).toEqual({
+                                code: 'code',
+                                default: 'default',
+                                locale: 'L',
+                                useExtendedResponse: true
+                            });
+                        });
+
+                        describe('when code is changed', function () {
+                            beforeEach(function () {
+                                attrs.code = 'changed';
+                                scope.$digest();
+                            });
+
+                            it('triggers message resolution', function () {
+                                expect(resolver.args).toEqual({
+                                    code: 'changed',
+                                    default: 'default',
+                                    locale: 'L',
+                                    useExtendedResponse: true
+                                });
+                            });
+                        });
+                    });
+                });
+
                 it('install editMode event binder', function () {
                     expect(editMode.bindEvent).toHaveBeenCalledWith({
                         scope: scope,
