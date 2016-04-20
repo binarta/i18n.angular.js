@@ -318,6 +318,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
         link: function (scope, element, attrs) {
             scope.var = undefined;
             var defaultLocale = 'default';
+            var translated;
             var ctx = {
                 useExtendedResponse: true
             };
@@ -399,21 +400,30 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 i18n.resolve(ctx).then(function (update) {
                     updateTranslation(update.translation);
                 }, function () {
-                    isReadOnly() ? emptyText() : setPlaceholderTextWhenInEditMode();
+                    isReadOnly() ? setEmptyText() : setPlaceholderTextWhenInEditMode();
                 });
             }
 
             function setPlaceholderTextWhenInEditMode() {
                 ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
-                    enabled ? updateTranslation('place your text here') : emptyText();
+                    if(!translated) enabled ? setPlaceholderText() : setEmptyText();
                 });
             }
             
-            function emptyText() {
-                updateTranslation('');
+            function setEmptyText() {
+                setVar('');
+            }
+
+            function setPlaceholderText() {
+                setVar('place your text here');
             }
             
             function updateTranslation(translation) {
+                translated = true;
+                setVar(translation);
+            }
+
+            function setVar(translation) {
                 scope.var = translation;
                 if (attrs.var) scope.$parent[attrs.var] = translation;
             }

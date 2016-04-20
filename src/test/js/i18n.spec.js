@@ -1696,6 +1696,28 @@ describe('i18n', function () {
                             expect(scope.var).toEqual('place your text here');
                         });
                     });
+
+                    describe('and translation is updated', function () {
+                        beforeEach(function () {
+                            scope.open();
+                            rendererArgs.submit();
+                            scope.$digest();
+                        });
+
+                        it('message is translated', function () {
+                            expect(scope.var).toEqual('success');
+                        });
+
+                        describe('and user not in edit mode', function () {
+                            beforeEach(function () {
+                                registry['edit.mode'](true);
+                            });
+
+                            it('message does not change', function () {
+                                expect(scope.var).toEqual('success');
+                            });
+                        });
+                    });
                 });
 
                 describe('and message resolution is resolved', function () {
