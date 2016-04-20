@@ -1575,7 +1575,6 @@ describe('i18n', function () {
                 resolve: function (args) {
                     i18nResolveDeferred = $q.defer();
                     resolver.args = args;
-                    // deferred.resolve(resolver.resolverResponse);
                     return i18nResolveDeferred.promise;
                 },
                 resolverResponse: {
@@ -1645,7 +1644,6 @@ describe('i18n', function () {
 
                 describe('and message resolution is rejected', function () {
                     beforeEach(function () {
-                        registry['i18n.locale']('L');
                         i18nResolveDeferred.reject();
                         scope.$digest();
                     });
@@ -1674,7 +1672,6 @@ describe('i18n', function () {
 
                 describe('and message resolution is rejected', function () {
                     beforeEach(function () {
-                        registry['i18n.locale']('L');
                         i18nResolveDeferred.reject();
                         scope.$digest();
                     });
@@ -1701,9 +1698,8 @@ describe('i18n', function () {
                     });
                 });
 
-                describe('and i18n.locale event is triggered', function () {
+                describe('and message resolution is resolved', function () {
                     beforeEach(function () {
-                        registry['i18n.locale']('L');
                         scope.$digest();
                     });
 
@@ -1711,7 +1707,6 @@ describe('i18n', function () {
                         expect(resolver.args).toEqual({
                             code: 'code',
                             default: 'default',
-                            locale: 'L',
                             useExtendedResponse: true
                         });
                     });
@@ -1719,7 +1714,6 @@ describe('i18n', function () {
                     it('with default locale', function () {
                         attrs.noLocale = '';
                         directive.link(scope, element, attrs);
-                        registry['i18n.locale']('L');
                         scope.$digest();
 
                         expect(resolver.args).toEqual({
@@ -1746,7 +1740,6 @@ describe('i18n', function () {
                         beforeEach(function () {
                             attrs.var = 'var';
                             directive.link(scope, element, attrs);
-                            registry['i18n.locale']('L');
                             i18nResolveDeferred.resolve(resolver.resolverResponse);
                             scope.$digest();
                         });
@@ -1764,36 +1757,29 @@ describe('i18n', function () {
                 describe('and watch on code is enabled', function () {
                     beforeEach(function () {
                         attrs.watchOnCode = '';
+                        directive.link(scope, element, attrs);
+                        scope.$digest();
                     });
 
-                    describe('and i18n.locale event is triggered', function () {
+                    it('triggers message resolution', function () {
+                        expect(resolver.args).toEqual({
+                            code: 'code',
+                            default: 'default',
+                            useExtendedResponse: true
+                        });
+                    });
+
+                    describe('when code is changed', function () {
                         beforeEach(function () {
-                            registry['i18n.locale']('L');
+                            attrs.code = 'changed';
                             scope.$digest();
                         });
 
                         it('triggers message resolution', function () {
                             expect(resolver.args).toEqual({
-                                code: 'code',
+                                code: 'changed',
                                 default: 'default',
-                                locale: 'L',
                                 useExtendedResponse: true
-                            });
-                        });
-
-                        describe('when code is changed', function () {
-                            beforeEach(function () {
-                                attrs.code = 'changed';
-                                scope.$digest();
-                            });
-
-                            it('triggers message resolution', function () {
-                                expect(resolver.args).toEqual({
-                                    code: 'changed',
-                                    default: 'default',
-                                    locale: 'L',
-                                    useExtendedResponse: true
-                                });
                             });
                         });
                     });

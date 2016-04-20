@@ -321,12 +321,10 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             var ctx = {
                 useExtendedResponse: true
             };
+            if (useDefaultLocale()) ctx.locale = defaultLocale;
 
-            ngRegisterTopicHandler(scope, 'i18n.locale', function (locale) {
-                ctx.locale = useDefaultLocale() ? defaultLocale : locale;
-                if (attrs.watchOnCode != undefined) watchOnCodeChange(ctx);
-                else resolveTranslation(ctx);
-            });
+            if (attrs.watchOnCode != undefined) watchOnCodeChange(ctx);
+            else resolveTranslation(ctx);
 
             ngRegisterTopicHandler(scope, 'i18n.updated', function (ctx) {
                 if (attrs.code == ctx.code) updateTranslation(ctx.translation);
