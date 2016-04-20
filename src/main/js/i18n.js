@@ -382,7 +382,11 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 return localeResolver() == $rootScope.mainLocale;
             }
 
-            if (attrs.readOnly == undefined) {
+            function isReadOnly() {
+                return attrs.readOnly != undefined;
+            }
+
+            if (!isReadOnly()) {
                 editMode.bindEvent({
                     scope: scope,
                     element: element,
@@ -396,9 +400,21 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 ctx.default = attrs.default;
                 i18n.resolve(ctx).then(function (update) {
                     updateTranslation(update.translation);
+                }, function () {
+                    isReadOnly() ? emptyText() : setPlaceholderTextWhenInEditMode();
                 });
             }
 
+            function setPlaceholderTextWhenInEditMode() {
+                ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
+                    enabled ? updateTranslation('place your text here') : emptyText();
+                });
+            }
+            
+            function emptyText() {
+                updateTranslation('');
+            }
+            
             function updateTranslation(translation) {
                 scope.var = translation;
                 if (attrs.var) scope.$parent[attrs.var] = translation;
@@ -654,7 +670,6 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
 
     this.resolve = function (context) {
         var deferred = $q.defer();
-        var fallbackMessage = 'place your text here';
 
         function isUnknown(translation) {
             return translation == '???' + context.code + '???';
@@ -667,18 +682,18 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         function resolveDefaultTranslation() {
             if (context.default == '') resolveAndCache(' ');
             else if (context.default) resolveAndCache(context.default);
-            else config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : resolveAndCache(fallbackMessage);
+            else config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : deferred.reject();
         }
 
         function resolveDefaultTranslationFromMetadata() {
-            var translation = fallbackMessage;
+            var translation;
             getMetadata().then(function (data) {
                 angular.forEach(data, function (metadata) {
                     var messages = metadata.data.msgs[config.defaultLocaleFromMetadata];
                     if (messages && messages[context.code]) translation = messages[context.code];
                 });
             }).finally(function () {
-                resolveAndCache(translation);
+                translation ? resolveAndCache(translation) : deferred.reject();
             });
         }
 

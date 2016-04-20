@@ -350,18 +350,16 @@ describe('i18n', function () {
                         context.code = code;
                     });
 
-                    describe('without metadata', function () {
-                        it('use fallback text', function () {
-                            i18n.resolve(context).then(presenter);
-                            resolveTo(unknownCode);
-
-                            expect(receivedContext).toEqual({
-                                translation: 'place your text here',
-                                code: code,
-                                locale: 'default'
-                            });
-                            expect(cache.get('namespace:default:translation.code')).toEqual('place your text here');
+                    it('resolve is rejected', function () {
+                        var rejected;
+                        i18n.resolve(context).then(presenter, function () {
+                            rejected = true;
                         });
+                        $rootScope.$digest();
+                        reader.calls[0].args[2]();
+                        $rootScope.$digest();
+
+                        expect(rejected).toBeTruthy();
                     });
 
                     describe('when using metadata as fallback', function () {
@@ -448,17 +446,15 @@ describe('i18n', function () {
                                 config.defaultLocaleFromMetadata = 'en';
                             });
 
-                            it('use translation from metadata', function () {
-                                i18n.resolve(context).then(presenter);
+                            it('use placeholder text', function () {
+                                var rejected;
+                                i18n.resolve(context).then(presenter, function () {
+                                    rejected = true;
+                                });
                                 resolveTo(unknownCode);
                                 $httpBackend.flush();
 
-                                expect(receivedContext).toEqual({
-                                    translation: 'place your text here',
-                                    code: code,
-                                    locale: 'default'
-                                });
-                                expect(cache.get('namespace:default:translation.code')).toEqual('place your text here');
+                                expect(rejected).toBeTruthy();
                             });
                         });
                     });
@@ -1559,6 +1555,7 @@ describe('i18n', function () {
 
     describe('i18n directive', function () {
         var directive, $rootScope, scope, resolver, locale, attrs, rendererOpenCalled, rendererArgs, editMode, registry, topics, dispatcher;
+        var i18nResolveDeferred;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, _$rootScope_, $q,
                                     i18nRendererTemplate, topicRegistryMock, ngRegisterTopicHandler, topicMessageDispatcherMock,
@@ -1576,10 +1573,10 @@ describe('i18n', function () {
 
             resolver = {
                 resolve: function (args) {
-                    var deferred = $q.defer();
+                    i18nResolveDeferred = $q.defer();
                     resolver.args = args;
-                    deferred.resolve(resolver.resolverResponse);
-                    return deferred.promise;
+                    // deferred.resolve(resolver.resolverResponse);
+                    return i18nResolveDeferred.promise;
                 },
                 resolverResponse: {
                     translation: 'translation',
@@ -1645,6 +1642,18 @@ describe('i18n', function () {
                 it('editMode event binder is not installed', function () {
                     expect(editMode.bindEvent).not.toHaveBeenCalled();
                 });
+
+                describe('and message resolution is rejected', function () {
+                    beforeEach(function () {
+                        registry['i18n.locale']('L');
+                        i18nResolveDeferred.reject();
+                        scope.$digest();
+                    });
+
+                    it('translation is empty', function () {
+                        expect(scope.var).toEqual('');
+                    });
+                });
             });
 
             describe('and element is not read-only', function () {
@@ -1661,6 +1670,35 @@ describe('i18n', function () {
 
                 it('initialize var on scope', function () {
                     expect(scope.var).toBeUndefined();
+                });
+
+                describe('and message resolution is rejected', function () {
+                    beforeEach(function () {
+                        registry['i18n.locale']('L');
+                        i18nResolveDeferred.reject();
+                        scope.$digest();
+                    });
+
+                    describe('and user is not in edit mode', function () {
+                        beforeEach(function () {
+                            registry['edit.mode'](false);
+                        });
+
+                        it('translation is empty', function () {
+                            expect(scope.var).toEqual('');
+                        });
+                    });
+
+
+                    describe('and user not in edit mode', function () {
+                        beforeEach(function () {
+                            registry['edit.mode'](true);
+                        });
+
+                        it('show placeholder text', function () {
+                            expect(scope.var).toEqual('place your text here');
+                        });
+                    });
                 });
 
                 describe('and i18n.locale event is triggered', function () {
@@ -1694,6 +1732,7 @@ describe('i18n', function () {
 
                     describe('and message resolution completes without var defined on attributes', function () {
                         it('exposes translation on scope', function () {
+                            i18nResolveDeferred.resolve(resolver.resolverResponse);
                             scope.$digest();
                             expect(scope.var).toEqual('translation');
                         });
@@ -1708,6 +1747,7 @@ describe('i18n', function () {
                             attrs.var = 'var';
                             directive.link(scope, element, attrs);
                             registry['i18n.locale']('L');
+                            i18nResolveDeferred.resolve(resolver.resolverResponse);
                             scope.$digest();
                         });
 
