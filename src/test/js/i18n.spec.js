@@ -2616,4 +2616,27 @@ describe('i18n', function () {
             expect(filter('en')).toEqual('');
         });
     });
+
+    describe('i18nRoute filter', function () {
+        var filter, $routeParams;
+
+        beforeEach(inject(function (i18nRouteFilter, _$routeParams_) {
+            filter = i18nRouteFilter;
+            $routeParams = _$routeParams_;
+        }));
+
+        it('add hashbang to link', function () {
+            expect(filter('/route')).toEqual('#!/route');
+        });
+
+        describe('with locale in routeParams', function () {
+            beforeEach(function () {
+                $routeParams.locale = 'l';
+            });
+
+            it('add locale before link', function () {
+                expect(filter('/route')).toEqual('#!/l/route');
+            });
+        });
+    });
 });

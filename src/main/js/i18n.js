@@ -35,6 +35,11 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
             return lang;
         }
     }])
+    .filter('i18nRoute', ['$routeParams', function ($routeParams) {
+        return function (val) {
+            return '#!' + ($routeParams.locale ? '/' + $routeParams.locale : '') + val;
+        }
+    }])
     .run(['i18nRendererTemplateInstaller', 'ngRegisterTopicHandler', function (installer, ngRegisterTopicHandler) {
         ngRegisterTopicHandler({
             topic: 'edit.mode',
