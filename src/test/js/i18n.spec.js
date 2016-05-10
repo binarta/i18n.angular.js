@@ -2529,6 +2529,10 @@ describe('i18n', function () {
             expect(target.path()).toEqual('/');
         });
 
+        it('path with argument returns $location', function () {
+            expect(location.path('/')).toEqual(target);
+        });
+
         describe('get unlocalized path', function () {
             beforeEach(inject(function ($q) {
                 var deferred = $q.defer();

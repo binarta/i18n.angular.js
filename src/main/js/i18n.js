@@ -187,7 +187,7 @@ function I18nLocationFactory($q, $location, localeResolver, i18n) {
         },
         path: function (path) {
             var locale = localeResolver();
-            $location.path((locale && locale != 'default' ? '/' + locale : '') + path);
+            return $location.path((locale && locale != 'default' ? '/' + locale : '') + path);
         },
         unlocalizedPath: function () {
             var deferred = $q.defer();
