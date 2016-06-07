@@ -31,7 +31,7 @@ describe('i18n', function () {
                 }
             }
         };
-        spyOn(modal, 'open').andReturn(modalInstance);
+        spyOn(modal, 'open').and.returnValue(modalInstance);
 
         module(function ($provide) {
             $provide.value('$modal', modal);
@@ -80,7 +80,7 @@ describe('i18n', function () {
             }));
 
             function expectContextEquals(ctx) {
-                expect(writer.calls[0].args[0]).toEqual(ctx);
+                expect(writer.calls.first().args[0]).toEqual(ctx);
             }
 
             describe('with default locale', function () {
@@ -136,14 +136,14 @@ describe('i18n', function () {
                     i18n.translate(context);
                     $rootScope.$digest();
 
-                    expect(usecaseAdapter.calls[0].args[0]).toEqual(context);
+                    expect(usecaseAdapter.calls.first().args[0]).toEqual(context);
                 });
 
                 describe('on success', function () {
                     it('default', function () {
                         i18n.translate(context);
                         $rootScope.$digest();
-                        usecaseAdapter.calls[0].args[1]();
+                        usecaseAdapter.calls.first().args[1]();
 
                         expect(cache.get('default:default:code')).toEqual('translation');
                     });
@@ -153,7 +153,7 @@ describe('i18n', function () {
 
                         i18n.translate(context);
                         $rootScope.$digest();
-                        usecaseAdapter.calls[0].args[1]();
+                        usecaseAdapter.calls.first().args[1]();
 
                         expect(cache.get('N:default:code')).toEqual('translation');
                     });
@@ -185,7 +185,7 @@ describe('i18n', function () {
 
                     i18n.translate(context);
                     $rootScope.$digest();
-                    usecaseAdapter.calls[0].args[1]();
+                    usecaseAdapter.calls.first().args[1]();
 
                     expect(cache.get('default:L:code')).toEqual('translation');
                 });
@@ -195,7 +195,7 @@ describe('i18n', function () {
 
                     i18n.translate(context);
                     $rootScope.$digest();
-                    usecaseAdapter.calls[0].args[1]();
+                    usecaseAdapter.calls.first().args[1]();
 
                     expect(cache.get('default:custom:code')).toEqual('translation');
                 });
@@ -232,14 +232,14 @@ describe('i18n', function () {
             function resolveTo(translation) {
                 i18n.resolve(context).then(presenter);
                 $rootScope.$digest();
-                reader.calls[0].args[1](translation);
+                reader.calls.first().args[1](translation);
                 $rootScope.$digest();
             }
 
             function failed() {
                 i18n.resolve(context).then(presenter);
                 $rootScope.$digest();
-                reader.calls[0].args[2]();
+                reader.calls.first().args[2]();
                 $rootScope.$digest();
             }
 
@@ -253,7 +253,7 @@ describe('i18n', function () {
                 }));
 
                 function expectContextEquals(ctx) {
-                    expect(reader.calls[0].args[0]).toEqual(ctx);
+                    expect(reader.calls.first().args[0]).toEqual(ctx);
                 }
 
                 it('on resolve construct context', function () {
@@ -275,7 +275,7 @@ describe('i18n', function () {
                     it('resolve to translation', inject(function () {
                         i18n.resolve(context).then(presenter);
                         $rootScope.$digest();
-                        reader.calls[0].args[1](translation);
+                        reader.calls.first().args[1](translation);
                         $rootScope.$digest();
 
                         expect(receivedContext).toEqual(translation);
@@ -294,15 +294,16 @@ describe('i18n', function () {
 
                     describe('and subsequent calls', function () {
                         beforeEach(function () {
-                            reader.reset();
+                            reader.calls.reset();
                             i18n.resolve(context, presenter);
                         });
 
                         it('then no gateway calls are done', function () {
-                            expect(reader.calls[0]).toBeUndefined();
+                            expect(reader.calls.first()).toBeUndefined();
                             expect(receivedContext).toEqual({
                                 translation: translation,
                                 code: code,
+                                default: undefined,
                                 locale: 'default'
                             });
                         });
@@ -314,6 +315,7 @@ describe('i18n', function () {
                     expect(receivedContext).toEqual({
                         translation: translation,
                         code: code,
+                        default: undefined,
                         locale: 'default'
                     });
                     expect(cache.get('namespace:default:translation.code')).toEqual(translation);
@@ -356,7 +358,7 @@ describe('i18n', function () {
                             rejected = true;
                         });
                         $rootScope.$digest();
-                        reader.calls[0].args[2]();
+                        reader.calls.first().args[2]();
                         $rootScope.$digest();
 
                         expect(rejected).toBeTruthy();
@@ -392,6 +394,7 @@ describe('i18n', function () {
                                 expect(receivedContext).toEqual({
                                     translation: 'translation from app metadata',
                                     code: code,
+                                    default: undefined,
                                     locale: 'default'
                                 });
                                 expect(cache.get('namespace:default:translation.code')).toEqual('translation from app metadata');
@@ -427,6 +430,7 @@ describe('i18n', function () {
                                 expect(receivedContext).toEqual({
                                     translation: 'translation from system metadata',
                                     code: code,
+                                    default: undefined,
                                     locale: 'default'
                                 });
                                 expect(cache.get('namespace:default:translation.code')).toEqual('translation from system metadata');
@@ -488,6 +492,7 @@ describe('i18n', function () {
                         expect(receivedContext).toEqual({
                             translation: translation,
                             code: code,
+                            default: undefined,
                             locale: 'custom'
                         });
                     });
@@ -508,6 +513,7 @@ describe('i18n', function () {
                     expect(receivedContext).toEqual({
                         translation: translation,
                         code: code,
+                        default: undefined,
                         locale: 'L'
                     });
                     expect(cache.get('namespace:L:translation.code')).toEqual(translation);
@@ -529,7 +535,7 @@ describe('i18n', function () {
                 beforeEach(inject(function ($q) {
                     var deferred = $q.defer();
                     deferred.reject();
-                    publicConfigReader.andReturn(deferred.promise);
+                    publicConfigReader.and.returnValue(deferred.promise);
                 }));
 
                 it('and no languages in local config', function () {
@@ -551,13 +557,13 @@ describe('i18n', function () {
                 beforeEach(inject(function ($q) {
                     var deferred = $q.defer();
                     deferred.resolve({data: {value: '["en"]'}});
-                    publicConfigReader.andReturn(deferred.promise);
+                    publicConfigReader.and.returnValue(deferred.promise);
                 }));
 
                 it('and no languages in local config', function () {
                     execute();
 
-                    expect(publicConfigReader.calls[0].args[0]).toEqual({
+                    expect(publicConfigReader.calls.first().args[0]).toEqual({
                         key: 'supportedLanguages'
                     });
                     expect(languages).toEqual(['en']);
@@ -578,7 +584,7 @@ describe('i18n', function () {
                     languages = undefined;
                     execute();
 
-                    expect(publicConfigReader.callCount).toEqual(1);
+                    expect(publicConfigReader.calls.count()).toEqual(1);
                     expect(languages).toEqual(['en']);
                 });
             });
@@ -588,7 +594,7 @@ describe('i18n', function () {
             beforeEach(inject(function ($q) {
                 var deferred = $q.defer();
                 deferred.resolve({data: {value: '["en"]'}});
-                publicConfigReader.andReturn(deferred.promise);
+                publicConfigReader.and.returnValue(deferred.promise);
 
                 i18n.getSupportedLanguages();
             }));
@@ -604,7 +610,7 @@ describe('i18n', function () {
                             });
 
                             it('write to public config', function () {
-                                expect(publicConfigWriter.calls[0].args[0]).toEqual({
+                                expect(publicConfigWriter.calls.first().args[0]).toEqual({
                                     key: 'supportedLanguages',
                                     value: lang.value
                                 });
@@ -613,7 +619,7 @@ describe('i18n', function () {
                             describe('on success', function () {
                                 beforeEach(function () {
                                     $rootScope.unlocalizedPath = '/path';
-                                    publicConfigWriter.calls[0].args[1].success();
+                                    publicConfigWriter.calls.first().args[1].success();
                                 });
 
                                 it('supported languages on config are updated', function () {
@@ -624,7 +630,7 @@ describe('i18n', function () {
                                     i18n.getSupportedLanguages();
                                     $rootScope.$digest();
 
-                                    expect(publicConfigReader.callCount).toEqual(2);
+                                    expect(publicConfigReader.calls.count()).toEqual(2);
                                 });
                             });
                         });
@@ -640,7 +646,7 @@ describe('i18n', function () {
 
                             describe('on success', function () {
                                 beforeEach(function () {
-                                    publicConfigWriter.calls[0].args[1].success();
+                                    publicConfigWriter.calls.first().args[1].success();
                                 });
 
                                 it('callback is executed', function () {
@@ -656,7 +662,7 @@ describe('i18n', function () {
             beforeEach(inject(function ($q) {
                 var deferred = $q.defer();
                 deferred.reject();
-                publicConfigReader.andReturn(deferred.promise);
+                publicConfigReader.and.returnValue(deferred.promise);
             }));
 
             describe('no languages', function () {
@@ -930,22 +936,22 @@ describe('i18n', function () {
             });
 
             it('modal is opened with scope setting', function () {
-                expect(modal.open.mostRecentCall.args[0].scope).toBeDefined();
+                expect(modal.open.calls.mostRecent().args[0].scope).toBeDefined();
             });
 
             it('modal is opened with controller setting', function () {
-                expect(modal.open.mostRecentCall.args[0].controller).toEqual('i18nDefaultModalController');
+                expect(modal.open.calls.mostRecent().args[0].controller).toEqual('i18nDefaultModalController');
             });
 
             it('modal is opened with default templateUrl setting', function () {
-                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/i18n-modal.html');
+                expect(modal.open.calls.mostRecent().args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/i18n-modal.html');
             });
 
             it('template url with specific styling', function () {
                 config.styling = 'bootstrap3';
                 service.open({});
 
-                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
+                expect(modal.open.calls.mostRecent().args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
             });
 
             it('template url with specific components directory', function () {
@@ -953,7 +959,7 @@ describe('i18n', function () {
                 config.componentsDir = 'components';
                 service.open({});
 
-                expect(modal.open.mostRecentCall.args[0].templateUrl).toEqual('components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
+                expect(modal.open.calls.mostRecent().args[0].templateUrl).toEqual('components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
             });
 
             it('modal is submitted', function () {
@@ -1000,7 +1006,7 @@ describe('i18n', function () {
         beforeEach(inject(function ($q, publicConfigReader) {
             var deferred = $q.defer();
             deferred.reject();
-            publicConfigReader.andReturn(deferred.promise);
+            publicConfigReader.and.returnValue(deferred.promise);
         }));
 
         function goToPath(path) {
@@ -1254,7 +1260,6 @@ describe('i18n', function () {
                                     goToPath('/');
 
                                     expect($location.path()).toEqual('/en/');
-                                    expect(dispatcher.persistent['i18n.locale']).toEqual('en');
                                 });
                             });
 
@@ -1280,7 +1285,6 @@ describe('i18n', function () {
                                     goToPath('/');
 
                                     expect($location.path()).toEqual('/en/');
-                                    expect(dispatcher.persistent['i18n.locale']).toEqual('en');
                                 });
                             });
                         });
@@ -1478,7 +1482,7 @@ describe('i18n', function () {
 
             describe('and element is clicked', function () {
                 beforeEach(function () {
-                    editMode.bindEvent.calls[0].args[0].onClick();
+                    editMode.bindEvent.calls.first().args[0].onClick();
                 });
 
                 it('renderer is opened', function () {
@@ -1989,12 +1993,12 @@ describe('i18n', function () {
         beforeEach(inject(function (_$rootScope_, _i18n_, _config_, publicConfigReader, _publicConfigWriter_, $q, _$location_, _sessionStorage_) {
             var reader = $q.defer();
             reader.reject();
-            publicConfigReader.andReturn(reader.promise);
+            publicConfigReader.and.returnValue(reader.promise);
 
             publicConfigWriter = _publicConfigWriter_;
             var writer = $q.defer();
             writer.resolve('["nl","en"]');
-            publicConfigWriter.andReturn(writer.promise);
+            publicConfigWriter.and.returnValue(writer.promise);
 
             $rootScope = _$rootScope_;
             scope = $rootScope.$new();
@@ -2086,12 +2090,12 @@ describe('i18n', function () {
 
                 describe('editMode event is triggered', function () {
                     beforeEach(function () {
-                        editMode.bindEvent.calls[0].args[0].onClick();
+                        editMode.bindEvent.calls.first().args[0].onClick();
                     });
 
                     describe('when user has no permission', function () {
                         beforeEach(function () {
-                            activeUserHasPermission.calls[0].args[0].no();
+                            activeUserHasPermission.calls.first().args[0].no();
                         });
 
                         it('editMode renderer is opened', function () {
@@ -2105,7 +2109,7 @@ describe('i18n', function () {
                             var rendererScope;
 
                             beforeEach(function () {
-                                rendererScope = editModeRenderer.open.calls[0].args[0].scope;
+                                rendererScope = editModeRenderer.open.calls.first().args[0].scope;
                                 scope.$digest();
                             });
 
@@ -2120,11 +2124,11 @@ describe('i18n', function () {
 
                     describe('and user has permission', function () {
                         beforeEach(function () {
-                            activeUserHasPermission.calls[0].args[0].yes();
+                            activeUserHasPermission.calls.first().args[0].yes();
                         });
 
                         it('has i18n.config.update permission', function () {
-                            expect(activeUserHasPermission.calls[0].args[1]).toEqual('i18n.config.update');
+                            expect(activeUserHasPermission.calls.first().args[1]).toEqual('i18n.config.update');
                         });
 
                         it('editMode renderer is opened', function () {
@@ -2138,7 +2142,7 @@ describe('i18n', function () {
                             var rendererScope;
 
                             beforeEach(function () {
-                                rendererScope = editModeRenderer.open.calls[0].args[0].scope;
+                                rendererScope = editModeRenderer.open.calls.first().args[0].scope;
                                 rendererScope.$digest();
                             });
 
@@ -2164,12 +2168,12 @@ describe('i18n', function () {
                                         rendererScope.remove(dutch);
                                         rendererScope.remove(english);
                                         rendererScope.save();
-                                        publicConfigWriter.calls[0].args[1].success();
+                                        publicConfigWriter.calls.first().args[1].success();
                                         scope.$digest();
                                     });
 
                                     it('write to public config', function () {
-                                        expect(publicConfigWriter.calls[0].args[0]).toEqual({
+                                        expect(publicConfigWriter.calls.first().args[0]).toEqual({
                                             key: 'supportedLanguages',
                                             value: []
                                         });
@@ -2189,12 +2193,12 @@ describe('i18n', function () {
                                         $location.path('/en/foo/bar');
                                         rendererScope.add(chinese);
                                         rendererScope.save();
-                                        publicConfigWriter.calls[0].args[1].success();
+                                        publicConfigWriter.calls.first().args[1].success();
                                         scope.$digest();
                                     });
 
                                     it('write to public config', function () {
-                                        expect(publicConfigWriter.calls[0].args[0]).toEqual({
+                                        expect(publicConfigWriter.calls.first().args[0]).toEqual({
                                             key: 'supportedLanguages',
                                             value: ['en', 'ch', 'nl']
                                         });
@@ -2216,7 +2220,7 @@ describe('i18n', function () {
                                         beforeEach(function () {
                                             rendererScope.remove(english);
                                             rendererScope.save();
-                                            publicConfigWriter.calls[1].args[1].success();
+                                            publicConfigWriter.calls.mostRecent().args[1].success();
                                             scope.$digest();
                                         });
 
@@ -2234,7 +2238,7 @@ describe('i18n', function () {
                                             rendererScope.remove(dutch);
                                             rendererScope.remove(chinese);
                                             rendererScope.save();
-                                            publicConfigWriter.calls[1].args[1].success();
+                                            publicConfigWriter.calls.mostRecent().args[1].success();
                                             scope.$digest();
                                         });
 
@@ -2339,7 +2343,7 @@ describe('i18n', function () {
 
             var reader = $q.defer();
             reader.reject();
-            publicConfigReader.andReturn(reader.promise);
+            publicConfigReader.and.returnValue(reader.promise);
 
             ctrl = $controller(SelectLocaleController, {$scope: scope, $routeParams: params});
         }));
