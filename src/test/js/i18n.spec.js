@@ -1640,6 +1640,7 @@ describe('i18n', function () {
                     };
 
                     directive.link(scope, element, attrs);
+                    registry['i18n.locale']();
                 });
 
                 it('editMode event binder is not installed', function () {
@@ -1668,6 +1669,7 @@ describe('i18n', function () {
                     locale = 'locale';
 
                     directive.link(scope, element, attrs);
+                    registry['i18n.locale']('locale');
                 });
 
                 it('initialize var on scope', function () {
@@ -1691,7 +1693,7 @@ describe('i18n', function () {
                     });
 
 
-                    describe('and user not in edit mode', function () {
+                    describe('and user is in edit mode', function () {
                         beforeEach(function () {
                             registry['edit.mode'](true);
                         });
@@ -1733,6 +1735,7 @@ describe('i18n', function () {
                         expect(resolver.args).toEqual({
                             code: 'code',
                             default: 'default',
+                            locale: 'locale',
                             useExtendedResponse: true
                         });
                     });
@@ -1784,6 +1787,7 @@ describe('i18n', function () {
                     beforeEach(function () {
                         attrs.watchOnCode = '';
                         directive.link(scope, element, attrs);
+                        registry['i18n.locale']('locale');
                         scope.$digest();
                     });
 
@@ -1791,6 +1795,7 @@ describe('i18n', function () {
                         expect(resolver.args).toEqual({
                             code: 'code',
                             default: 'default',
+                            locale: 'locale',
                             useExtendedResponse: true
                         });
                     });
@@ -1805,6 +1810,7 @@ describe('i18n', function () {
                             expect(resolver.args).toEqual({
                                 code: 'changed',
                                 default: 'default',
+                                locale: 'locale',
                                 useExtendedResponse: true
                             });
                         });
@@ -1980,6 +1986,21 @@ describe('i18n', function () {
                             code: 'code',
                             translation: 'translation',
                             locale: 'default'
+                        });
+                    });
+                });
+
+                describe('on locale change', function () {
+                    beforeEach(function () {
+                        registry['i18n.locale']('new');
+                    });
+
+                    it('resolver is called with new locale', function () {
+                        expect(resolver.args).toEqual({
+                            code: 'code',
+                            default: 'default',
+                            locale: 'new',
+                            useExtendedResponse: true
                         });
                     });
                 });
