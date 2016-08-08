@@ -20,6 +20,8 @@ describe('i18n', function () {
     var modal, modalInstance, submitModalSpy, cancelModalSpy;
 
     beforeEach(function () {
+        localStorage.removeItem('locale');
+        sessionStorage.removeItem('locale');
         modal = {
             open: {}
         };
@@ -982,7 +984,7 @@ describe('i18n', function () {
         var translation = 'message translation';
         var config;
 
-        beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, localStorage, sessionStorage, _$rootScope_, _$location_, _config_, $window, _i18n_) {
+        beforeEach(inject(function ($controller, topicRegistryMock, topicMessageDispatcherMock, _$rootScope_, _$location_, _config_, $window, _i18n_) {
             $rootScope = _$rootScope_;
             $location = _$location_;
             local = localStorage;
@@ -999,8 +1001,6 @@ describe('i18n', function () {
             };
 
             i18n = _i18n_;
-
-            $controller(I18nSupportController);
         }));
 
         beforeEach(inject(function ($q, publicConfigReader) {
@@ -1020,13 +1020,14 @@ describe('i18n', function () {
         });
 
         describe('when locale is remembered', function () {
-            beforeEach(inject(function ($controller) {
+            beforeEach(inject(['binarta', 'binartaApplicationIsInitialised.deferred', function (binarta, d) {
                 config.supportedLanguages = ['en'];
                 local.locale = 'en';
+                binarta.application.refresh();
+                d.resolve();
 
-                $controller(I18nSupportController);
                 $rootScope.$digest();
-            }));
+            }]));
 
             it('raise i18n.locale notification', function () {
                 expect(dispatcher.persistent['i18n.locale']).toEqual('en');
@@ -1159,12 +1160,13 @@ describe('i18n', function () {
                     });
                 });
 
-                it('when previously remembered do not broadcast again', function () {
+                it('when previously remembered do not broadcast again', inject(function (binarta) {
                     local.locale = locale;
+                    binarta.application.refresh();
                     goToPath('/' + locale + '/foo/bar');
 
                     expect(dispatcher.persistent['i18n.locale']).toBeUndefined();
-                });
+                }));
 
                 describe('and use default locale as main locale', function () {
                     beforeEach(function () {
@@ -1221,9 +1223,10 @@ describe('i18n', function () {
                     });
 
                     describe('and remembered locale', function () {
-                        beforeEach(function () {
+                        beforeEach(inject(function (binarta) {
                             local.locale = 'remembered';
-                        });
+                            binarta.application.refresh();
+                        }));
 
                         it('redirects to localized page', function () {
                             goToPath('/path');
@@ -1446,18 +1449,21 @@ describe('i18n', function () {
             });
 
             describe('and locale is changed', function () {
-                beforeEach(inject(function (sessionStorage) {
+                beforeEach(inject(function (sessionStorage, binarta) {
                     link = {
                         name: 'link-name-nl',
                         url: 'link-url-nl'
                     };
-                    sessionStorage.locale = 'nl';
+                    // sessionStorage.locale = 'nl';
+                    binarta.application.setLocale('nl');
+                    binarta.application.refresh();
                     $rootScope.$digest();
                 }));
 
-                it('link is translated', function () {
+                it('link is translated', inject(function (binarta) {
+                    expect(binarta.application.locale()).toEqual('nl');
                     expect(scope.link).toEqual(link);
-                });
+                }));
             });
         });
 
@@ -2355,7 +2361,7 @@ describe('i18n', function () {
     describe('SelectLocaleController', function () {
         var ctrl, scope, params, local, locale, topics;
 
-        beforeEach(inject(function ($rootScope, $controller, topicMessageDispatcherMock, localStorage, publicConfigReader, $q, config) {
+        beforeEach(inject(function ($rootScope, $controller, topicMessageDispatcherMock, publicConfigReader, $q, config) {
             config.supportedLanguages = ['lang'];
             scope = $rootScope.$new();
             params = {};
@@ -2390,10 +2396,10 @@ describe('i18n', function () {
         });
 
         describe('given a previous selection', function () {
-            beforeEach(function () {
+            beforeEach(inject(function (binarta) {
                 locale = 'lang';
-                local.locale = locale;
-            });
+                binarta.application.setLocale(locale);
+            }));
 
             describe('on init', function () {
                 beforeEach(function () {
@@ -2426,105 +2432,10 @@ describe('i18n', function () {
         });
     });
 
-    describe('locale resolution', function () {
-        var resolve, swap, localStorage, sessionStorage;
-
-        beforeEach(inject(function (localeResolver, localeSwapper, _localStorage_, _sessionStorage_) {
-            resolve = localeResolver;
-            swap = localeSwapper;
-            localStorage = _localStorage_;
-            sessionStorage = _sessionStorage_;
-        }));
-
-        it('starts out undefined', function () {
-            expect(resolve()).toEqual(undefined);
-        });
-
-        describe('when locale is specified in local storage', function () {
-            beforeEach(function () {
-                localStorage.locale = 'from-local-storage';
-            });
-
-            it('then resolves from local storage', function () {
-                expect(resolve()).toEqual('from-local-storage');
-            });
-
-            describe('and locale is specified in session storage', function () {
-                beforeEach(function () {
-                    sessionStorage.locale = 'from-session-storage';
-                });
-
-                it('then resolves from session storage', function () {
-                    expect(resolve()).toEqual('from-session-storage');
-                });
-
-                describe('and session storage is cleared', function () {
-                    beforeEach(function () {
-                        delete sessionStorage.locale
-                    });
-
-                    it('then resolves from local storage', function () {
-                        expect(resolve()).toEqual('from-local-storage');
-                    });
-                });
-
-                describe('and has previously been resolved', function () {
-                    beforeEach(function () {
-                        sessionStorage.locale = 'from-memory';
-                        resolve();
-                    });
-
-                    describe('and session storage and local storage are cleared', function () {
-                        beforeEach(function () {
-                            delete sessionStorage.locale;
-                            delete localStorage.locale;
-                        });
-
-                        it('then resolves to remembered locale', function () {
-                            expect(resolve()).toEqual('from-memory');
-                        });
-                    });
-                });
-            });
-
-            describe('and resolving from local storage', function () {
-                beforeEach(function () {
-                    resolve();
-                });
-
-                it('then local storage locale is promoted to session storage locale', inject(function (sessionStorage, localStorage) {
-                    expect(sessionStorage.locale).toEqual(localStorage.locale);
-                }));
-            });
-        });
-
-        describe('when swapped locale', function () {
-            var topics;
-
-            beforeEach(inject(function (topicMessageDispatcherMock) {
-                topics = topicMessageDispatcherMock;
-
-                swap('swapped-locale');
-            }));
-
-            it('then locale is saved in local storage', function () {
-                expect(localStorage.locale).toEqual('swapped-locale');
-            });
-
-            it('then locale is saved in session storage', function () {
-                expect(sessionStorage.locale).toEqual('swapped-locale');
-            });
-
-            it('then broadcast the swap', function () {
-                expect(topics.persistent['i18n.locale']).toEqual('swapped-locale');
-            });
-        });
-    });
-
     describe('i18nLocation', function () {
         var location, target, session, i18n, $rootScope;
 
-        beforeEach(inject(function (i18nLocation, $location, sessionStorage, _i18n_, _$rootScope_) {
+        beforeEach(inject(function (i18nLocation, $location, _i18n_, _$rootScope_) {
             location = i18nLocation;
             target = $location;
             session = sessionStorage;
@@ -2542,11 +2453,11 @@ describe('i18n', function () {
             expect(target.path()).toEqual('/');
         });
 
-        it('path with locale', function () {
-            session.locale = 'en';
+        it('path with locale', inject(function (binarta) {
+            binarta.application.setLocale('en');
             location.path('/');
             expect(target.path()).toEqual('/en/');
-        });
+        }));
 
         it('path with default locale', function () {
             session.locale = 'default';

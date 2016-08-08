@@ -1,12 +1,12 @@
-angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'toggle.edit.mode'])
+angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'toggle.edit.mode'])
     .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
     .factory('i18nLocation', ['$q', '$location', 'localeResolver', 'i18n', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
-    .factory('localeResolver', ['localStorage', 'sessionStorage', LocaleResolverFactory])
-    .factory('localeSwapper', ['localStorage', 'sessionStorage', 'topicMessageDispatcher', LocaleSwapperFactory])
+    .factory('localeResolver', ['binarta', '$log', LocaleResolverFactory])
+    .factory('localeSwapper', ['binarta', '$log', 'topicMessageDispatcher', LocaleSwapperFactory])
     .factory('i18nRendererTemplate', I18nRendererTemplateFactory)
     .factory('i18nRendererTemplateInstaller', ['i18nRendererTemplate', I18nRendererTemplateInstallerFactory])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
@@ -93,12 +93,14 @@ angular.module('i18n', ['i18n.gateways', 'config', 'config.gateways', 'angular.u
             });
         }
     }])
-    .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', 'i18n', 'i18nLocation', I18nSupportController]);
+    .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', 'i18n', 'i18nLocation', 'binartaApplicationIsInitialised', I18nSupportController]);
 
-function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config, $window, i18n, i18nLocation) {
+function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config, $window, i18n, i18nLocation, applicationIsInitialised) {
     var supportedLanguages;
 
-    if (localeResolver()) localeSwapper(localeResolver());
+    applicationIsInitialised.then(function() {
+        if (localeResolver()) localeSwapper(localeResolver());
+    });
 
     $rootScope.$on('$routeChangeStart', function () {
         i18n.getExternalLocale().then(function (locale) {
@@ -195,38 +197,22 @@ function I18nLocationFactory($q, $location, localeResolver, i18n) {
             i18n.getExternalLocale().then(function (locale) {
                 deferred.resolve(path.replace('/' + locale, ''));
             }, function () {
-                deferred.resolve(path.replace(/^\/[^\/]+\/$/, path.slice(0,-1)));
+                deferred.resolve(path.replace(/^\/[^\/]+\/$/, path.slice(0, -1)));
             });
             return deferred.promise;
         }
     }
 }
 
-function LocaleResolverFactory(localStorage, sessionStorage) {
-    var rememberedLocale;
-
-    function remember(locale) {
-        rememberedLocale = locale;
-        return locale;
-    }
-
-    function promoted(locale) {
-        sessionStorage.locale = locale;
-        return locale;
-    }
-
-    return function () {
-        if (sessionStorage.locale) return remember(sessionStorage.locale);
-        if (localStorage.locale) return promoted(localStorage.locale);
-        if (rememberedLocale) return promoted(rememberedLocale);
-        return undefined;
-    }
+function LocaleResolverFactory(binarta, $log) {
+    $log.warn('@deprecated LocaleResolverFactory - use binarta.application.locale() instead!');
+    return binarta.application.locale;
 }
 
-function LocaleSwapperFactory(localStorage, sessionStorage, topicMessageDispatcher) {
+function LocaleSwapperFactory(binarta, $log, topicMessageDispatcher) {
     return function (locale) {
-        sessionStorage.locale = locale;
-        localStorage.locale = locale;
+        $log.warn('@deprecated LocaleSwapperFactory - use binarta.application.setLocale(locale) instead!');
+        binarta.application.setLocale(locale);
         topicMessageDispatcher.firePersistently('i18n.locale', locale);
     }
 }
@@ -341,7 +327,10 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                     translation: angular.copy(scope.var),
                     editor: attrs.editor,
                     submit: translate,
-                    template: i18nRendererTemplate.getTemplate({editor: attrs.editor, isEditable: scope.isTranslatable()})
+                    template: i18nRendererTemplate.getTemplate({
+                        editor: attrs.editor,
+                        isEditable: scope.isTranslatable()
+                    })
                 };
                 if (attrs.href) ctx.href = attrs.href;
 
@@ -375,7 +364,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 });
             }
 
-            scope.isTranslatable = function() {
+            scope.isTranslatable = function () {
                 return useDefaultLocale() ? (currentLocaleIsDefault() || currentLocaleIsMain()) : true;
             };
 
@@ -384,7 +373,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             }
 
             function currentLocaleIsDefault() {
-                return localeResolver() == defaultLocale ;
+                return localeResolver() == defaultLocale;
             }
 
             function currentLocaleIsMain() {
@@ -416,10 +405,10 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
 
             function setPlaceholderTextWhenInEditMode() {
                 ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
-                    if(!translated) enabled ? setPlaceholderText() : setEmptyText();
+                    if (!translated) enabled ? setPlaceholderText() : setEmptyText();
                 });
             }
-            
+
             function setEmptyText() {
                 setVar('');
             }
@@ -427,7 +416,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             function setPlaceholderText() {
                 setVar('place your text here');
             }
-            
+
             function updateTranslation(translation) {
                 translated = true;
                 setVar(translation);
@@ -493,7 +482,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                     });
 
                     rendererScope.remove = function (lang) {
-                        rendererScope.languages = rendererScope.languages.filter(function(it) {
+                        rendererScope.languages = rendererScope.languages.filter(function (it) {
                             return it.code != lang.code;
                         });
                         rendererScope.availableLanguages.push({name: lang.name, code: lang.code});
@@ -505,7 +494,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                         if (rendererScope.languages.length == 0) mainLanguage = lang.code;
                         rendererScope.languages.push({name: lang.name, code: lang.code});
                         rendererScope.languages = orderByMainLanguage(rendererScope.languages, mainLanguage);
-                        rendererScope.availableLanguages = rendererScope.availableLanguages.filter(function(it) {
+                        rendererScope.availableLanguages = rendererScope.availableLanguages.filter(function (it) {
                             return it.code != lang.code;
                         });
                         updateSelectedLanguage();
@@ -585,7 +574,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                 onClick: scope.open
             });
 
-            scope.getActiveLanguageName = function() {
+            scope.getActiveLanguageName = function () {
                 var lang;
                 for (var i = 0; i < scope.supportedLanguages.length; i++) {
                     if (scope.supportedLanguages[i].code == $rootScope.locale) {
@@ -598,15 +587,15 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
 
             function sortLanguagesByName(languages) {
                 languages.sort(function (l1, l2) {
-                    if(l1.name < l2.name) return -1;
-                    if(l1.name > l2.name) return 1;
+                    if (l1.name < l2.name) return -1;
+                    if (l1.name > l2.name) return 1;
                     return 0;
                 });
             }
 
             function orderByMainLanguage(languages, mainLanguage) {
                 var main;
-                var ordered = languages.filter(function(it) {
+                var ordered = languages.filter(function (it) {
                     if (it.code == mainLanguage) main = it;
                     return it.code != mainLanguage;
                 });
@@ -635,7 +624,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
 
             function getAvailableLanguages(languages) {
                 var availableLanguages = [];
-                for(var i = 0; i < config.languages.length; i++) {
+                for (var i = 0; i < config.languages.length; i++) {
                     var exists = languages.some(function (it) {
                         return it.code == config.languages[i].code;
                     });
@@ -683,7 +672,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
 
     function getFirstRouteParam(path) {
         var param = path.match(/^\/[^\/]+\//);
-        if (param) return param[0].replace(/\//g,'');
+        if (param) return param[0].replace(/\//g, '');
     }
 
     this.resolve = function (context) {
@@ -788,7 +777,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     };
 
     this.getSupportedLanguages = function () {
-        if(angular.isUndefined(supportedLanguages)) {
+        if (angular.isUndefined(supportedLanguages)) {
             var deferred = $q.defer();
             publicConfigReader({
                 key: 'supportedLanguages'
@@ -824,7 +813,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     };
 
     this.getInternalLocale = function () {
-        if(angular.isUndefined(internalLocalePromise)) {
+        if (angular.isUndefined(internalLocalePromise)) {
             var deferred = $q.defer();
             $q.all([
                 self.getSupportedLanguages(),
@@ -842,7 +831,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     };
 
     this.getExternalLocale = function () {
-        if(angular.isUndefined(externalLocalePromise)) {
+        if (angular.isUndefined(externalLocalePromise)) {
             var deferred = $q.defer();
             self.getSupportedLanguages().then(function (languages) {
                 var locale = getLocaleFromPath(languages);
@@ -930,7 +919,7 @@ function I18nRendererTemplateFactory() {
 
     return {
         getTemplate: function (args) {
-            var template = templates[args.editor || 'default'];
+            var template = templates[args.editor || 'default'];
             if (template) return template(args);
             else return '';
         },
