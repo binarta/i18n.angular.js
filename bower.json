@@ -7,7 +7,7 @@
     "./sources.json"
   ],
   "dependencies": {
-    "binartajs-angular1": "git@github.com:binarta/binartajs-angular1#cfi",
+    "binartajs-angular1": "1.*.*",
     "binarta.angularx": "0.*.*",
     "binarta.config.angular": "0.*.*",
     "binarta.config.rest.angular": "0.*.*",

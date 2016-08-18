@@ -3,7 +3,7 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
-    .factory('i18nLocation', ['$q', '$location', 'localeResolver', 'i18n', I18nLocationFactory])
+    .factory('i18nLocation', ['$q', '$location', '$routeParams', 'i18n', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
     .factory('localeResolver', ['binarta', '$log', LocaleResolverFactory])
     .factory('localeSwapper', ['binarta', '$log', 'topicMessageDispatcher', LocaleSwapperFactory])
@@ -182,10 +182,9 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
     }
 }
 
-function I18nLocationFactory($q, $location, localeResolver, i18n) {
+function I18nLocationFactory($q, $location, $routeParams, i18n) {
     function decorate(path) {
-        var locale = localeResolver();
-        return (locale && locale != 'default' ? '/' + locale : '') + path;
+        return ($routeParams.locale ? '/' + $routeParams.locale : '') + path;
     }
 
     return {
