@@ -2453,8 +2453,8 @@ describe('i18n', function () {
             expect(target.path()).toEqual('/');
         });
 
-        it('path with locale', inject(function (binarta) {
-            binarta.application.setLocale('en');
+        it('path with locale', inject(function ($routeParams) {
+            $routeParams.locale = 'en';
             location.path('/');
             expect(target.path()).toEqual('/en/');
         }));
@@ -2532,8 +2532,8 @@ describe('i18n', function () {
             expect(target.url()).toEqual('/');
         });
 
-        it('url with locale', inject(function (binarta) {
-            binarta.application.setLocale('en');
+        it('url with locale', inject(function ($routeParams) {
+            $routeParams.locale = 'en';
             location.url('/');
             expect(target.url()).toEqual('/en/');
         }));
