@@ -2526,6 +2526,27 @@ describe('i18n', function () {
                 });
             });
         });
+
+        it('url with no locale', function () {
+            location.url('/');
+            expect(target.url()).toEqual('/');
+        });
+
+        it('url with locale', inject(function (binarta) {
+            binarta.application.setLocale('en');
+            location.url('/');
+            expect(target.url()).toEqual('/en/');
+        }));
+
+        it('url with default locale', function () {
+            session.locale = 'default';
+            location.url('/');
+            expect(target.url()).toEqual('/');
+        });
+
+        it('path with argument returns $location', function () {
+            expect(location.url('/')).toEqual(target);
+        });
     });
 
     describe('toLanguage filter', function () {

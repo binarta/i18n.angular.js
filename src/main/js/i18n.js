@@ -98,7 +98,7 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
 function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config, $window, i18n, i18nLocation, applicationIsInitialised) {
     var supportedLanguages;
 
-    applicationIsInitialised.then(function() {
+    applicationIsInitialised.then(function () {
         if (localeResolver()) localeSwapper(localeResolver());
     });
 
@@ -183,13 +183,20 @@ function I18nSupportController($rootScope, $location, localeResolver, localeSwap
 }
 
 function I18nLocationFactory($q, $location, localeResolver, i18n) {
+    function decorate(path) {
+        var locale = localeResolver();
+        return (locale && locale != 'default' ? '/' + locale : '') + path;
+    }
+
     return {
         search: function (it) {
             $location.search(it);
         },
+        url: function (url) {
+            return $location.url(decorate(url));
+        },
         path: function (path) {
-            var locale = localeResolver();
-            return $location.path((locale && locale != 'default' ? '/' + locale : '') + path);
+            return $location.path(decorate(path));
         },
         unlocalizedPath: function () {
             var deferred = $q.defer();
