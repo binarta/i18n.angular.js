@@ -197,16 +197,7 @@ function I18nLocationFactory($q, $location, $routeParams, i18n) {
         path: function (path) {
             return $location.path(decorate(path));
         },
-        unlocalizedPath: function () {
-            var deferred = $q.defer();
-            var path = $location.path();
-            i18n.getExternalLocale().then(function (locale) {
-                deferred.resolve(path.replace('/' + locale, ''));
-            }, function () {
-                deferred.resolve(path.replace(/^\/[^\/]+\/$/, path.slice(0, -1)));
-            });
-            return deferred.promise;
-        }
+        unlocalizedPath: i18n.unlocalizedPath
     }
 }
 
@@ -723,10 +714,13 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
 
         function getFromGateway() {
-            i18nMessageReader(context, function (translation) {
-                fallbackToDefaultWhenUnknown(translation);
-            }, function () {
-                resolveDefaultTranslation();
+            self.unlocalizedPath().then(function(path) {
+                context.section = path;
+                i18nMessageReader(context, function (translation) {
+                    fallbackToDefaultWhenUnknown(translation);
+                }, function () {
+                    resolveDefaultTranslation();
+                });
             });
         }
 
@@ -758,6 +752,17 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             isCached() ? resolve(getFromCache()) : getFromGateway();
         });
 
+        return deferred.promise;
+    };
+
+    this.unlocalizedPath = function () {
+        var deferred = $q.defer();
+        var path = $location.path();
+        self.getExternalLocale().then(function (locale) {
+            deferred.resolve(path.replace('/' + locale, ''));
+        }, function () {
+            deferred.resolve(path.replace(/^\/[^\/]+\/$/, path.slice(0, -1)));
+        });
         return deferred.promise;
     };
 

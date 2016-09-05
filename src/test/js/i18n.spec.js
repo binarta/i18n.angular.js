@@ -251,7 +251,8 @@ describe('i18n', function () {
                     deferred.resolve([]);
                     i18n.getSupportedLanguages = function () {
                         return deferred.promise;
-                    }
+                    };
+                    $location.path('/');
                 }));
 
                 function expectContextEquals(ctx) {
@@ -265,7 +266,8 @@ describe('i18n', function () {
                         useExtendedResponse: true,
                         code: code,
                         locale: 'default',
-                        namespace: 'namespace'
+                        namespace: 'namespace',
+                        section: '/'
                     });
                 });
 
@@ -484,12 +486,13 @@ describe('i18n', function () {
 
                     it('resolution includes the locale on context', function () {
                         resolveTo(translation);
-
+                        $rootScope.$digest();
                         expectContextEquals({
                             useExtendedResponse: true,
                             code: code,
                             locale: 'custom',
-                            namespace: 'namespace'
+                            namespace: 'namespace',
+                            section: '/'
                         });
                         expect(receivedContext).toEqual({
                             translation: translation,
@@ -503,11 +506,23 @@ describe('i18n', function () {
 
             describe('with supported languages', function () {
                 beforeEach(inject(function ($q) {
-                    var deferred = $q.defer();
-                    deferred.resolve('L');
-                    i18n.getInternalLocale = function () {
-                        return deferred.promise;
-                    }
+                    (function() {
+                        var deferred = $q.defer();
+                        deferred.resolve('L');
+                        i18n.getInternalLocale = function () {
+                            return deferred.promise;
+                        };
+                    })();
+
+                    (function() {
+                        var deferred = $q.defer();
+                        deferred.resolve(['L']);
+                        i18n.getSupportedLanguages = function () {
+                            return deferred.promise;
+                        };
+                    })();
+
+                    $location.path('/L/');
                 }));
 
                 it('resolve to translation', inject(function () {
@@ -605,59 +620,59 @@ describe('i18n', function () {
                 {name: 'empty', value: []},
                 {name: '["nl", "en"]', value: ["nl", "en"]}
             ].forEach(function (lang) {
-                    describe('with languages equal to ' + lang.name, function () {
-                        describe('without callback', function () {
-                            beforeEach(function () {
-                                i18n.updateSupportedLanguages(lang.value);
-                            });
+                describe('with languages equal to ' + lang.name, function () {
+                    describe('without callback', function () {
+                        beforeEach(function () {
+                            i18n.updateSupportedLanguages(lang.value);
+                        });
 
-                            it('write to public config', function () {
-                                expect(publicConfigWriter.calls.first().args[0]).toEqual({
-                                    key: 'supportedLanguages',
-                                    value: lang.value
-                                });
-                            });
-
-                            describe('on success', function () {
-                                beforeEach(function () {
-                                    $rootScope.unlocalizedPath = '/path';
-                                    publicConfigWriter.calls.first().args[1].success();
-                                });
-
-                                it('supported languages on config are updated', function () {
-                                    expect(config.supportedLanguages).toEqual(lang.value);
-                                });
-
-                                it('reader returns updated languages', function () {
-                                    i18n.getSupportedLanguages();
-                                    $rootScope.$digest();
-
-                                    expect(publicConfigReader.calls.count()).toEqual(2);
-                                });
+                        it('write to public config', function () {
+                            expect(publicConfigWriter.calls.first().args[0]).toEqual({
+                                key: 'supportedLanguages',
+                                value: lang.value
                             });
                         });
 
-                        describe('with callback', function () {
-                            var callback;
-
+                        describe('on success', function () {
                             beforeEach(function () {
-                                i18n.updateSupportedLanguages(lang.value, function () {
-                                    callback = true;
-                                });
+                                $rootScope.unlocalizedPath = '/path';
+                                publicConfigWriter.calls.first().args[1].success();
                             });
 
-                            describe('on success', function () {
-                                beforeEach(function () {
-                                    publicConfigWriter.calls.first().args[1].success();
-                                });
+                            it('supported languages on config are updated', function () {
+                                expect(config.supportedLanguages).toEqual(lang.value);
+                            });
 
-                                it('callback is executed', function () {
-                                    expect(callback).toBeTruthy();
-                                });
+                            it('reader returns updated languages', function () {
+                                i18n.getSupportedLanguages();
+                                $rootScope.$digest();
+
+                                expect(publicConfigReader.calls.count()).toEqual(2);
+                            });
+                        });
+                    });
+
+                    describe('with callback', function () {
+                        var callback;
+
+                        beforeEach(function () {
+                            i18n.updateSupportedLanguages(lang.value, function () {
+                                callback = true;
+                            });
+                        });
+
+                        describe('on success', function () {
+                            beforeEach(function () {
+                                publicConfigWriter.calls.first().args[1].success();
+                            });
+
+                            it('callback is executed', function () {
+                                expect(callback).toBeTruthy();
                             });
                         });
                     });
                 });
+            });
         });
 
         describe('get main language', function () {
@@ -1038,75 +1053,75 @@ describe('i18n', function () {
             {name: 'undefined', value: undefined},
             {name: 'empty', value: []}
         ].forEach(function (lang) {
-                describe('when supportedLanguages is ' + lang.name, function () {
+            describe('when supportedLanguages is ' + lang.name, function () {
+                beforeEach(function () {
+                    config.supportedLanguages = lang.value;
+                });
+
+                it('localePrefix is empty string', function () {
+                    $rootScope.localePrefix = 'foo';
+
+                    goToPath('/foo/bar');
+
+                    expect($rootScope.localePrefix).toEqual('');
+                });
+
+                it('locale is empty string', function () {
+                    $rootScope.locale = 'foo';
+
+                    goToPath('/foo/bar');
+
+                    expect($rootScope.locale).toEqual('');
+                });
+
+                it('main locale is empty string', function () {
+                    goToPath('/foo/bar');
+
+                    expect($rootScope.mainLocale).toEqual('');
+                });
+
+                it('remembered locale is default', function () {
+                    goToPath('/foo/bar');
+
+                    expect(local.locale).toEqual('default');
+                    expect(dispatcher.persistent['i18n.locale']).toEqual('default');
+                });
+
+                it('with one path param, remove trailing slash', function () {
+                    goToPath('/foo/');
+
+                    expect($rootScope.unlocalizedPath).toEqual('/foo');
+                });
+
+                it('with more than one path param, do not remove trailing slash', inject(function () {
+                    goToPath('/foo/bar');
+
+                    expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
+                }));
+
+                describe('and default locale is remembered', function () {
                     beforeEach(function () {
-                        config.supportedLanguages = lang.value;
-                    });
-
-                    it('localePrefix is empty string', function () {
-                        $rootScope.localePrefix = 'foo';
+                        local.locale = 'default';
+                        $rootScope.locale = 'previous';
+                        $rootScope.localePrefix = '/previous';
 
                         goToPath('/foo/bar');
-
-                        expect($rootScope.localePrefix).toEqual('');
                     });
 
-                    it('locale is empty string', function () {
-                        $rootScope.locale = 'foo';
-
-                        goToPath('/foo/bar');
-
-                        expect($rootScope.locale).toEqual('');
-                    });
-
-                    it('main locale is empty string', function () {
-                        goToPath('/foo/bar');
-
-                        expect($rootScope.mainLocale).toEqual('');
-                    });
-
-                    it('remembered locale is default', function () {
-                        goToPath('/foo/bar');
-
-                        expect(local.locale).toEqual('default');
-                        expect(dispatcher.persistent['i18n.locale']).toEqual('default');
-                    });
-
-                    it('with one path param, remove trailing slash', function () {
-                        goToPath('/foo/');
-
-                        expect($rootScope.unlocalizedPath).toEqual('/foo');
-                    });
-
-                    it('with more than one path param, do not remove trailing slash', inject(function () {
-                        goToPath('/foo/bar');
-
+                    it('update unlocalized path', inject(function () {
                         expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
                     }));
 
-                    describe('and default locale is remembered', function () {
-                        beforeEach(function () {
-                            local.locale = 'default';
-                            $rootScope.locale = 'previous';
-                            $rootScope.localePrefix = '/previous';
+                    it('locale is empty', function () {
+                        expect($rootScope.locale).toEqual('');
+                    });
 
-                            goToPath('/foo/bar');
-                        });
-
-                        it('update unlocalized path', inject(function () {
-                            expect($rootScope.unlocalizedPath).toEqual('/foo/bar');
-                        }));
-
-                        it('locale is empty', function () {
-                            expect($rootScope.locale).toEqual('');
-                        });
-
-                        it('locale prefix is empty', function () {
-                            expect($rootScope.localePrefix).toEqual('');
-                        });
+                    it('locale prefix is empty', function () {
+                        expect($rootScope.localePrefix).toEqual('');
                     });
                 });
             });
+        });
 
         describe('locale is supported', function () {
             var locale;
