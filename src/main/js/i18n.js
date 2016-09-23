@@ -1,5 +1,5 @@
 angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'toggle.edit.mode'])
-    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', I18nService])
+    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', 'binarta', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -93,7 +93,20 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
             });
         }
     }])
-    .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', 'i18n', 'i18nLocation', 'binartaApplicationIsInitialised', I18nSupportController]);
+    .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', 'i18n', 'i18nLocation', 'binartaApplicationIsInitialised', I18nSupportController])
+    .run(['binarta', 'config', '$cacheFactory', function (binarta, config, $cacheFactory) {
+        binarta.application.adhesiveReading.handlers.add(new CacheI18nMessageHandler());
+
+        function CacheI18nMessageHandler() {
+            var messages = $cacheFactory.get('i18n');
+
+            this.type = 'i18n';
+            this.cache = function (it) {
+                var messageConverter = new BinartaI18nMessageConverter({code: it.key});
+                messages.put(config.namespace + ':' + binarta.application.locale() + ':' + it.key, messageConverter.toDefaultWhenUnknown(it.message));
+            }
+        }
+    }]);
 
 function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config, $window, i18n, i18nLocation, applicationIsInitialised) {
     var supportedLanguages;
@@ -642,10 +655,29 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
     };
 }
 
-function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http) {
+function BinartaI18nMessageConverter(context) {
+    var self = this;
+
+    this.isUnknown = function (translation) {
+        return translation == '???' + context.code + '???';
+    };
+
+    this.toDefaultWhenUnknown = function (translation) {
+        return self.isUnknown(translation) ? self.toDefaultTranslation() : translation;
+    };
+
+    this.toDefaultTranslation = function () {
+        return context.default == '' || context.default == undefined ? ' ' : context.default;
+    }
+}
+
+function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http, binarta) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
     var supportedLanguages, metadataPromise, internalLocalePromise, externalLocalePromise;
+
+    var adhesiveReadingListener = new AdhesiveReadingListener();
+    binarta.application.adhesiveReading.eventRegistry.add(adhesiveReadingListener);
 
     $rootScope.$on('$routeChangeStart', function () {
         internalLocalePromise = undefined;
@@ -675,18 +707,19 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     this.resolve = function (context) {
         var deferred = $q.defer();
 
-        function isUnknown(translation) {
-            return translation == '???' + context.code + '???';
-        }
+        var messageConverter = new BinartaI18nMessageConverter(context);
 
         function fallbackToDefaultWhenUnknown(translation) {
-            isUnknown(translation) ? resolveDefaultTranslation() : resolveAndCache(translation);
+            var result = messageConverter.toDefaultWhenUnknown(translation);
+            resolveFromMetadataIfEmpty(result);
         }
 
-        function resolveDefaultTranslation() {
-            if (context.default == '') resolveAndCache(' ');
-            else if (context.default) resolveAndCache(context.default);
-            else config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : deferred.reject();
+        function resolveFromMetadataIfEmpty(result) {
+            result == ' ' && context.default == undefined ? resolveFromMetadata() : resolveAndCache(result);
+        }
+
+        function resolveFromMetadata() {
+            config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : deferred.reject();
         }
 
         function resolveDefaultTranslationFromMetadata() {
@@ -714,12 +747,12 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
 
         function getFromGateway() {
-            self.unlocalizedPath().then(function(path) {
+            self.unlocalizedPath().then(function (path) {
                 context.section = path;
                 i18nMessageReader(context, function (translation) {
                     fallbackToDefaultWhenUnknown(translation);
                 }, function () {
-                    resolveDefaultTranslation();
+                    fallbackToDefaultWhenUnknown('???' + context.code + '???');
                 });
             });
         }
@@ -748,8 +781,10 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
 
         if (config.namespace) context.namespace = config.namespace;
         self.getInternalLocale().then(function (locale) {
-            if (!context.locale) context.locale = locale;
-            isCached() ? resolve(getFromCache()) : getFromGateway();
+            adhesiveReadingListener.schedule(function () {
+                if (!context.locale) context.locale = locale;
+                isCached() ? resolveFromMetadataIfEmpty(getFromCache()) : getFromGateway();
+            });
         });
 
         return deferred.promise;
@@ -852,6 +887,30 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
         return externalLocalePromise;
     };
+
+    function AdhesiveReadingListener() {
+        var jobs = [];
+        var started;
+
+        this.start = function () {
+            started = true;
+        };
+
+        this.stop = function () {
+            started = false;
+            jobs.forEach(function (it) {
+                it();
+            });
+            jobs = [];
+        };
+
+        this.schedule = function (job) {
+            if (!started)
+                job();
+            else
+                jobs.push(job);
+        }
+    }
 }
 
 function I18nResolverFactory(i18n) {

@@ -1,5 +1,5 @@
 describe('i18n', function () {
-    var cache;
+    var cache, binarta;
 
     angular.module('checkpoint', []);
     angular.module('toggle.edit.mode', [])
@@ -40,8 +40,9 @@ describe('i18n', function () {
         });
     });
 
-    beforeEach(inject(function ($cacheFactory) {
+    beforeEach(inject(function ($cacheFactory, _binarta_) {
         cache = $cacheFactory.get('i18n');
+        binarta = _binarta_;
     }));
 
     describe('on module loaded', function () {
@@ -253,6 +254,8 @@ describe('i18n', function () {
                         return deferred.promise;
                     };
                     $location.path('/');
+
+                    binarta.application.setLocale('default');
                 }));
 
                 function expectContextEquals(ctx) {
@@ -351,6 +354,45 @@ describe('i18n', function () {
                     expect(cache.get('namespace:default:translation.code')).toEqual(' ');
                 });
 
+                it('resolve when translation cache populated by adhesive reading then no gateway calls are done', function () {
+                    binarta.application.gateway.addSectionData({
+                        type: 'i18n', key: code, message: 'translation-from-section-data'
+                    });
+                    binarta.application.adhesiveReading.read('-');
+
+                    i18n.resolve(context).then(presenter);
+                    $rootScope.$digest();
+
+                    expect(receivedContext).toEqual({
+                        translation: 'translation-from-section-data',
+                        code: code,
+                        default: undefined,
+                        locale: 'default'
+                    });
+                    expect(reader.calls.first()).toBeUndefined();
+                });
+
+                it('resolve defers execution while adhesive reading in progress and then no gateway calls are done', function () {
+                    binarta.application.gateway = new DeferringApplicationGateway();
+                    binarta.application.gateway.addSectionData({
+                        type: 'i18n', key: code, message: 'translation-from-section-data'
+                    });
+                    binarta.application.adhesiveReading.read('-');
+
+                    i18n.resolve(context).then(presenter);
+                    $rootScope.$digest();
+                    binarta.application.gateway.continue();
+                    $rootScope.$digest();
+
+                    expect(receivedContext).toEqual({
+                        translation: 'translation-from-section-data',
+                        code: code,
+                        default: undefined,
+                        locale: 'default'
+                    });
+                    expect(reader.calls.first()).toBeUndefined();
+                });
+
                 describe('resolution without fallback to default available', function () {
                     beforeEach(function () {
                         context.code = code;
@@ -393,6 +435,25 @@ describe('i18n', function () {
                             it('use translation from metadata', function () {
                                 i18n.resolve(context).then(presenter);
                                 resolveTo(unknownCode);
+                                $httpBackend.flush();
+
+                                expect(receivedContext).toEqual({
+                                    translation: 'translation from app metadata',
+                                    code: code,
+                                    default: undefined,
+                                    locale: 'default'
+                                });
+                                expect(cache.get('namespace:default:translation.code')).toEqual('translation from app metadata');
+                            });
+
+                            it('when unknown to adhesive reading but known to metadata', function () {
+                                binarta.application.gateway.addSectionData({
+                                    type: 'i18n', key: code, message: '???' + code + '???'
+                                });
+                                binarta.application.adhesiveReading.read('-');
+
+                                i18n.resolve(context).then(presenter);
+                                $rootScope.$digest();
                                 $httpBackend.flush();
 
                                 expect(receivedContext).toEqual({
@@ -506,7 +567,7 @@ describe('i18n', function () {
 
             describe('with supported languages', function () {
                 beforeEach(inject(function ($q) {
-                    (function() {
+                    (function () {
                         var deferred = $q.defer();
                         deferred.resolve('L');
                         i18n.getInternalLocale = function () {
@@ -514,7 +575,7 @@ describe('i18n', function () {
                         };
                     })();
 
-                    (function() {
+                    (function () {
                         var deferred = $q.defer();
                         deferred.resolve(['L']);
                         i18n.getSupportedLanguages = function () {
@@ -2615,4 +2676,25 @@ describe('i18n', function () {
             });
         });
     });
+
+    function DeferringApplicationGateway() {
+        var delegate = new BinartaInMemoryGatewaysjs().application;
+        var eventRegistry = new BinartaRX();
+
+        this.addSectionData = delegate.addSectionData;
+
+        this.continue = function () {
+            eventRegistry.forEach(function (l) {
+                l.notify('continue');
+            })
+        };
+
+        this.fetchSectionData = function (request, response) {
+            eventRegistry.add({
+                continue: function () {
+                    delegate.fetchSectionData(request, response);
+                }
+            });
+        }
+    }
 });
