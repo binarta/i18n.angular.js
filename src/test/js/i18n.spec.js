@@ -783,7 +783,7 @@ describe('i18n', function () {
 
             function changeRoute(route) {
                 $location.path(route);
-                $rootScope.$broadcast("$routeChangeStart");
+                $rootScope.$broadcast("$routeChangeStart", {params:{}});
             }
 
             beforeEach(function () {
@@ -912,7 +912,7 @@ describe('i18n', function () {
 
             function changeRoute(route) {
                 $location.path(route);
-                $rootScope.$broadcast("$routeChangeStart");
+                $rootScope.$broadcast("$routeChangeStart", {params:{}});
             }
 
             function getExternalLocale() {
