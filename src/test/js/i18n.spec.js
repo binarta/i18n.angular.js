@@ -372,6 +372,24 @@ describe('i18n', function () {
                     expect(reader.calls.first()).toBeUndefined();
                 });
 
+                it('resolve when translation cache populated by adhesive reading with unknown translation code', function () {
+                    binarta.application.gateway.addSectionData({
+                        type: 'i18n', key: code, message: unknownCode
+                    });
+                    binarta.application.adhesiveReading.read('-');
+
+                    context.default = defaultTranslation;
+                    i18n.resolve(context).then(presenter);
+                    $rootScope.$digest();
+
+                    expect(receivedContext).toEqual({
+                        translation: defaultTranslation,
+                        code: code,
+                        default: defaultTranslation,
+                        locale: 'default'
+                    });
+                });
+
                 it('resolve defers execution while adhesive reading in progress and then no gateway calls are done', function () {
                     binarta.application.gateway = new DeferringApplicationGateway();
                     binarta.application.gateway.addSectionData({
@@ -596,6 +614,18 @@ describe('i18n', function () {
                     });
                     expect(cache.get('namespace:L:translation.code')).toEqual(translation);
                 }));
+
+                it('resolve to default', inject(function () {
+                    context.default = defaultTranslation;
+                    resolveTo(unknownCode);
+                    expect(receivedContext).toEqual({
+                        translation: defaultTranslation,
+                        code: code,
+                        default: defaultTranslation,
+                        locale: 'L'
+                    });
+                    expect(cache.get('namespace:L:translation.code')).toEqual(defaultTranslation);
+                }));
             });
         });
 
@@ -783,7 +813,7 @@ describe('i18n', function () {
 
             function changeRoute(route) {
                 $location.path(route);
-                $rootScope.$broadcast("$routeChangeStart", {params:{}});
+                $rootScope.$broadcast("$routeChangeStart", {params: {}});
             }
 
             beforeEach(function () {
@@ -912,7 +942,7 @@ describe('i18n', function () {
 
             function changeRoute(route) {
                 $location.path(route);
-                $rootScope.$broadcast("$routeChangeStart", {params:{}});
+                $rootScope.$broadcast("$routeChangeStart", {params: {}});
             }
 
             function getExternalLocale() {

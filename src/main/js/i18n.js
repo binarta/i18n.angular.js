@@ -102,8 +102,7 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
 
             this.type = 'i18n';
             this.cache = function (it) {
-                var messageConverter = new BinartaI18nMessageConverter({code: it.key});
-                messages.put(config.namespace + ':' + binarta.application.locale() + ':' + it.key, messageConverter.toDefaultWhenUnknown(it.message));
+                messages.put(config.namespace + ':' + binarta.application.locale() + ':' + it.key, it.message);
             }
         }
     }]);
@@ -783,7 +782,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         self.getInternalLocale().then(function (locale) {
             adhesiveReadingListener.schedule(function () {
                 if (!context.locale) context.locale = locale;
-                isCached() ? resolveFromMetadataIfEmpty(getFromCache()) : getFromGateway();
+                isCached() ? fallbackToDefaultWhenUnknown(getFromCache()) : getFromGateway();
             });
         });
 
