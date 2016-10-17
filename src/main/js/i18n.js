@@ -222,6 +222,7 @@ function LocaleSwapperFactory(binarta, $log, topicMessageDispatcher) {
     return function (locale) {
         $log.warn('@deprecated LocaleSwapperFactory - use binarta.application.setLocale(locale) instead!');
         binarta.application.setLocale(locale);
+        binarta.application.adhesiveReading.readRoute();
         topicMessageDispatcher.firePersistently('i18n.locale', locale);
     }
 }
