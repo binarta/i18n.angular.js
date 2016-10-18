@@ -1,5 +1,5 @@
 angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'toggle.edit.mode'])
-    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', 'binarta', I18nService])
+    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', 'binarta', '$log', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -671,7 +671,7 @@ function BinartaI18nMessageConverter(context) {
     }
 }
 
-function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http, binarta) {
+function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http, binarta, $log) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
     var supportedLanguages, metadataPromise, internalLocalePromise, externalLocalePromise;
@@ -823,18 +823,16 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     };
 
     this.getSupportedLanguages = function () {
-        if (angular.isUndefined(supportedLanguages)) {
-            var deferred = $q.defer();
-            publicConfigReader({
-                key: 'supportedLanguages'
-            }).then(function (it) {
-                config.supportedLanguages = JSON.parse(it.data.value);
-            }).finally(function () {
-                deferred.resolve(config.supportedLanguages || []);
-            });
-            supportedLanguages = deferred.promise;
-        }
-        return supportedLanguages;
+        $log.warn('@deprecated I8nService.getSupportedLanguages() - use binarta.application.supportedLanguages() instead!');
+        var deferred = $q.defer();
+        binarta.schedule(function () {
+            var supportedLanguages = binarta.application.supportedLanguages();
+            if(supportedLanguages.length > 0 || !config.supportedLanguages) {
+                config.supportedLanguages = supportedLanguages;
+            }
+            deferred.resolve(config.supportedLanguages);
+        });
+        return deferred.promise;
     };
 
     this.getMainLanguage = function () {
@@ -852,7 +850,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }, {
             success: function () {
                 config.supportedLanguages = updatedLanguages;
-                supportedLanguages = undefined;
+                binarta.application.profile().supportedLanguages = updatedLanguages;
                 if (onSuccess) onSuccess();
             }
         });

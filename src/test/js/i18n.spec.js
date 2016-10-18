@@ -639,41 +639,31 @@ describe('i18n', function () {
                 $rootScope.$digest();
             }
 
-            describe('no languages defined in publicConfig', function () {
+            describe('no languages defined in application profile', function () {
                 beforeEach(inject(function ($q) {
-                    var deferred = $q.defer();
-                    deferred.reject();
-                    publicConfigReader.and.returnValue(deferred.promise);
+                    binarta.application.adhesiveReading.read('-');
                 }));
 
                 it('and no languages in local config', function () {
                     execute();
-
                     expect(languages).toEqual([]);
                 });
 
                 it('and languages in local config', function () {
                     config.supportedLanguages = ['lang'];
-
                     execute();
-
                     expect(languages).toEqual(['lang']);
                 });
             });
 
-            describe('languages defined in publicConfig', function () {
+            describe('languages defined in application profile', function () {
                 beforeEach(inject(function ($q) {
-                    var deferred = $q.defer();
-                    deferred.resolve({data: {value: '["en"]'}});
-                    publicConfigReader.and.returnValue(deferred.promise);
+                    binarta.application.adhesiveReading.read('-');
+                    binarta.application.profile().supportedLanguages = ['en'];
                 }));
 
                 it('and no languages in local config', function () {
                     execute();
-
-                    expect(publicConfigReader.calls.first().args[0]).toEqual({
-                        key: 'supportedLanguages'
-                    });
                     expect(languages).toEqual(['en']);
                     expect(config.supportedLanguages).toEqual(['en']);
                 });
@@ -685,15 +675,6 @@ describe('i18n', function () {
 
                     expect(languages).toEqual(['en']);
                     expect(config.supportedLanguages).toEqual(['en']);
-                });
-
-                it('on multiple calls, same promise is returned', function () {
-                    execute();
-                    languages = undefined;
-                    execute();
-
-                    expect(publicConfigReader.calls.count()).toEqual(1);
-                    expect(languages).toEqual(['en']);
                 });
             });
         });
@@ -714,6 +695,7 @@ describe('i18n', function () {
                 describe('with languages equal to ' + lang.name, function () {
                     describe('without callback', function () {
                         beforeEach(function () {
+                            binarta.application.adhesiveReading.read('-');
                             i18n.updateSupportedLanguages(lang.value);
                         });
 
@@ -735,10 +717,12 @@ describe('i18n', function () {
                             });
 
                             it('reader returns updated languages', function () {
-                                i18n.getSupportedLanguages();
+                                var supportedLanguages = [];
+                                i18n.getSupportedLanguages().then(function(languages) {
+                                    supportedLanguages = languages;
+                                });
                                 $rootScope.$digest();
-
-                                expect(publicConfigReader.calls.count()).toEqual(2);
+                                expect(supportedLanguages).toEqual(lang.value);
                             });
                         });
                     });
@@ -793,6 +777,7 @@ describe('i18n', function () {
             describe('with languages', function () {
                 beforeEach(function () {
                     config.supportedLanguages = ['en', 'nl', 'fr'];
+                    binarta.application.adhesiveReading.read('-');
                 });
 
                 it('return first from list', function () {
@@ -1560,7 +1545,6 @@ describe('i18n', function () {
                         name: 'link-name-nl',
                         url: 'link-url-nl'
                     };
-                    // sessionStorage.locale = 'nl';
                     binarta.application.setLocale('nl');
                     binarta.application.refresh();
                     $rootScope.$digest();
@@ -2157,6 +2141,7 @@ describe('i18n', function () {
 
             beforeEach(function () {
                 config.languages = [dutch, french, english, chinese, arabic];
+                binarta.application.adhesiveReading.read('-');
             });
 
             describe('when no supported languages', function () {
