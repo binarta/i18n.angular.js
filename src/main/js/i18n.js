@@ -830,15 +830,17 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             if(supportedLanguages.length > 0 || !config.supportedLanguages) {
                 config.supportedLanguages = supportedLanguages;
             }
+            binarta.application.profile().supportedLanguages = config.supportedLanguages;
             deferred.resolve(config.supportedLanguages);
         });
         return deferred.promise;
     };
 
     this.getMainLanguage = function () {
+        $log.warn('@deprecated I8nService.getMainLanguage() - use binarta.application.primaryLanguage() instead!');
         var deferred = $q.defer();
         self.getSupportedLanguages().then(function (languages) {
-            languages.length > 0 ? deferred.resolve(languages[0]) : deferred.resolve();
+            deferred.resolve(binarta.application.primaryLanguage());
         });
         return deferred.promise;
     };

@@ -718,7 +718,7 @@ describe('i18n', function () {
 
                             it('reader returns updated languages', function () {
                                 var supportedLanguages = [];
-                                i18n.getSupportedLanguages().then(function(languages) {
+                                i18n.getSupportedLanguages().then(function (languages) {
                                     supportedLanguages = languages;
                                 });
                                 $rootScope.$digest();
@@ -803,6 +803,7 @@ describe('i18n', function () {
 
             beforeEach(function () {
                 locale = undefined;
+                binarta.application.adhesiveReading.read('-');
             });
 
             describe('when no multilanguage', function () {
@@ -825,13 +826,9 @@ describe('i18n', function () {
             });
 
             describe('with multilanguage', function () {
-                beforeEach(inject(function ($q) {
-                    var deferred = $q.defer();
-                    deferred.resolve(['en', 'nl', 'fr']);
-                    i18n.getSupportedLanguages = function () {
-                        return deferred.promise;
-                    }
-                }));
+                beforeEach(function () {
+                    binarta.application.profile().supportedLanguages = ['en', 'nl', 'fr'];
+                });
 
                 describe('and do not use default as main locale', function () {
                     beforeEach(function () {
@@ -1094,11 +1091,9 @@ describe('i18n', function () {
             i18n = _i18n_;
         }));
 
-        beforeEach(inject(function ($q, publicConfigReader) {
-            var deferred = $q.defer();
-            deferred.reject();
-            publicConfigReader.and.returnValue(deferred.promise);
-        }));
+        beforeEach(function () {
+            binarta.application.adhesiveReading.read('-');
+        });
 
         function goToPath(path) {
             $location.path(path);
