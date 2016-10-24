@@ -93,106 +93,30 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
             });
         }
     }])
-    .run(['$rootScope', '$location', 'localeResolver', 'localeSwapper', 'config', '$window', 'i18n', 'i18nLocation', 'binartaApplicationIsInitialised', I18nSupportController])
-    .run(['binarta', 'config', '$cacheFactory', function (binarta, config, $cacheFactory) {
+    .run(['binarta', 'config', '$cacheFactory', 'topicMessageDispatcher', '$rootScope', function (binarta, config, $cacheFactory, topicMessageDispatcher, $rootScope) {
         binarta.application.adhesiveReading.handlers.add(new CacheI18nMessageHandler());
+        binarta.application.eventRegistry.add(new SetLocaleAdapter());
 
         function CacheI18nMessageHandler() {
             var messages = $cacheFactory.get('i18n');
 
             this.type = 'i18n';
             this.cache = function (it) {
-                messages.put(config.namespace + ':' + binarta.application.locale() + ':' + it.key, it.message);
+                var locale = binarta.application.localeForPresentation() || binarta.application.locale();
+                messages.put(config.namespace + ':' + locale + ':' + it.key, it.message);
+            }
+        }
+
+        function SetLocaleAdapter() {
+            this.setLocale = function (locale) {
+                topicMessageDispatcher.firePersistently('i18n.locale', binarta.application.localeForPresentation() || binarta.application.locale());
+                $rootScope.unlocalizedPath = binarta.application.unlocalizedPath();
+                $rootScope.locale = binarta.application.localeForPresentation() || '';
+                $rootScope.localePrefix = $rootScope.locale ? '/' + $rootScope.locale : '';
+                $rootScope.mainLocale = binarta.application.primaryLanguage() || '';
             }
         }
     }]);
-
-function I18nSupportController($rootScope, $location, localeResolver, localeSwapper, config, $window, i18n, i18nLocation, applicationIsInitialised) {
-    var supportedLanguages;
-
-    applicationIsInitialised.then(function () {
-        if (localeResolver()) localeSwapper(localeResolver());
-    });
-
-    $rootScope.$on('$routeChangeStart', function () {
-        i18n.getExternalLocale().then(function (locale) {
-            exposeExternalLocale(locale);
-        }, function () {
-            exposeExternalLocale();
-
-            i18n.getSupportedLanguages().then(function (languages) {
-                if (languages.length > 1) {
-                    supportedLanguages = languages;
-                    localeNotInPath();
-                }
-            });
-        });
-
-        i18n.getInternalLocale().then(function (locale) {
-            rememberInternalLocale(locale);
-        });
-    });
-
-    function exposeExternalLocale(locale) {
-        i18nLocation.unlocalizedPath().then(function (path) {
-            $rootScope.unlocalizedPath = path;
-        });
-        $rootScope.locale = locale || '';
-        $rootScope.localePrefix = locale ? '/' + locale : '';
-        i18n.getMainLanguage().then(function (lang) {
-            $rootScope.mainLocale = lang || '';
-        });
-    }
-
-    function rememberInternalLocale(locale) {
-        if (!isLocaleRemembered(locale)) localeSwapper(locale);
-    }
-
-    function isLocaleRemembered(locale) {
-        return localeResolver() == locale;
-    }
-
-    function localeNotInPath() {
-        if (isLocaleSupported(localeResolver())) redirectToLocalizedPage(localeResolver());
-        else initializeLocaleByConfig();
-    }
-
-    function isLocaleSupported(locale) {
-        return supportedLanguages.indexOf(locale) != -1;
-    }
-
-    function initializeLocaleByConfig() {
-        if (shouldFallbackToBrowserLocale()) redirectToLocalizedPage(browserLanguage());
-        else if (shouldFallbackToMainLocale()) {
-            i18n.getMainLanguage().then(function (lang) {
-                redirectToLocalizedPage(lang);
-            });
-        }
-        else $location.path('/');
-    }
-
-    function shouldFallbackToBrowserLocale() {
-        return config.fallbackToBrowserLocale && isBrowserLanguageSupported();
-    }
-
-    function shouldFallbackToMainLocale() {
-        return config.fallbackToDefaultLocale != false;
-    }
-
-    function isBrowserLanguageSupported() {
-        return supportedLanguages.indexOf(browserLanguage()) > -1;
-    }
-
-    function browserLanguage() {
-        return ($window.navigator.userLanguage || $window.navigator.language || '').substr(0, 2);
-    }
-
-    function redirectToLocalizedPage(locale) {
-        i18nLocation.unlocalizedPath().then(function (path) {
-            $location.path('/' + locale + path);
-        });
-    }
-}
 
 function I18nLocationFactory($q, $location, $routeParams, i18n) {
     function decorate(path) {
@@ -747,13 +671,11 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
 
         function getFromGateway() {
-            self.unlocalizedPath().then(function (path) {
-                context.section = path;
-                i18nMessageReader(context, function (translation) {
-                    fallbackToDefaultWhenUnknown(translation);
-                }, function () {
-                    fallbackToDefaultWhenUnknown('???' + context.code + '???');
-                });
+            context.section = binarta.application.unlocalizedPath();
+            i18nMessageReader(context, function (translation) {
+                fallbackToDefaultWhenUnknown(translation);
+            }, function () {
+                fallbackToDefaultWhenUnknown('???' + context.code + '???');
             });
         }
 
@@ -780,9 +702,9 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
 
         if (config.namespace) context.namespace = config.namespace;
-        self.getInternalLocale().then(function (locale) {
+        binarta.schedule(function() {
             adhesiveReadingListener.schedule(function () {
-                if (!context.locale) context.locale = locale;
+                if (!context.locale) context.locale = binarta.application.localeForPresentation() || binarta.application.locale();
                 isCached() ? fallbackToDefaultWhenUnknown(getFromCache()) : getFromGateway();
             });
         });
@@ -827,7 +749,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         var deferred = $q.defer();
         binarta.schedule(function () {
             var supportedLanguages = binarta.application.supportedLanguages();
-            if(supportedLanguages.length > 0 || !config.supportedLanguages) {
+            if (supportedLanguages.length > 0 || !config.supportedLanguages) {
                 config.supportedLanguages = supportedLanguages;
             }
             binarta.application.profile().supportedLanguages = config.supportedLanguages;
@@ -839,7 +761,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     this.getMainLanguage = function () {
         $log.warn('@deprecated I8nService.getMainLanguage() - use binarta.application.primaryLanguage() instead!');
         var deferred = $q.defer();
-        self.getSupportedLanguages().then(function (languages) {
+        self.getSupportedLanguages().then(function () {
             deferred.resolve(binarta.application.primaryLanguage());
         });
         return deferred.promise;
@@ -859,33 +781,27 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     };
 
     this.getInternalLocale = function () {
-        if (angular.isUndefined(internalLocalePromise)) {
-            var deferred = $q.defer();
-            $q.all([
-                self.getSupportedLanguages(),
-                self.getMainLanguage()
-            ]).then(function (result) {
-                if (result[0].length > 0) {
-                    var locale = getLocaleFromPath(result[0]);
-                    if (locale && !(config.useDefaultAsMainLocale && locale == result[1])) deferred.resolve(locale);
-                    else deferred.resolve('default');
-                } else deferred.resolve('default');
-            });
-            internalLocalePromise = deferred.promise;
-        }
-        return internalLocalePromise;
+        var deferred = $q.defer();
+        $q.all([
+            self.getSupportedLanguages(),
+            self.getMainLanguage()
+        ]).then(function (result) {
+            if (result[0].length > 0) {
+                var locale = getLocaleFromPath(result[0]);
+                if (locale && !(config.useDefaultAsMainLocale && locale == result[1])) deferred.resolve(locale);
+                else deferred.resolve('default');
+            } else deferred.resolve('default');
+        });
+        return deferred.promise;
     };
 
     this.getExternalLocale = function () {
-        if (angular.isUndefined(externalLocalePromise)) {
-            var deferred = $q.defer();
-            self.getSupportedLanguages().then(function (languages) {
-                var locale = getLocaleFromPath(languages);
-                locale ? deferred.resolve(locale) : deferred.reject();
-            });
-            externalLocalePromise = deferred.promise;
-        }
-        return externalLocalePromise;
+        var deferred = $q.defer();
+        binarta.schedule(function () {
+            var locale = binarta.application.localeForPresentation();
+            locale ? deferred.resolve(locale) : deferred.reject();
+        });
+        return deferred.promise;
     };
 
     function AdhesiveReadingListener() {
