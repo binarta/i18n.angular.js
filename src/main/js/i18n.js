@@ -782,15 +782,8 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
 
     this.getInternalLocale = function () {
         var deferred = $q.defer();
-        $q.all([
-            self.getSupportedLanguages(),
-            self.getMainLanguage()
-        ]).then(function (result) {
-            if (result[0].length > 0) {
-                var locale = getLocaleFromPath(result[0]);
-                if (locale && !(config.useDefaultAsMainLocale && locale == result[1])) deferred.resolve(locale);
-                else deferred.resolve('default');
-            } else deferred.resolve('default');
+        binarta.schedule(function() {
+            deferred.resolve(binarta.application.locale());
         });
         return deferred.promise;
     };

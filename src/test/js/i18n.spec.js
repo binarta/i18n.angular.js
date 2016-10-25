@@ -796,11 +796,8 @@ describe('i18n', function () {
 
             describe('when no multilanguage', function () {
                 beforeEach(inject(function ($q) {
-                    var deferred = $q.defer();
-                    deferred.resolve([]);
-                    i18n.getSupportedLanguages = function () {
-                        return deferred.promise;
-                    }
+                    binarta.application.setLocaleForPresentation(undefined);
+                    binarta.application.refreshEvents();
                 }));
 
                 it('should return default locale', function () {
@@ -816,93 +813,16 @@ describe('i18n', function () {
             describe('with multilanguage', function () {
                 beforeEach(function () {
                     binarta.application.profile().supportedLanguages = ['en', 'nl', 'fr'];
+                    binarta.application.setLocaleForPresentation('en');
+                    binarta.application.refreshEvents();
                 });
 
-                describe('and do not use default as main locale', function () {
-                    beforeEach(function () {
-                        config.useDefaultAsMainLocale = false;
+                it('should return locale', function () {
+                    i18n.getInternalLocale().then(function (l) {
+                        locale = l
                     });
-
-                    describe('and main locale is in path', function () {
-                        beforeEach(function () {
-                            changeRoute('/en/some/path');
-                        });
-
-                        it('should return locale', function () {
-                            i18n.getInternalLocale().then(function (l) {
-                                locale = l
-                            });
-                            $rootScope.$digest();
-
-                            expect(locale).toEqual('en');
-                        });
-                    });
-                });
-
-                describe('and use default as main locale', function () {
-                    beforeEach(function () {
-                        config.useDefaultAsMainLocale = true;
-                    });
-
-                    describe('and main locale is in path', function () {
-                        beforeEach(function () {
-                            changeRoute('/en/some/path');
-                        });
-
-                        it('should return default locale', function () {
-                            i18n.getInternalLocale().then(function (l) {
-                                locale = l
-                            });
-                            $rootScope.$digest();
-
-                            expect(locale).toEqual('default');
-                        });
-                    });
-
-                    describe('locale is not in path', function () {
-                        beforeEach(function () {
-                            changeRoute('/some/path');
-                        });
-
-                        it('should return default locale', function () {
-                            i18n.getInternalLocale().then(function (l) {
-                                locale = l
-                            });
-                            $rootScope.$digest();
-
-                            expect(locale).toEqual('default');
-                        });
-                    });
-
-                    describe('locale is in path', function () {
-                        beforeEach(function () {
-                            changeRoute('/nl/some/path');
-                        });
-
-                        it('should return locale', function () {
-                            i18n.getInternalLocale().then(function (l) {
-                                locale = l
-                            });
-                            $rootScope.$digest();
-
-                            expect(locale).toEqual('nl');
-                        });
-                    });
-
-                    it('on route change should return new locale', function () {
-                        changeRoute('/nl/some/path');
-                        i18n.getInternalLocale().then(function (l) {
-                            locale = l
-                        });
-                        $rootScope.$digest();
-                        changeRoute('/fr/some/path');
-                        i18n.getInternalLocale().then(function (l) {
-                            locale = l
-                        });
-                        $rootScope.$digest();
-
-                        expect(locale).toEqual('fr');
-                    });
+                    $rootScope.$digest();
+                    expect(locale).toEqual('default');
                 });
             });
         });
