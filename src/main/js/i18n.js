@@ -13,7 +13,7 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
     .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'topicMessageDispatcher', i18nDirectiveFactory])
     .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'topicMessageDispatcher', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
-    .directive('i18nLanguageSwitcher', ['$rootScope', 'config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'activeUserHasPermission', I18nLanguageSwitcherDirective])
+    .directive('i18nLanguageSwitcher', ['config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'activeUserHasPermission', 'binarta', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
@@ -364,7 +364,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
     };
 }
 
-function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editModeRenderer, $location, $route, activeUserHasPermission) {
+function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer, $location, $route, activeUserHasPermission, binarta) {
     return {
         restrict: ['E', 'A'],
         scope: true,
@@ -383,7 +383,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
             });
 
             scope.open = function () {
-                var rendererScope = $rootScope.$new();
+                var rendererScope = scope.$new();
 
                 rendererScope.close = function () {
                     editModeRenderer.close();
@@ -501,6 +501,10 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
                 }
             };
 
+            scope.$on('$routeChangeSuccess', function () {
+                scope.unlocalizedPath = binarta.application.unlocalizedPath();
+            })
+
             editMode.bindEvent({
                 scope: scope,
                 element: element,
@@ -511,7 +515,7 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
             scope.getActiveLanguageName = function () {
                 var lang;
                 for (var i = 0; i < scope.supportedLanguages.length; i++) {
-                    if (scope.supportedLanguages[i].code == $rootScope.locale) {
+                    if (scope.supportedLanguages[i].code == scope.locale) {
                         lang = scope.supportedLanguages[i].name;
                         break;
                     }
@@ -539,16 +543,16 @@ function I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editM
             }
 
             function redirectToUnlocalizedPath() {
-                $location.path($rootScope.unlocalizedPath);
+                $location.path(scope.unlocalizedPath);
             }
 
             function redirectToLocalizedPath(locale) {
-                $location.path(locale + $rootScope.unlocalizedPath);
+                $location.path(locale + scope.unlocalizedPath);
             }
 
             function redirectToMainLanguage() {
                 i18n.getMainLanguage().then(function (locale) {
-                    if ($location.path() == '/' + locale + $rootScope.unlocalizedPath) {
+                    if ($location.path() == '/' + locale + scope.unlocalizedPath) {
                         $route.reload();
                     } else {
                         redirectToLocalizedPath(locale);
@@ -702,7 +706,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
 
         if (config.namespace) context.namespace = config.namespace;
-        binarta.schedule(function() {
+        binarta.schedule(function () {
             adhesiveReadingListener.schedule(function () {
                 if (!context.locale) context.locale = binarta.application.localeForPresentation() || binarta.application.locale();
                 isCached() ? fallbackToDefaultWhenUnknown(getFromCache()) : getFromGateway();
@@ -782,7 +786,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
 
     this.getInternalLocale = function () {
         var deferred = $q.defer();
-        binarta.schedule(function() {
+        binarta.schedule(function () {
             deferred.resolve(binarta.application.locale());
         });
         return deferred.promise;
