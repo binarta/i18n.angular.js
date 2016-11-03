@@ -1698,9 +1698,9 @@ describe('i18n', function () {
     });
 
     describe('i18n language switcher directive', function () {
-        var $rootScope, i18n, editMode, editModeRenderer, publicConfigWriter, directive, scope, element, config, $location, route, sessionStorage, activeUserHasPermission;
+        var $rootScope, i18n, editMode, editModeRenderer, publicConfigWriter, directive, scope, element, config, $location, route, sessionStorage, activeUserHasPermission, binarta;
 
-        beforeEach(inject(function (_$rootScope_, _i18n_, _config_, publicConfigReader, _publicConfigWriter_, $q, _$location_, _sessionStorage_) {
+        beforeEach(inject(function (_$rootScope_, _i18n_, _config_, publicConfigReader, _publicConfigWriter_, $q, _$location_, _sessionStorage_, _binarta_) {
             var reader = $q.defer();
             reader.reject();
             publicConfigReader.and.returnValue(reader.promise);
@@ -1720,9 +1720,10 @@ describe('i18n', function () {
             editModeRenderer = jasmine.createSpyObj('editModeRenderer', ['open', 'close']);
             route = jasmine.createSpyObj('$route', ['reload']);
             sessionStorage = _sessionStorage_;
+            binarta = _binarta_;
             activeUserHasPermission = jasmine.createSpy('activeUserHasPermission');
 
-            directive = I18nLanguageSwitcherDirective($rootScope, config, i18n, editMode, editModeRenderer, $location, route, activeUserHasPermission);
+            directive = I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer, $location, route, activeUserHasPermission, binarta);
         }));
 
         describe('on link', function () {
@@ -1761,7 +1762,7 @@ describe('i18n', function () {
                 });
 
                 it('no active language name', function () {
-                    $rootScope.locale = 'default';
+                    scope.locale = 'default';
 
                     expect(scope.getActiveLanguageName()).toBeUndefined();
                 });
@@ -1871,7 +1872,7 @@ describe('i18n', function () {
 
                             describe('on save', function () {
                                 beforeEach(function () {
-                                    $rootScope.unlocalizedPath = '/foo/bar';
+                                    scope.unlocalizedPath = '/foo/bar';
                                 });
 
                                 describe('with no supported languages', function () {
