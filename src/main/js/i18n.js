@@ -13,7 +13,7 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
     .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'topicMessageDispatcher', i18nDirectiveFactory])
     .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'topicMessageDispatcher', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
-    .directive('i18nLanguageSwitcher', ['config', 'i18n', 'editMode', 'editModeRenderer', '$location', '$route', 'activeUserHasPermission', 'binarta', I18nLanguageSwitcherDirective])
+    .directive('i18nLanguageSwitcher', ['config', 'i18n', 'editMode', 'editModeRenderer', 'activeUserHasPermission', 'binarta', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
@@ -364,23 +364,38 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
     };
 }
 
-function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer, $location, $route, activeUserHasPermission, binarta) {
+function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer, activeUserHasPermission, binarta) {
     return {
         restrict: ['E', 'A'],
         scope: true,
         link: function (scope, element) {
-            i18n.getSupportedLanguages().then(function (languages) {
-                scope.supportedLanguages = [];
-                for (var i = 0; i < languages.length; i++) {
-                    for (var j = 0; j < (config.languages || []).length; j++) {
-                        if (languages[i] == config.languages[j].code) {
-                            scope.supportedLanguages.push(config.languages[j]);
-                            break;
-                        }
+            var activeLanguageName, destroyCallbacks = [];
+
+            binarta.schedule(function () {
+                scope.supportedLanguages = getSupportedLanguages(binarta.application.supportedLanguages());
+                scope.locale = binarta.application.localeForPresentation();
+                setActiveLanguageName();
+
+                var event = {
+                    setLocaleForPresentation: function (locale) {
+                        scope.locale = locale;
+                        setActiveLanguageName();
                     }
-                }
-                sortLanguagesByName(scope.supportedLanguages);
+                };
+
+                binarta.application.eventRegistry.add(event);
+                destroyCallbacks.push(function () {
+                    binarta.application.eventRegistry.remove(event);
+                });
             });
+
+            scope.$on('$routeChangeSuccess', function () {
+                scope.unlocalizedPath = binarta.application.unlocalizedPath();
+            });
+
+            scope.getActiveLanguageName = function () {
+                return activeLanguageName;
+            };
 
             scope.open = function () {
                 var rendererScope = scope.$new();
@@ -406,14 +421,11 @@ function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer,
                 }
 
                 function authorized() {
-                    var mainLanguage;
+                    var primaryLanguage = binarta.application.primaryLanguage();
 
-                    i18n.getMainLanguage().then(function (locale) {
-                        mainLanguage = locale;
-                        rendererScope.languages = orderByMainLanguage(angular.copy(scope.supportedLanguages), locale);
-                        rendererScope.availableLanguages = getAvailableLanguages(rendererScope.languages);
-                        updateSelectedLanguage();
-                    });
+                    rendererScope.languages = orderByPrimaryLanguage(angular.copy(scope.supportedLanguages), primaryLanguage);
+                    rendererScope.availableLanguages = getAvailableLanguages(rendererScope.languages);
+                    updateSelectedLanguage();
 
                     rendererScope.remove = function (lang) {
                         rendererScope.languages = rendererScope.languages.filter(function (it) {
@@ -425,9 +437,9 @@ function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer,
                     };
 
                     rendererScope.add = function (lang) {
-                        if (rendererScope.languages.length == 0) mainLanguage = lang.code;
+                        if (rendererScope.languages.length == 0) primaryLanguage = lang.code;
                         rendererScope.languages.push({name: lang.name, code: lang.code});
-                        rendererScope.languages = orderByMainLanguage(rendererScope.languages, mainLanguage);
+                        rendererScope.languages = orderByPrimaryLanguage(rendererScope.languages, primaryLanguage);
                         rendererScope.availableLanguages = rendererScope.availableLanguages.filter(function (it) {
                             return it.code != lang.code;
                         });
@@ -438,7 +450,6 @@ function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer,
                         i18n.updateSupportedLanguages(getLanguageCodes(rendererScope.languages), function () {
                             scope.supportedLanguages = rendererScope.languages;
                             sortLanguagesByName(scope.supportedLanguages);
-                            scope.supportedLanguages.length <= 1 ? redirectToUnlocalizedPath() : redirectToMainLanguage();
                             editModeRenderer.close();
                         });
                     };
@@ -501,10 +512,6 @@ function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer,
                 }
             };
 
-            scope.$on('$routeChangeSuccess', function () {
-                scope.unlocalizedPath = binarta.application.unlocalizedPath();
-            })
-
             editMode.bindEvent({
                 scope: scope,
                 element: element,
@@ -512,52 +519,51 @@ function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer,
                 onClick: scope.open
             });
 
-            scope.getActiveLanguageName = function () {
-                var lang;
+            scope.$on('$destroy', function () {
+                destroyCallbacks.forEach(function (callback) {
+                    callback();
+                });
+            });
+
+            function getSupportedLanguages(languages) {
+                var supportedLanguages = [];
+                for (var i = 0; i < languages.length; i++) {
+                    for (var j = 0; j < (config.languages || []).length; j++) {
+                        if (languages[i] == config.languages[j].code) {
+                            supportedLanguages.push(config.languages[j]);
+                            break;
+                        }
+                    }
+                }
+                return sortLanguagesByName(supportedLanguages);
+            }
+
+            function setActiveLanguageName() {
                 for (var i = 0; i < scope.supportedLanguages.length; i++) {
                     if (scope.supportedLanguages[i].code == scope.locale) {
-                        lang = scope.supportedLanguages[i].name;
+                        activeLanguageName = scope.supportedLanguages[i].name;
                         break;
                     }
                 }
-                return lang;
-            };
+            }
 
             function sortLanguagesByName(languages) {
-                languages.sort(function (l1, l2) {
+                return languages.sort(function (l1, l2) {
                     if (l1.name < l2.name) return -1;
                     if (l1.name > l2.name) return 1;
                     return 0;
                 });
             }
 
-            function orderByMainLanguage(languages, mainLanguage) {
-                var main;
+            function orderByPrimaryLanguage(languages, primaryLanguage) {
+                var primary;
                 var ordered = languages.filter(function (it) {
-                    if (it.code == mainLanguage) main = it;
-                    return it.code != mainLanguage;
+                    if (it.code == primaryLanguage) primary = it;
+                    return it.code != primaryLanguage;
                 });
-                sortLanguagesByName(ordered);
-                if (main) ordered.unshift(main);
+                ordered = sortLanguagesByName(ordered);
+                if (primary) ordered.unshift(primary);
                 return ordered;
-            }
-
-            function redirectToUnlocalizedPath() {
-                $location.path(scope.unlocalizedPath);
-            }
-
-            function redirectToLocalizedPath(locale) {
-                $location.path(locale + scope.unlocalizedPath);
-            }
-
-            function redirectToMainLanguage() {
-                i18n.getMainLanguage().then(function (locale) {
-                    if ($location.path() == '/' + locale + scope.unlocalizedPath) {
-                        $route.reload();
-                    } else {
-                        redirectToLocalizedPath(locale);
-                    }
-                });
             }
 
             function getAvailableLanguages(languages) {
@@ -779,6 +785,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             success: function () {
                 config.supportedLanguages = updatedLanguages;
                 binarta.application.profile().supportedLanguages = updatedLanguages;
+                binarta.application.refreshEvents();
                 if (onSuccess) onSuccess();
             }
         });

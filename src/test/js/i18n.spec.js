@@ -682,9 +682,14 @@ describe('i18n', function () {
             ].forEach(function (lang) {
                 describe('with languages equal to ' + lang.name, function () {
                     describe('without callback', function () {
+                        var spy;
+
                         beforeEach(function () {
                             binarta.application.adhesiveReading.read('-');
                             i18n.updateSupportedLanguages(lang.value);
+
+                            spy = jasmine.createSpyObj('spy', ['setPrimaryLanguage']);
+                            binarta.application.eventRegistry.add(spy);
                         });
 
                         it('write to public config', function () {
@@ -702,6 +707,14 @@ describe('i18n', function () {
 
                             it('supported languages on config are updated', function () {
                                 expect(config.supportedLanguages).toEqual(lang.value);
+                            });
+
+                            it('supported languages on binarta are updated', function () {
+                                expect(binarta.application.supportedLanguages()).toEqual(lang.value);
+                            });
+
+                            it('binarta events are refreshed', function () {
+                                expect(spy.setPrimaryLanguage).toHaveBeenCalledWith(lang.value[0]);
                             });
 
                             it('reader returns updated languages', function () {
@@ -1698,7 +1711,8 @@ describe('i18n', function () {
     });
 
     describe('i18n language switcher directive', function () {
-        var $rootScope, i18n, editMode, editModeRenderer, publicConfigWriter, directive, scope, element, config, $location, route, sessionStorage, activeUserHasPermission, binarta;
+        var $rootScope, i18n, editMode, editModeRenderer, publicConfigWriter, directive, scope, element, config, $location,
+            sessionStorage, activeUserHasPermission, binarta, path;
 
         beforeEach(inject(function (_$rootScope_, _i18n_, _config_, publicConfigReader, _publicConfigWriter_, $q, _$location_, _sessionStorage_, _binarta_) {
             var reader = $q.defer();
@@ -1718,12 +1732,12 @@ describe('i18n', function () {
             $location = _$location_;
             editMode = jasmine.createSpyObj('editMode', ['bindEvent']);
             editModeRenderer = jasmine.createSpyObj('editModeRenderer', ['open', 'close']);
-            route = jasmine.createSpyObj('$route', ['reload']);
             sessionStorage = _sessionStorage_;
             binarta = _binarta_;
             activeUserHasPermission = jasmine.createSpy('activeUserHasPermission');
+            path = '/path';
 
-            directive = I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer, $location, route, activeUserHasPermission, binarta);
+            directive = I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer, activeUserHasPermission, binarta);
         }));
 
         describe('on link', function () {
@@ -1738,9 +1752,9 @@ describe('i18n', function () {
                 binarta.application.adhesiveReading.read('-');
             });
 
-            describe('when no supported languages', function () {
+            describe('with no supported languages', function () {
                 beforeEach(function () {
-                    config.supportedLanguages = [];
+                    binarta.application.profile().supportedLanguages = [];
 
                     directive.link(scope, element);
                     scope.$digest();
@@ -1750,38 +1764,29 @@ describe('i18n', function () {
                     expect(scope.supportedLanguages).toEqual([]);
                 });
 
-                describe('no active language on scope', function () {
+                describe('on route changed', function () {
                     beforeEach(function () {
-                        sessionStorage.locale = 'default';
-                        scope.$digest();
+                        $location.path(path);
+                        $rootScope.$broadcast('$routeChangeSuccess');
                     });
 
-                    it('initial', function () {
-                        expect(scope.activeLanguage).toBeUndefined();
+                    it('unlocalized path is available', function () {
+                        expect(scope.unlocalizedPath).toEqual(path);
                     });
                 });
 
                 it('no active language name', function () {
-                    scope.locale = 'default';
-
                     expect(scope.getActiveLanguageName()).toBeUndefined();
                 });
-            });
 
-            describe('when only one supported language', function () {
-                beforeEach(function () {
-                    config.supportedLanguages = ['en'];
-
-                    directive.link(scope, element);
-                    scope.$digest();
+                it('no locale for presentation', function () {
+                    expect(scope.locale).toBeUndefined();
                 });
-
-
             });
 
-            describe('when supported languages', function () {
+            describe('with supported languages', function () {
                 beforeEach(function () {
-                    config.supportedLanguages = ['en', 'nl'];
+                    binarta.application.profile().supportedLanguages = ['en', 'nl'];
 
                     directive.link(scope, element);
                     scope.$digest();
@@ -1800,216 +1805,218 @@ describe('i18n', function () {
                     });
                 });
 
-                describe('editMode event is triggered', function () {
+                describe('on route changed', function () {
                     beforeEach(function () {
-                        editMode.bindEvent.calls.first().args[0].onClick();
+                        $location.path('/nl' + path);
+                        binarta.application.setLocaleForPresentation('nl');
+                        binarta.application.refreshEvents();
                     });
 
-                    describe('when user has no permission', function () {
-                        beforeEach(function () {
-                            activeUserHasPermission.calls.first().args[0].no();
-                        });
-
-                        it('editMode renderer is opened', function () {
-                            expect(editModeRenderer.open).toHaveBeenCalledWith({
-                                template: jasmine.any(String),
-                                scope: jasmine.any(Object)
-                            });
-                        });
-
-                        describe('with renderer scope', function () {
-                            var rendererScope;
-
-                            beforeEach(function () {
-                                rendererScope = editModeRenderer.open.calls.first().args[0].scope;
-                                scope.$digest();
-                            });
-
-                            it('on close', function () {
-                                rendererScope.close();
-
-                                expect(editModeRenderer.close).toHaveBeenCalled();
-                            });
-                        });
+                    it('unlocalized path is available', function () {
+                        expect(scope.unlocalizedPath).toEqual(path);
                     });
 
+                    it('locale for presenation is available', function () {
+                        expect(scope.locale).toEqual('nl');
+                    });
 
-                    describe('and user has permission', function () {
+                    describe('editMode event is triggered', function () {
                         beforeEach(function () {
-                            activeUserHasPermission.calls.first().args[0].yes();
+                            editMode.bindEvent.calls.first().args[0].onClick();
                         });
 
-                        it('has i18n.config.update permission', function () {
-                            expect(activeUserHasPermission.calls.first().args[1]).toEqual('i18n.config.update');
-                        });
-
-                        it('editMode renderer is opened', function () {
-                            expect(editModeRenderer.open).toHaveBeenCalledWith({
-                                template: jasmine.any(String),
-                                scope: jasmine.any(Object)
-                            });
-                        });
-
-                        describe('with renderer scope', function () {
-                            var rendererScope;
-
+                        describe('when user has no permission', function () {
                             beforeEach(function () {
-                                rendererScope = editModeRenderer.open.calls.first().args[0].scope;
-                                rendererScope.$digest();
+                                activeUserHasPermission.calls.first().args[0].no();
                             });
 
-                            it('copy supported languages to child scope ordered by main language and name', function () {
-                                expect(rendererScope.languages).toEqual([english, dutch]);
+                            it('editMode renderer is opened', function () {
+                                expect(editModeRenderer.open).toHaveBeenCalledWith({
+                                    template: jasmine.any(String),
+                                    scope: jasmine.any(Object)
+                                });
                             });
 
-                            it('languages that can be added are available on child scope', function () {
-                                expect(rendererScope.availableLanguages).toEqual([arabic, chinese, french]);
-                            });
+                            describe('with renderer scope', function () {
+                                var rendererScope;
 
-                            it('set selected language to first one', function () {
-                                expect(rendererScope.selectedLanguage).toEqual(arabic);
-                            });
-
-                            describe('on save', function () {
                                 beforeEach(function () {
-                                    scope.unlocalizedPath = '/foo/bar';
+                                    rendererScope = editModeRenderer.open.calls.first().args[0].scope;
+                                    scope.$digest();
                                 });
 
-                                describe('with no supported languages', function () {
-                                    beforeEach(function () {
-                                        rendererScope.remove(dutch);
-                                        rendererScope.remove(english);
-                                        rendererScope.save();
-                                        publicConfigWriter.calls.first().args[1].success();
-                                        scope.$digest();
-                                    });
+                                it('on close', function () {
+                                    rendererScope.close();
 
-                                    it('write to public config', function () {
-                                        expect(publicConfigWriter.calls.first().args[0]).toEqual({
-                                            key: 'supportedLanguages',
-                                            value: []
-                                        });
-                                    });
+                                    expect(editModeRenderer.close).toHaveBeenCalled();
+                                });
+                            });
+                        });
 
-                                    it('update supported languages on scope', function () {
-                                        expect(scope.supportedLanguages).toEqual([]);
-                                    });
+                        describe('and user has permission', function () {
+                            beforeEach(function () {
+                                activeUserHasPermission.calls.first().args[0].yes();
+                            });
 
-                                    it('redirect to unlocalized path', function () {
-                                        expect($location.path()).toEqual('/foo/bar');
-                                    });
+                            it('has i18n.config.update permission', function () {
+                                expect(activeUserHasPermission.calls.first().args[1]).toEqual('i18n.config.update');
+                            });
+
+                            it('editMode renderer is opened', function () {
+                                expect(editModeRenderer.open).toHaveBeenCalledWith({
+                                    template: jasmine.any(String),
+                                    scope: jasmine.any(Object)
+                                });
+                            });
+
+                            describe('with renderer scope', function () {
+                                var rendererScope;
+
+                                beforeEach(function () {
+                                    rendererScope = editModeRenderer.open.calls.first().args[0].scope;
+                                    rendererScope.$digest();
                                 });
 
-                                describe('with supported languages', function () {
-                                    beforeEach(function () {
-                                        $location.path('/en/foo/bar');
-                                        rendererScope.add(chinese);
-                                        rendererScope.save();
-                                        publicConfigWriter.calls.first().args[1].success();
-                                        scope.$digest();
-                                    });
+                                it('copy supported languages to child scope ordered by main language and name', function () {
+                                    expect(rendererScope.languages).toEqual([english, dutch]);
+                                });
 
-                                    it('write to public config', function () {
-                                        expect(publicConfigWriter.calls.first().args[0]).toEqual({
-                                            key: 'supportedLanguages',
-                                            value: ['en', 'ch', 'nl']
-                                        });
-                                    });
+                                it('languages that can be added are available on child scope', function () {
+                                    expect(rendererScope.availableLanguages).toEqual([arabic, chinese, french]);
+                                });
 
-                                    it('editMode renderer is closed', function () {
-                                        expect(editModeRenderer.close).toHaveBeenCalled();
-                                    });
+                                it('set selected language to first one', function () {
+                                    expect(rendererScope.selectedLanguage).toEqual(arabic);
+                                });
 
-                                    it('update supported languages on scope ordered by name', function () {
-                                        expect(scope.supportedLanguages).toEqual([chinese, dutch, english]);
-                                    });
-
-                                    it('reload route', function () {
-                                        expect(route.reload).toHaveBeenCalled();
-                                    });
-
-                                    describe('and main locale changes', function () {
+                                describe('on save', function () {
+                                    describe('with no supported languages', function () {
                                         beforeEach(function () {
+                                            rendererScope.remove(dutch);
                                             rendererScope.remove(english);
                                             rendererScope.save();
-                                            publicConfigWriter.calls.mostRecent().args[1].success();
+                                            publicConfigWriter.calls.first().args[1].success();
                                             scope.$digest();
+                                        });
+
+                                        it('write to public config', function () {
+                                            expect(publicConfigWriter.calls.first().args[0]).toEqual({
+                                                key: 'supportedLanguages',
+                                                value: []
+                                            });
                                         });
 
                                         it('update supported languages on scope', function () {
-                                            expect(scope.supportedLanguages).toEqual([chinese, dutch]);
-                                        });
-
-                                        it('redirect to new main language', function () {
-                                            expect($location.path()).toEqual('/ch/foo/bar');
+                                            expect(scope.supportedLanguages).toEqual([]);
                                         });
                                     });
 
-                                    describe('and only one supported language', function () {
+                                    describe('with supported languages', function () {
                                         beforeEach(function () {
-                                            rendererScope.remove(dutch);
-                                            rendererScope.remove(chinese);
+                                            $location.path('/en' + path);
+                                            rendererScope.add(chinese);
                                             rendererScope.save();
-                                            publicConfigWriter.calls.mostRecent().args[1].success();
+                                            publicConfigWriter.calls.first().args[1].success();
                                             scope.$digest();
                                         });
 
-                                        it('redirect to unlocalized path', function () {
-                                            expect($location.path()).toEqual('/foo/bar');
+                                        it('write to public config', function () {
+                                            expect(publicConfigWriter.calls.first().args[0]).toEqual({
+                                                key: 'supportedLanguages',
+                                                value: ['en', 'ch', 'nl']
+                                            });
+                                        });
+
+                                        it('editMode renderer is closed', function () {
+                                            expect(editModeRenderer.close).toHaveBeenCalled();
+                                        });
+
+                                        it('update supported languages on scope ordered by name', function () {
+                                            expect(scope.supportedLanguages).toEqual([chinese, dutch, english]);
+                                        });
+
+                                        describe('and main locale changes', function () {
+                                            beforeEach(function () {
+                                                rendererScope.remove(english);
+                                                rendererScope.save();
+                                                publicConfigWriter.calls.mostRecent().args[1].success();
+                                                scope.$digest();
+                                            });
+
+                                            it('update supported languages on scope', function () {
+                                                expect(scope.supportedLanguages).toEqual([chinese, dutch]);
+                                            });
+                                        });
+
+                                        describe('and only one supported language', function () {
+                                            beforeEach(function () {
+                                                rendererScope.remove(dutch);
+                                                rendererScope.remove(chinese);
+                                                rendererScope.save();
+                                                publicConfigWriter.calls.mostRecent().args[1].success();
+                                                scope.$digest();
+                                            });
                                         });
                                     });
                                 });
-                            });
 
-                            describe('on remove', function () {
-                                beforeEach(function () {
-                                    rendererScope.remove(dutch);
+                                describe('on remove', function () {
+                                    beforeEach(function () {
+                                        rendererScope.remove(dutch);
+                                    });
+
+                                    it('remove language from supportedLanguages', function () {
+                                        expect(rendererScope.languages).toEqual([english]);
+                                    });
+
+                                    it('add to languages', function () {
+                                        expect(rendererScope.availableLanguages).toEqual([arabic, chinese, dutch, french]);
+                                    });
+
+                                    it('update selected language', function () {
+                                        expect(rendererScope.selectedLanguage).toEqual(arabic);
+                                    });
                                 });
 
-                                it('remove language from supportedLanguages', function () {
-                                    expect(rendererScope.languages).toEqual([english]);
+                                describe('on add', function () {
+                                    beforeEach(function () {
+                                        rendererScope.add(arabic);
+                                    });
+
+                                    it('add to supported languages ordered by main language', function () {
+                                        expect(rendererScope.languages).toEqual([english, arabic, dutch]);
+                                    });
+
+                                    it('remove from languages', function () {
+                                        expect(rendererScope.availableLanguages).toEqual([chinese, french]);
+                                    });
+
+                                    it('update selected language', function () {
+                                        expect(rendererScope.selectedLanguage).toEqual(chinese);
+                                    });
                                 });
 
-                                it('add to languages', function () {
-                                    expect(rendererScope.availableLanguages).toEqual([arabic, chinese, dutch, french]);
+                                it('on close', function () {
+                                    rendererScope.close();
+
+                                    expect(editModeRenderer.close).toHaveBeenCalled();
                                 });
-
-                                it('update selected language', function () {
-                                    expect(rendererScope.selectedLanguage).toEqual(arabic);
-                                });
-                            });
-
-                            describe('on add', function () {
-                                beforeEach(function () {
-                                    rendererScope.add(arabic);
-                                });
-
-                                it('add to supported languages ordered by main language', function () {
-                                    expect(rendererScope.languages).toEqual([english, arabic, dutch]);
-                                });
-
-                                it('remove from languages', function () {
-                                    expect(rendererScope.availableLanguages).toEqual([chinese, french]);
-                                });
-
-                                it('update selected language', function () {
-                                    expect(rendererScope.selectedLanguage).toEqual(chinese);
-                                });
-                            });
-
-                            it('on close', function () {
-                                rendererScope.close();
-
-                                expect(editModeRenderer.close).toHaveBeenCalled();
                             });
                         });
                     });
                 });
 
-                it('get active language name', function () {
-                    $rootScope.locale = 'nl';
+                describe('on destroy', function () {
+                    beforeEach(function () {
+                        scope.$destroy();
+                    });
 
-                    expect(scope.getActiveLanguageName()).toEqual('Dutch');
+                    it('remove event from registry', function () {
+                        binarta.application.setLocaleForPresentation('en');
+                        binarta.application.refreshEvents();
+
+                        expect(scope.locale).toBeUndefined();
+                    });
                 });
             });
         });
