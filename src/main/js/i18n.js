@@ -748,7 +748,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         });
 
         function toKey() {
-            return (ctx.namespace || 'default') + ':' + (ctx.locale || 'default') + ':' + ctx.key;
+            return (ctx.namespace || 'default') + ':' + (ctx.locale && ctx.locale != 'default' ? ctx.locale : binarta.application.localeForPresentation()) + ':' + ctx.key;
         }
 
         return deferred.promise;

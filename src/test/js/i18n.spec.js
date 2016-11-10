@@ -93,11 +93,9 @@ describe('i18n', function () {
 
             describe('with default locale', function () {
                 beforeEach(inject(function ($q) {
-                    var deferred = $q.defer();
-                    deferred.resolve('default');
-                    i18n.getInternalLocale = function () {
-                        return deferred.promise;
-                    }
+                    binarta.application.gateway.updateApplicationProfile({supportedLanguages: ['en']});
+                    binarta.application.refresh();
+                    binarta.application.setLocaleForPresentation('en');
                 }));
 
                 describe('construct context', function () {
@@ -148,12 +146,12 @@ describe('i18n', function () {
                 });
 
                 describe('on success', function () {
-                    it('default', function () {
+                    it('with default namespace', function () {
                         i18n.translate(context);
                         $rootScope.$digest();
                         usecaseAdapter.calls.first().args[1]();
 
-                        expect(cache.get('default:default:code')).toEqual('translation');
+                        expect(cache.get('default:en:code')).toEqual('translation');
                     });
 
                     it('with namespace', function () {
@@ -163,18 +161,16 @@ describe('i18n', function () {
                         $rootScope.$digest();
                         usecaseAdapter.calls.first().args[1]();
 
-                        expect(cache.get('N:default:code')).toEqual('translation');
+                        expect(cache.get('N:en:code')).toEqual('translation');
                     });
                 });
             });
 
             describe('with locale', function () {
                 beforeEach(inject(function ($q) {
-                    var deferred = $q.defer();
-                    deferred.resolve('L');
-                    i18n.getInternalLocale = function () {
-                        return deferred.promise;
-                    }
+                    binarta.application.gateway.updateApplicationProfile({supportedLanguages: ['en', 'L']});
+                    binarta.application.refresh();
+                    binarta.application.setLocaleForPresentation('L');
                 }));
 
                 it('with locale', function () {
