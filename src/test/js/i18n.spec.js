@@ -1374,6 +1374,16 @@ describe('i18n', function () {
                     expect(scope.var).toBeUndefined();
                 });
 
+                it('test', function () {
+                    registry['edit.mode'](false);
+                    expect(scope.editing).toEqual(false);
+                });
+
+                it('test', function () {
+                    registry['edit.mode'](true);
+                    expect(scope.editing).toEqual(true);
+                });
+
                 describe('and message resolution is rejected', function () {
                     beforeEach(function () {
                         i18nResolveDeferred.reject();

@@ -255,6 +255,10 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 if (attrs.code == ctx.code) updateTranslation(ctx.translation);
             });
 
+            ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
+                scope.editing=enabled;
+            });
+
             scope.open = function () {
                 var ctx = {
                     code: attrs.code,
