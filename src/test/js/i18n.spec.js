@@ -1374,12 +1374,12 @@ describe('i18n', function () {
                     expect(scope.var).toBeUndefined();
                 });
 
-                it('test', function () {
+                it('directive reflects when edit mode disabled', function () {
                     registry['edit.mode'](false);
                     expect(scope.editing).toEqual(false);
                 });
 
-                it('test', function () {
+                it('directive reflects when edit mode enabled', function () {
                     registry['edit.mode'](true);
                     expect(scope.editing).toEqual(true);
                 });
