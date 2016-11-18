@@ -75,9 +75,9 @@ describe('i18n', function () {
         });
 
         describe('on translate', function () {
-            var $rootScope, writer, context, usecaseAdapter;
+            var $rootScope, writer, context, usecaseAdapter, topics;
 
-            beforeEach(inject(function (_$rootScope_, i18nMessageWriter, usecaseAdapterFactory, $q) {
+            beforeEach(inject(function (_$rootScope_, i18nMessageWriter, usecaseAdapterFactory, $q, topicMessageDispatcherMock) {
                 $rootScope = _$rootScope_;
                 writer = i18nMessageWriter;
                 usecaseAdapter = usecaseAdapterFactory;
@@ -85,10 +85,24 @@ describe('i18n', function () {
                     code: 'code',
                     translation: 'translation'
                 };
+                topics = topicMessageDispatcherMock;
             }));
 
             function expectContextEquals(ctx) {
                 expect(writer.calls.first().args[0]).toEqual(ctx);
+            }
+
+            function expectTopicsMessageDispatcherToFire() {
+                it('raises i18n.updated notification', function () {
+                    i18n.translate(context);
+                    $rootScope.$digest();
+                    usecaseAdapter.calls.first().args[1]();
+
+                    expect(topics['i18n.updated']).toEqual({
+                        code: 'code',
+                        translation: 'translation'
+                    });
+                });
             }
 
             describe('with default locale', function () {
@@ -163,6 +177,8 @@ describe('i18n', function () {
 
                         expect(cache.get('N:en:code')).toEqual('translation');
                     });
+
+                    expectTopicsMessageDispatcherToFire();
                 });
             });
 
@@ -184,14 +200,18 @@ describe('i18n', function () {
                     });
                 });
 
-                it('on success', function () {
-                    localStorage.locale = 'L';
+                describe('on success', function(){
+                    it('translation is available', function () {
+                        localStorage.locale = 'L';
 
-                    i18n.translate(context);
-                    $rootScope.$digest();
-                    usecaseAdapter.calls.first().args[1]();
+                        i18n.translate(context);
+                        $rootScope.$digest();
+                        usecaseAdapter.calls.first().args[1]();
 
-                    expect(cache.get('default:L:code')).toEqual('translation');
+                        expect(cache.get('default:L:code')).toEqual('translation');
+                    });
+
+                    expectTopicsMessageDispatcherToFire();
                 });
 
                 it('with custom locale on context', function () {
@@ -1260,8 +1280,7 @@ describe('i18n', function () {
         var i18nResolveDeferred;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, _$rootScope_, $q,
-                                    i18nRendererTemplate, topicRegistryMock, ngRegisterTopicHandler, topicMessageDispatcherMock,
-                                    topicMessageDispatcher) {
+                                    i18nRendererTemplate, topicRegistryMock, ngRegisterTopicHandler) {
             attrs = {};
             $rootScope = _$rootScope_;
             scope = $rootScope.$new();
@@ -1297,8 +1316,6 @@ describe('i18n', function () {
                 }
             };
 
-            topics = topicMessageDispatcherMock;
-            dispatcher = topicMessageDispatcher;
             registry = topicRegistryMock;
 
             var localeResolver = function () {
@@ -1315,7 +1332,7 @@ describe('i18n', function () {
             };
             editMode = jasmine.createSpyObj('editMode', ['bindEvent']);
 
-            directive = i18nDirectiveFactory($rootScope, resolver, renderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler, topicMessageDispatcher);
+            directive = i18nDirectiveFactory($rootScope, resolver, renderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler);
         }));
 
         it('restricted to', function () {
@@ -1637,13 +1654,6 @@ describe('i18n', function () {
                             translation: 'updated translation'
                         });
                         expect(scope.var).toEqual('success');
-                    });
-
-                    it('raises i18n.updated notification', function () {
-                        expect(topics['i18n.updated']).toEqual({
-                            code: 'code',
-                            translation: 'updated translation'
-                        });
                     });
 
                     describe('and received i18n.updated notification', function () {
