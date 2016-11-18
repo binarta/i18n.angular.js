@@ -91,7 +91,82 @@ describe('i18n', function () {
                 expect(writer.calls.first().args[0]).toEqual(ctx);
             }
 
-            describe('with default locale', function () {
+            describe('with default locale and no supported languages', function () {
+                beforeEach(inject(function ($q) {
+                    binarta.application.gateway.updateApplicationProfile({supportedLanguages: []});
+                    binarta.application.refresh();
+                    binarta.application.setLocaleForPresentation(undefined);
+                }));
+
+                describe('construct context', function () {
+                    it('default', function () {
+                        i18n.translate(context);
+                        $rootScope.$digest();
+
+                        expectContextEquals({
+                            key: 'code',
+                            message: 'translation',
+                            locale: 'default'
+                        });
+                    });
+
+                    it('with namespace', function () {
+                        config.namespace = 'test';
+
+                        i18n.translate(context);
+                        $rootScope.$digest();
+
+                        expectContextEquals({
+                            key: 'code',
+                            message: 'translation',
+                            namespace: 'test',
+                            locale: 'default'
+                        });
+                    });
+
+                    it('with custom locale on context', function () {
+                        context.locale = 'custom';
+
+                        i18n.translate(context);
+                        $rootScope.$digest();
+
+                        expectContextEquals({
+                            key: 'code',
+                            message: 'translation',
+                            locale: 'custom'
+                        });
+                    });
+                });
+
+                it('context is passed to usecaseAdapter', function () {
+                    i18n.translate(context);
+                    $rootScope.$digest();
+
+                    expect(usecaseAdapter.calls.first().args[0]).toEqual(context);
+                });
+
+                describe('on success', function () {
+                    it('with default namespace', function () {
+                        i18n.translate(context);
+                        $rootScope.$digest();
+                        usecaseAdapter.calls.first().args[1]();
+
+                        expect(cache.get('default:default:code')).toEqual('translation');
+                    });
+
+                    it('with namespace', function () {
+                        config.namespace = 'N';
+
+                        i18n.translate(context);
+                        $rootScope.$digest();
+                        usecaseAdapter.calls.first().args[1]();
+
+                        expect(cache.get('N:default:code')).toEqual('translation');
+                    });
+                });
+            });
+
+            describe('with default locale and a single supported language', function () {
                 beforeEach(inject(function ($q) {
                     binarta.application.gateway.updateApplicationProfile({supportedLanguages: ['en']});
                     binarta.application.refresh();
@@ -166,7 +241,7 @@ describe('i18n', function () {
                 });
             });
 
-            describe('with locale', function () {
+            describe('with locale and multiple supported languages', function () {
                 beforeEach(inject(function ($q) {
                     binarta.application.gateway.updateApplicationProfile({supportedLanguages: ['en', 'L']});
                     binarta.application.refresh();
