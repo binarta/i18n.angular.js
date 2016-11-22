@@ -1,5 +1,5 @@
 angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'toggle.edit.mode'])
-    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', 'binarta', '$log', I18nService])
+    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', 'binarta', '$log', 'topicMessageDispatcher', I18nService])
     .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
     .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -10,8 +10,8 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
     .factory('i18nRendererTemplate', I18nRendererTemplateFactory)
     .factory('i18nRendererTemplateInstaller', ['i18nRendererTemplate', I18nRendererTemplateInstallerFactory])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
-    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'topicMessageDispatcher', i18nDirectiveFactory])
-    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'topicMessageDispatcher', i18nDirectiveFactory])
+    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', i18nDirectiveFactory])
+    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['config', 'i18n', 'editMode', 'editModeRenderer', 'activeUserHasPermission', 'binarta', I18nLanguageSwitcherDirective])
     .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
@@ -236,7 +236,7 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, e
     };
 }
 
-function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler, topicMessageDispatcher) {
+function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler) {
     return {
         restrict: ['E', 'A'],
         scope: true,
@@ -298,7 +298,6 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
 
                 i18n.translate(ctx).then(function (translation) {
                     updateTranslation(translation);
-                    topicMessageDispatcher.fire('i18n.updated', ctx);
                 });
             }
 
@@ -609,7 +608,7 @@ function BinartaI18nMessageConverter(context) {
     }
 }
 
-function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http, binarta, $log) {
+function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http, binarta, $log, topicMessageDispatcher) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
     var supportedLanguages, metadataPromise, internalLocalePromise, externalLocalePromise;
@@ -747,6 +746,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             ctx.locale = context.locale || locale || 'default';
             var onSuccess = function () {
                 deferred.resolve(cache.put(toKey(), ctx.message));
+                topicMessageDispatcher.fire('i18n.updated', {code: ctx.key, translation: ctx.message});
             };
             i18nMessageWriter(ctx, usecaseAdapterFactory(context, onSuccess));
         });
