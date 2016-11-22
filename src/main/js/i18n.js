@@ -10,7 +10,7 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
     .factory('i18nRendererTemplate', I18nRendererTemplateFactory)
     .factory('i18nRendererTemplateInstaller', ['i18nRendererTemplate', I18nRendererTemplateInstallerFactory])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
-    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'topicMessageDispatcher', i18nDirectiveFactory])
+    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', i18nDirectiveFactory])
     .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['config', 'i18n', 'editMode', 'editModeRenderer', 'activeUserHasPermission', 'binarta', I18nLanguageSwitcherDirective])
@@ -253,6 +253,10 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
 
             ngRegisterTopicHandler(scope, 'i18n.updated', function (ctx) {
                 if (attrs.code == ctx.code) updateTranslation(ctx.translation);
+            });
+
+            ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
+                scope.editing=enabled;
             });
 
             scope.open = function () {
@@ -748,7 +752,10 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         });
 
         function toKey() {
-            return (ctx.namespace || 'default') + ':' + (ctx.locale && ctx.locale != 'default' ? ctx.locale : binarta.application.localeForPresentation()) + ':' + ctx.key;
+            var locale = binarta.application.localeForPresentation() || 'default';
+            if (ctx.locale && ctx.locale != 'default')
+                locale = ctx.locale;
+            return (ctx.namespace || 'default') + ':' + locale + ':' + ctx.key;
         }
 
         return deferred.promise;
