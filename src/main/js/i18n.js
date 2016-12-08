@@ -172,6 +172,7 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, e
                     editor: 'bin-link',
                     submit: translate,
                     template: '<form>' +
+                    '<div class="bin-menu-edit-body">' +
                     '<div class=\"form-group\">' +
                     '<label for=\"inputLinkText\">Naam</label>' +
                     '<input type=\"text\" id=\"inputLinkText\" ng-model=\"translation.name\">' +
@@ -180,10 +181,11 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, e
                     '<label for=\"inputLinkUrl\">Url</label>' +
                     '<input type=\"text\" id=\"inputLinkUrl\" ng-model=\"translation.url\">' +
                     '</div>' +
+                    '</div>' +
                     '</form>' +
-                    '<div class=\"dropdown-menu-buttons\">' +
-                    '<button type="submit" class="btn btn-primary inline" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
-                    '<button type="reset" class="btn btn-default inline" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
+                    '<div class=\"bin-menu-edit-actions\">' +
+                    '<button type="submit" class="btn btn-primary" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
+                    '<button type="reset" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
                     '</div>'
                 });
             };
