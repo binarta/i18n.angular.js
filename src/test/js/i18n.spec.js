@@ -1412,7 +1412,7 @@ describe('i18n', function () {
         }));
 
         it('restricted to', function () {
-            expect(directive.restrict).toEqual(['E', 'A']);
+            expect(directive.restrict).toEqual('EA');
         });
 
         it('scope', function () {
