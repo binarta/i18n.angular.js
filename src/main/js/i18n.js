@@ -153,7 +153,7 @@ function LocaleSwapperFactory(binarta, $log, topicMessageDispatcher) {
 
 function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, editMode, i18nRenderer, topicMessageDispatcher) {
     return {
-        restrict: ['E', 'A'],
+        restrict: 'EA',
         scope: true,
         link: function (scope, element, attrs) {
 
@@ -240,7 +240,7 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, e
 
 function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler) {
     return {
-        restrict: ['E', 'A'],
+        restrict: 'EA',
         scope: true,
         link: function (scope, element, attrs) {
             scope.var = undefined;
@@ -371,7 +371,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
 
 function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer, activeUserHasPermission, binarta) {
     return {
-        restrict: ['E', 'A'],
+        restrict: 'EA',
         scope: true,
         link: function (scope, element) {
             var activeLanguageName, destroyCallbacks = [];
