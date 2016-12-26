@@ -214,8 +214,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 useExtendedResponse: true
             };
 
-            if (useDefaultLocale()) resolveWithLocale(defaultLocale);
-            else ngRegisterTopicHandler(scope, 'i18n.locale', resolveWithLocale);
+            ngRegisterTopicHandler(scope, 'i18n.locale', resolveWithLocale);
 
             ngRegisterTopicHandler(scope, 'i18n.updated', function (ctx) {
                 if (attrs.code == ctx.code) updateTranslation(ctx.translation);

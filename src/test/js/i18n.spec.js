@@ -1446,7 +1446,7 @@ describe('i18n', function () {
                         });
                     });
 
-                    it('with default locale', function () {
+                    it('with no-locale attribute set', function () {
                         attrs.noLocale = '';
                         directive.link(scope, element, attrs);
                         scope.$digest();
@@ -1454,7 +1454,7 @@ describe('i18n', function () {
                         expect(resolver.args).toEqual({
                             code: 'code',
                             default: 'default',
-                            locale: 'default',
+                            locale: 'locale',
                             useExtendedResponse: true
                         });
                     });
