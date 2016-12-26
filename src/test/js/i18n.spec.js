@@ -1829,7 +1829,7 @@ describe('i18n', function () {
 
                             it('editMode renderer is opened', function () {
                                 expect(editModeRenderer.open).toHaveBeenCalledWith({
-                                    template: jasmine.any(String),
+                                    templateUrl: 'bin-i18n-language-switcher-unavailable.html',
                                     scope: jasmine.any(Object)
                                 });
                             });
@@ -1861,7 +1861,7 @@ describe('i18n', function () {
 
                             it('editMode renderer is opened', function () {
                                 expect(editModeRenderer.open).toHaveBeenCalledWith({
-                                    template: jasmine.any(String),
+                                    templateUrl: 'bin-i18n-language-switcher.html',
                                     scope: jasmine.any(Object)
                                 });
                             });

@@ -1,5 +1,6 @@
 {
   "default": {
-    "i18n": "bower_components/binarta.i18n.angular/src/main/js/i18n.js"
+    "i18n": "bower_components/binarta.i18n.angular/src/main/js/i18n.js",
+    "i18n.templates": "bower_components/binarta.i18n.angular/src/main/js/i18n-tpls-bootstrap3.js"
   }
 }
