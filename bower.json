@@ -1,11 +1,6 @@
 {
   "name": "binarta.i18n.angular",
-  "main": [
-    "./src/main/js/i18n.js",
-    "./less/i18n.less",
-    "./metadata-system.json",
-    "./sources.json"
-  ],
+  "main": "./src/main/js/i18n.js",
   "dependencies": {
     "binartajs-angular1": "1.*.*",
     "binarta.angularx": "0.*.*",
@@ -14,8 +9,7 @@
     "binarta.usecase.adapter.angular": "0.*.*",
     "binarta.web.storage.angular": "0.*.*",
     "binarta.notifications.angular": "1.*.*",
-    "binarta.toggle.edit.mode.angular": "1.*.*",
-    "binarta.ui.bootstrap.ex.angular": "0.*.*"
+    "binarta.toggle.edit.mode.angular": "1.*.*"
   },
   "devDependencies": {
     "angular-mocks": "1.*.*",

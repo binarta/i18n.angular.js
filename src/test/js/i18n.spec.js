@@ -17,29 +17,6 @@ describe('i18n', function () {
     beforeEach(module('config'));
     beforeEach(module('config.gateways'));
 
-    var modal, modalInstance, submitModalSpy, cancelModalSpy;
-
-    beforeEach(function () {
-        localStorage.removeItem('locale');
-        sessionStorage.removeItem('locale');
-        modal = {
-            open: {}
-        };
-        modalInstance = {
-            result: {
-                then: function (result, dismissed) {
-                    submitModalSpy = result;
-                    cancelModalSpy = dismissed;
-                }
-            }
-        };
-        spyOn(modal, 'open').and.returnValue(modalInstance);
-
-        module(function ($provide) {
-            $provide.value('$modal', modal);
-        });
-    });
-
     beforeEach(inject(function ($cacheFactory, _binarta_) {
         cache = $cacheFactory.get('i18n');
         binarta = _binarta_;
@@ -979,78 +956,6 @@ describe('i18n', function () {
                     expect(locale).toEqual('en');
                     expect(rejected).toBeUndefined();
                 });
-            });
-        });
-    });
-
-    describe('I18nDefaultRendererService', function () {
-        var service, config;
-
-        beforeEach(inject(function (i18nDefaultRenderer, _config_) {
-            service = i18nDefaultRenderer;
-            config = _config_;
-        }));
-
-        describe('open dialog modal', function () {
-            var submittedValue, canceled;
-
-            beforeEach(function () {
-                submittedValue = {};
-                canceled = false;
-
-                service.open({
-                    translation: 'translation',
-                    editor: 'editor',
-                    submit: function (value) {
-                        submittedValue = value;
-                    },
-                    cancel: function () {
-                        canceled = true;
-                    }
-                });
-            });
-
-            it('modal is opened', function () {
-                expect(modal.open).toHaveBeenCalled();
-            });
-
-            it('modal is opened with scope setting', function () {
-                expect(modal.open.calls.mostRecent().args[0].scope).toBeDefined();
-            });
-
-            it('modal is opened with controller setting', function () {
-                expect(modal.open.calls.mostRecent().args[0].controller).toEqual('i18nDefaultModalController');
-            });
-
-            it('modal is opened with default templateUrl setting', function () {
-                expect(modal.open.calls.mostRecent().args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/i18n-modal.html');
-            });
-
-            it('template url with specific styling', function () {
-                config.styling = 'bootstrap3';
-                service.open({});
-
-                expect(modal.open.calls.mostRecent().args[0].templateUrl).toEqual('bower_components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
-            });
-
-            it('template url with specific components directory', function () {
-                config.styling = 'bootstrap3';
-                config.componentsDir = 'components';
-                service.open({});
-
-                expect(modal.open.calls.mostRecent().args[0].templateUrl).toEqual('components/binarta.i18n.angular/template/bootstrap3/i18n-modal.html');
-            });
-
-            it('modal is submitted', function () {
-                submitModalSpy('translated value');
-
-                expect(submittedValue).toEqual('translated value');
-            });
-
-            it('modal is canceled', function () {
-                cancelModalSpy();
-
-                expect(canceled).toBeTruthy();
             });
         });
     });

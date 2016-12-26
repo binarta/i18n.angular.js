@@ -1,7 +1,6 @@
-angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'ui.bootstrap.modal', 'notifications', 'checkpoint', 'toggle.edit.mode'])
+angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'notifications', 'checkpoint', 'toggle.edit.mode'])
     .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', 'binarta', '$log', 'topicMessageDispatcher', I18nService])
-    .service('i18nRenderer', ['i18nDefaultRenderer', I18nRendererService])
-    .service('i18nDefaultRenderer', ['config', '$modal', '$rootScope', I18nDefaultRendererService])
+    .service('i18nRenderer', function () {})
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
     .factory('i18nLocation', ['$q', '$location', '$routeParams', 'i18n', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
@@ -14,7 +13,6 @@ angular.module('i18n', ['binarta-applicationjs-angular1', 'i18n.gateways', 'conf
     .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['config', 'i18n', 'editMode', 'editModeRenderer', 'activeUserHasPermission', 'binarta', I18nLanguageSwitcherDirective])
-    .controller('i18nDefaultModalController', ['$scope', '$modalInstance', I18nDefaultModalController])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
     }])
@@ -853,42 +851,6 @@ function I18nRendererInstallerFactory(i18nRenderer) {
     return function (renderer) {
         i18nRenderer.open = renderer.open;
     }
-}
-
-function I18nDefaultRendererService(config, $modal, $rootScope) {
-    this.open = function (args) {
-        var componentsDir = config.componentsDir || 'bower_components';
-        var styling = config.styling ? config.styling + '/' : '';
-
-        var scope = $rootScope.$new();
-        scope.dialog = {
-            translation: args.translation,
-            editor: args.editor
-        };
-
-        var modalInstance = $modal.open({
-            scope: scope,
-            controller: 'i18nDefaultModalController',
-            templateUrl: componentsDir + '/binarta.i18n.angular/template/' + styling + 'i18n-modal.html'
-        });
-
-        modalInstance.result.then(args.submit, args.cancel);
-    };
-
-}
-
-function I18nDefaultModalController($scope, $modalInstance) {
-    $scope.submit = function () {
-        $modalInstance.close($scope.dialog.translation);
-    };
-
-    $scope.close = function () {
-        $modalInstance.dismiss('cancel');
-    };
-}
-
-function I18nRendererService(i18nDefaultRenderer) {
-    this.open = i18nDefaultRenderer.open;
 }
 
 function SelectLocaleController($scope, $routeParams, localeResolver, localeSwapper) {
