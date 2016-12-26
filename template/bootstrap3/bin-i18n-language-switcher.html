@@ -7,20 +7,12 @@
                         <i18n code="i18n.menu.what.is.main.language.label" read-only ng-bind="::var"></i18n>
                     </th>
                 </tr>
-                <tr ng-if="languages.length > 0">
-                    <th>{{languages[0].name}}</th>
-                    <th>
-                        <span ng-show="languages.length > 1"
-                              i18n code="i18n.menu.main.language.label" read-only ng-bind="::var"></span>
-                        <button ng-show="languages.length == 1" type="button" class="btn btn-danger"
-                                ng-click="remove(languages[0])" i18n code="i18n.menu.delete.language.button" read-only>
-                            <i class="fa fa-times"></i> <span ng-bind="::var"></span>
-                        </button>
-                    </th>
-                </tr>
-                <tr ng-repeat="lang in languages track by lang.code" ng-if="!$first">
+                <tr ng-repeat="lang in languages track by lang.code">
                     <th ng-bind="::lang.name"></th>
-                    <td>
+                    <th ng-if="$first">
+                        <span i18n code="i18n.menu.main.language.label" read-only ng-bind="::var"></span>
+                    </th>
+                    <td ng-if="!$first">
                         <button type="button" class="btn btn-danger" ng-click="remove(lang)"
                                 i18n code="i18n.menu.delete.language.button" read-only>
                             <i class="fa fa-times"></i> <span ng-bind="::var"></span>
