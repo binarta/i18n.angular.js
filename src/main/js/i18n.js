@@ -9,8 +9,8 @@ angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18
     .factory('i18nRendererTemplate', I18nRendererTemplateFactory)
     .factory('i18nRendererTemplateInstaller', ['i18nRendererTemplate', I18nRendererTemplateInstallerFactory])
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
-    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', i18nDirectiveFactory])
-    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', i18nDirectiveFactory])
+    .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'binarta', i18nDirectiveFactory])
+    .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'binarta', i18nDirectiveFactory])
     .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['config', 'i18n', 'editMode', 'editModeRenderer', 'activeUserHasPermission', 'binarta', I18nLanguageSwitcherDirective])
     .run(['$cacheFactory', function ($cacheFactory) {
@@ -202,7 +202,7 @@ function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, e
     };
 }
 
-function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler) {
+function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler, binarta) {
     return {
         restrict: 'EA',
         scope: true,
@@ -235,10 +235,20 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                         isEditable: scope.isTranslatable()
                     })
                 };
-                if (attrs.href) ctx.href = attrs.href;
+                if (attrs.binHref) ctx.path = getLocalePrefix() + attrs.binHref;
+                else if (attrs.href) ctx.path = removeHashbang(attrs.href);
 
                 i18nRenderer.open(ctx);
             };
+
+            function removeHashbang(href) {
+                return href.substr(0, 2) === '#!' ? href.substr(2) : href;
+            }
+
+            function getLocalePrefix() {
+                var locale = binarta.application.localeForPresentation();
+                return locale ? '/' + locale : '';
+            }
 
             function resolveWithLocale(locale) {
                 ctx.locale = locale;

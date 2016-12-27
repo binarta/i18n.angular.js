@@ -1313,7 +1313,7 @@ describe('i18n', function () {
             };
             editMode = jasmine.createSpyObj('editMode', ['bindEvent']);
 
-            directive = i18nDirectiveFactory($rootScope, resolver, renderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler);
+            directive = i18nDirectiveFactory($rootScope, resolver, renderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler, binarta);
         }));
 
         it('restricted to', function () {
@@ -1548,14 +1548,53 @@ describe('i18n', function () {
                 });
 
                 describe('when element is a link', function () {
-                    beforeEach(function () {
-                        attrs.href = '#!/path/';
-                        directive.link(scope, null, attrs);
-                        scope.open();
+                    describe('and href is used', function () {
+                        beforeEach(function () {
+                            attrs.href = '#!/path';
+                            directive.link(scope, null, attrs);
+                            scope.open();
+                        });
+
+                        it('pass path to renderer', function () {
+                            expect(rendererArgs.path).toEqual('/path');
+                        });
                     });
 
-                    it('pass href to renderer', function () {
-                        expect(rendererArgs.href).toEqual('#!/path/');
+                    describe('and no locale for presentation', function () {
+                        beforeEach(function () {
+                            binarta.application.gateway.supportedLanguages = [];
+                        });
+
+                        describe('and bin-href directive is used', function () {
+                            beforeEach(function () {
+                                attrs.binHref = '/path';
+                                directive.link(scope, null, attrs);
+                                scope.open();
+                            });
+
+                            it('pass path to renderer', function () {
+                                expect(rendererArgs.path).toEqual('/path');
+                            });
+                        });
+                    });
+
+                    describe('and with locale for presentation', function () {
+                        beforeEach(function () {
+                            binarta.application.gateway.supportedLanguages = ['en', 'nl'];
+                            binarta.application.setLocaleForPresentation('en');
+                        });
+
+                        describe('and bin-href directive is used', function () {
+                            beforeEach(function () {
+                                attrs.binHref = '/path';
+                                directive.link(scope, null, attrs);
+                                scope.open();
+                            });
+
+                            it('pass path to renderer', function () {
+                                expect(rendererArgs.path).toEqual('/en/path');
+                            });
+                        });
                     });
                 });
 
