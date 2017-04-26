@@ -43,10 +43,10 @@
       "i18n.menu.continue.button": "Continuer",
       "i18n.menu.upgrade.button": "Mise à niveau",
       "i18n.menu.close.button": "Fermer",
-      "i18n.menu.erase.text.button": "Clear text",
-      "i18n.menu.update.language.unauthorized.message": "Upgrade your website to add as many languages as you like.",
-      "i18n.menu.no.multilingualism.message": "This text is only editable in the main language.",
-      "i18n.menu.follow.link": "Go to page"
+      "i18n.menu.erase.text.button": "Effacer le texte",
+      "i18n.menu.update.language.unauthorized.message": "Mettez à niveau votre site web pour ajouter autant de langues que vous souhaitez.",
+      "i18n.menu.no.multilingualism.message": "Ce texte n'est éditable que dans la langue principale.",
+      "i18n.menu.follow.link": "Vers à la page"
     },
     "de":{
       "i18n.menu.save.button": "Speichern",
