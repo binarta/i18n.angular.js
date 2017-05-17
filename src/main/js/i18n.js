@@ -1,6 +1,7 @@
 angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'notifications', 'checkpoint', 'toggle.edit.mode'])
     .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', 'binarta', '$log', 'topicMessageDispatcher', I18nService])
-    .service('i18nRenderer', function () {})
+    .service('i18nRenderer', function () {
+    })
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
     .factory('i18nLocation', ['$q', '$location', '$routeParams', 'i18n', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
@@ -221,7 +222,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             });
 
             ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
-                scope.editing=enabled;
+                scope.editing = enabled;
             });
 
             scope.open = function () {
@@ -456,8 +457,16 @@ function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer,
                 var supportedLanguages = [];
                 for (var i = 0; i < languages.length; i++) {
                     for (var j = 0; j < (config.languages || []).length; j++) {
-                        if (languages[i] == config.languages[j].code) {
-                            supportedLanguages.push(config.languages[j]);
+                        var lang = config.languages[j];
+                        if (languages[i] == lang.code) {
+                            var url = binarta.application.unlocalizedPath();
+                            if (lang.code != binarta.application.primaryLanguage())
+                                url = '/' + lang.code + url;
+                            supportedLanguages.push({
+                                name: lang.name,
+                                code: lang.code,
+                                url: url
+                            });
                             break;
                         }
                     }

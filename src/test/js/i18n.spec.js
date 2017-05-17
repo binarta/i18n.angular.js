@@ -253,7 +253,7 @@ describe('i18n', function () {
                     });
                 });
 
-                describe('on success', function(){
+                describe('on success', function () {
                     it('translation is available', function () {
                         localStorage.locale = 'L';
 
@@ -1785,7 +1785,7 @@ describe('i18n', function () {
 
             beforeEach(function () {
                 config.languages = [dutch, french, english, chinese, arabic];
-                binarta.application.adhesiveReading.read('-');
+                binarta.application.adhesiveReading.read('/');
             });
 
             describe('with no supported languages', function () {
@@ -1823,13 +1823,24 @@ describe('i18n', function () {
             describe('with supported languages', function () {
                 beforeEach(function () {
                     binarta.application.profile().supportedLanguages = ['en', 'nl'];
+                    binarta.application.setLocaleForPresentation('en');
+                    $location.path('/en/');
 
                     directive.link(scope, element);
                     scope.$digest();
                 });
 
-                it('put supported languages on scope ordered by name', function () {
-                    expect(scope.supportedLanguages).toEqual([dutch, english]);
+                fit('put supported languages on scope ordered by name', function () {
+                    expect(scope.supportedLanguages).not.toEqual([dutch, english]);
+                    expect(scope.supportedLanguages).toEqual([{
+                        name: dutch.name,
+                        code: dutch.code,
+                        url: '/nl/'
+                    }, {
+                        name: english.name,
+                        code: english.code,
+                        url: '/'
+                    }]);
                 });
 
                 it('install editMode event binder', function () {
