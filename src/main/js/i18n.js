@@ -370,6 +370,7 @@ function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer,
 
             scope.$on('$routeChangeSuccess', function () {
                 scope.unlocalizedPath = binarta.application.unlocalizedPath();
+                scope.supportedLanguages = getSupportedLanguages(binarta.application.supportedLanguages());
             });
 
             scope.getActiveLanguageName = function () {
