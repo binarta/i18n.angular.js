@@ -12,7 +12,6 @@ angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18
     .controller('SelectLocaleController', ['$scope', '$routeParams', 'localeResolver', 'localeSwapper', SelectLocaleController])
     .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'binarta', i18nDirectiveFactory])
     .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'binarta', i18nDirectiveFactory])
-    .directive('binLink', ['i18n', 'localeResolver', 'ngRegisterTopicHandler', 'editMode', 'i18nRenderer', 'topicMessageDispatcher', BinLinkDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['config', 'i18n', 'editMode', 'editModeRenderer', 'activeUserHasPermission', 'binarta', I18nLanguageSwitcherDirective])
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
@@ -114,93 +113,6 @@ function LocaleSwapperFactory(binarta, $log, topicMessageDispatcher) {
         binarta.application.adhesiveReading.readRoute();
         topicMessageDispatcher.firePersistently('i18n.locale', locale);
     }
-}
-
-function BinLinkDirectiveFactory(i18n, localeResolver, ngRegisterTopicHandler, editMode, i18nRenderer, topicMessageDispatcher) {
-    return {
-        restrict: 'EA',
-        scope: true,
-        link: function (scope, element, attrs) {
-
-            scope.$watch(function () {
-                return localeResolver();
-            }, function () {
-                scope.code = attrs.code;
-                var promise = i18n.resolve(scope);
-                promise.then(updateTranslation);
-            });
-
-            scope.open = function () {
-                i18nRenderer.open({
-                    code: scope.code,
-                    translation: angular.copy(scope.link),
-                    editor: 'bin-link',
-                    submit: translate,
-                    template: '<form>' +
-                    '<div class="bin-menu-edit-body">' +
-                    '<div class=\"form-group\">' +
-                    '<label for=\"inputLinkText\">Naam</label>' +
-                    '<input type=\"text\" id=\"inputLinkText\" ng-model=\"translation.name\">' +
-                    '</div>' +
-                    '<div class=\"form-group\">' +
-                    '<label for=\"inputLinkUrl\">Url</label>' +
-                    '<input type=\"text\" id=\"inputLinkUrl\" ng-model=\"translation.url\">' +
-                    '</div>' +
-                    '</div>' +
-                    '</form>' +
-                    '<div class=\"bin-menu-edit-actions\">' +
-                    '<button type="submit" class="btn btn-primary" ng-click="submit(translation)" i18n code="i18n.menu.save.button" default="Opslaan" read-only>{{var}}</button>' +
-                    '<button type="reset" class="btn btn-default" ng-click="cancel()" i18n code="i18n.menu.cancel.button" default="Annuleren" read-only>{{var}}</button>' +
-                    '</div>'
-                });
-            };
-
-            ngRegisterTopicHandler(scope, 'link.updated', function (args) {
-                if (scope.code == args.code) updateTranslation(args.translation);
-            });
-
-            if (attrs.readOnly == undefined) {
-                editMode.bindEvent({
-                    scope: scope,
-                    element: element,
-                    permission: 'i18n.message.add',
-                    onClick: scope.open
-                });
-            }
-
-            function translate(link) {
-                var translationString = JSON.stringify(link);
-
-                var promise = i18n.translate({
-                    code: scope.code,
-                    translation: translationString
-                });
-                promise.then(function () {
-                    topicMessageDispatcher.fire('link.updated', {code: scope.code, translation: translationString});
-                });
-            }
-
-            function updateTranslation(translation) {
-                try {
-                    scope.link = JSON.parse(translation);
-                } catch (e) {
-                    scope.link = getDefaultLink();
-                }
-            }
-
-            function getDefaultLink() {
-                var defaultName = 'link';
-                if (attrs.defaultName) defaultName = attrs.defaultName;
-                var defaultUrl = '';
-                if (attrs.defaultUrl) defaultUrl = attrs.defaultUrl;
-
-                return {
-                    name: defaultName,
-                    url: defaultUrl
-                };
-            }
-        }
-    };
 }
 
 function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeResolver, i18nRendererTemplate, ngRegisterTopicHandler, binarta) {
