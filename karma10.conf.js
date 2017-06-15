@@ -15,6 +15,7 @@ module.exports = function(config) {
             {pattern:'bower_components/thk-rest-client-mock/src/rest.client.mock.js'},
             {pattern:'bower_components/thk-notifications-mock/src/notifications.mock.js'},
             {pattern:'bower_components/binarta.web.storage.angular/src/web.storage.js'},
+            {pattern:'bower_components/thk-web-storage-mock/src/web.storage.mock.js'},
             {pattern:'bower_components/angular-bootstrap/ui-bootstrap.js'},
             {pattern:'src/main/**/*.js'},
             {pattern:'src/test/**/*.js'}

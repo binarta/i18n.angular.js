@@ -20,12 +20,17 @@ describe('i18n', function () {
     beforeEach(inject(function ($cacheFactory, _binarta_) {
         cache = $cacheFactory.get('i18n');
         binarta = _binarta_;
+        triggerBinartaSchedule();
     }));
 
     afterEach(function () {
         if (binarta.application.gateway.clear)
             binarta.application.gateway.clear();
     });
+
+    function triggerBinartaSchedule() {
+        binarta.application.adhesiveReading.read('-');
+    }
 
     describe('on module loaded', function () {
         it('cache for i18n is created', inject(function ($cacheFactory) {
@@ -716,7 +721,9 @@ describe('i18n', function () {
             describe('languages defined in application profile', function () {
                 beforeEach(inject(function ($q) {
                     binarta.application.adhesiveReading.read('-');
-                    binarta.application.profile().supportedLanguages = ['en'];
+                    binarta.application.setProfile({
+                        supportedLanguages: ['en']
+                    });
                 }));
 
                 it('and no languages in local config', function () {
@@ -894,9 +901,10 @@ describe('i18n', function () {
 
             describe('with multilanguage', function () {
                 beforeEach(function () {
-                    binarta.application.profile().supportedLanguages = ['en', 'nl', 'fr'];
+                    binarta.application.setProfile({
+                        supportedLanguages: ['en', 'nl', 'fr']
+                    });
                     binarta.application.setLocaleForPresentation('en');
-                    binarta.application.refreshEvents();
                 });
 
                 it('should return locale', function () {
@@ -1006,7 +1014,9 @@ describe('i18n', function () {
         describe('when locale is set', function () {
             beforeEach(inject(function (binarta) {
                 $location.path('/en/foo/bar');
-                binarta.application.profile().supportedLanguages = ['en'];
+                binarta.application.setProfile({
+                    supportedLanguages: ['en']
+                });
                 binarta.application.setLocaleForPresentation('en');
                 binarta.application.refreshEvents();
             }));
@@ -1029,229 +1039,6 @@ describe('i18n', function () {
 
             it('raise i18n.locale notification', function () {
                 expect(dispatcher.persistent['i18n.locale']).toEqual('en');
-            });
-        });
-    });
-
-    describe('bin-link directive', function () {
-        var element, scope, $rootScope, i18n, link, registry, topics, permitter, $compile, $q;
-        var rendererOpenCalled, rendererArgs, editMode;
-
-        beforeEach(inject(function (_$rootScope_, _i18n_, topicRegistryMock, topicMessageDispatcherMock,
-                                    activeUserHasPermissionHelper, _$compile_, _$q_, i18nRendererInstaller, _editMode_) {
-            i18n = _i18n_;
-            i18n.resolve = function (args) {
-                i18n.resolveArgsSpy = args;
-                var deferred = $q.defer();
-                deferred.resolve(args.default);
-                return deferred.promise;
-            };
-
-            i18n.translate = function (args) {
-                i18n.translateArgsSpy = args;
-                var deferred = $q.defer();
-                deferred.resolve('success');
-                return deferred.promise;
-            };
-
-            $rootScope = _$rootScope_;
-            registry = topicRegistryMock;
-            topics = topicMessageDispatcherMock;
-            permitter = activeUserHasPermissionHelper;
-            $compile = _$compile_;
-            $q = _$q_;
-
-            link = {
-                name: 'link',
-                url: ''
-            };
-
-            rendererOpenCalled = false;
-            rendererArgs = {};
-            var renderer = {
-                open: function (args) {
-                    rendererOpenCalled = true;
-                    rendererArgs = args;
-                }
-            };
-            editMode = _editMode_;
-
-            i18nRendererInstaller(renderer);
-        }));
-
-        function createElement(html) {
-            element = angular.element(html);
-            $compile(element)($rootScope);
-            scope = element.scope();
-            $rootScope.$digest();
-        }
-
-        describe('when no translation exists', function () {
-            describe('and no default is given', function () {
-                beforeEach(function () {
-                    createElement('<bin-link code="code"></bin-link>');
-                });
-
-                it('get empty values', function () {
-                    $rootScope.$digest();
-
-                    expect(scope.link).toEqual(link);
-                });
-            });
-
-            describe('and default is given', function () {
-                beforeEach(function () {
-                    link = {
-                        name: 'default-name',
-                        url: 'default-url'
-                    };
-                    createElement('<bin-link code="code" default-name="' + link.name + '" default-url="' + link.url + '"></bin-link>')
-                });
-
-                it('get empty values', function () {
-                    $rootScope.$digest();
-
-                    expect(scope.link).toEqual(link);
-                });
-            });
-        });
-
-        describe('when translation exists', function () {
-            beforeEach(inject(function ($compile, $q) {
-                link = {
-                    name: 'link-name',
-                    url: 'link-url'
-                };
-
-                i18n.resolve = function (scope) {
-                    i18n.resolveArgsSpy = scope;
-                    var deferred = $q.defer();
-                    deferred.resolve(JSON.stringify(link));
-                    return deferred.promise;
-                };
-
-                createElement('<bin-link code="code"></bin-link>');
-                $rootScope.$digest();
-            }));
-
-            it('scope is passed to i18n service', function () {
-                expect(i18n.resolveArgsSpy.code).toEqual('code');
-            });
-
-            it('get values', function () {
-                expect(scope.link).toEqual(link);
-            });
-
-            describe('and locale is changed', function () {
-                beforeEach(inject(function (sessionStorage, binarta) {
-                    link = {
-                        name: 'link-name-nl',
-                        url: 'link-url-nl'
-                    };
-                    binarta.application.setLocale('nl');
-                    binarta.application.refresh();
-                    $rootScope.$digest();
-                }));
-
-                it('link is translated', inject(function (binarta) {
-                    expect(binarta.application.locale()).toEqual('nl');
-                    expect(scope.link).toEqual(link);
-                }));
-            });
-        });
-
-        describe('when translatable', function () {
-            beforeEach(function () {
-                link = {
-                    name: 'link',
-                    url: 'http://binarta.com'
-                };
-
-                createElement('<bin-link code="code"  default-url="http://binarta.com"></bin-link>');
-            });
-
-            it('install editMode event binder', function () {
-                expect(editMode.bindEvent).toHaveBeenCalledWith({
-                    scope: scope,
-                    element: element,
-                    permission: 'i18n.message.add',
-                    onClick: scope.open
-                });
-            });
-
-            describe('and element is clicked', function () {
-                beforeEach(function () {
-                    editMode.bindEvent.calls.first().args[0].onClick();
-                });
-
-                it('renderer is opened', function () {
-                    expect(rendererOpenCalled).toBeTruthy();
-                    expect(rendererArgs).toEqual({
-                        code: 'code',
-                        translation: link,
-                        editor: 'bin-link',
-                        submit: jasmine.any(Function),
-                        template: jasmine.any(String)
-                    });
-                });
-
-                it('translation is a copy', function () {
-                    scope.link.name = 'updated name';
-
-                    expect(rendererArgs.translation.name).toEqual('link');
-                });
-
-                it('on submit', function () {
-                    rendererArgs.submit(link);
-
-                    expect(i18n.translateArgsSpy).toEqual({
-                        code: 'code',
-                        translation: JSON.stringify(link)
-                    });
-                });
-
-                it('notification is sent', function () {
-                    var promise = rendererArgs.submit(link);
-                    $rootScope.$digest();
-
-                    expect(topics['link.updated']).toEqual({
-                        code: 'code',
-                        translation: JSON.stringify(link)
-                    });
-                });
-            });
-        });
-
-        describe('when not translatable', function () {
-            beforeEach(function () {
-                createElement('<bin-link code="code" read-only></bin-link>');
-            });
-
-            it('editMode event binder is not installed', function () {
-                expect(editMode.bindEvent).not.toHaveBeenCalled();
-            });
-        });
-
-        describe('when link.updated topic received', function () {
-            var updatedLink = {
-                code: 'code',
-                translation: JSON.stringify({
-                    name: 'updated name',
-                    url: 'updated url'
-                })
-            };
-
-            beforeEach(function () {
-                createElement('<bin-link code="code"></bin-link>');
-
-                registry['link.updated']({
-                    code: 'code',
-                    translation: JSON.stringify(updatedLink)
-                });
-            });
-
-            it('link is translated', function () {
-                expect(scope.link).toEqual(updatedLink);
             });
         });
     });
@@ -1777,11 +1564,11 @@ describe('i18n', function () {
         }));
 
         describe('on link', function () {
-            var dutch = {name: 'Dutch', code: 'nl'},
-                english = {name: 'English', code: 'en'},
-                french = {name: 'French', code: 'fr'},
-                chinese = {name: 'Chinese', code: 'ch'},
-                arabic = {name: 'Arabic', code: 'ar'};
+            var dutch = {name: 'Dutch', code: 'nl', url: '/nl/'},
+                english = {name: 'English', code: 'en', url: '/'},
+                french = {name: 'French', code: 'fr', url: '/fr/'},
+                chinese = {name: 'Chinese', code: 'ch', url: '/ch/'},
+                arabic = {name: 'Arabic', code: 'ar', url: '/ar/'};
 
             beforeEach(function () {
                 config.languages = [dutch, french, english, chinese, arabic];
@@ -1822,7 +1609,9 @@ describe('i18n', function () {
 
             describe('with supported languages', function () {
                 beforeEach(function () {
-                    binarta.application.profile().supportedLanguages = ['en', 'nl'];
+                    binarta.application.setProfile({
+                        supportedLanguages: ['en', 'nl']
+                    });
                     binarta.application.setLocaleForPresentation('en');
                     $location.path('/en/');
 
@@ -1830,8 +1619,7 @@ describe('i18n', function () {
                     scope.$digest();
                 });
 
-                fit('put supported languages on scope ordered by name', function () {
-                    expect(scope.supportedLanguages).not.toEqual([dutch, english]);
+                it('put supported languages on scope ordered by name', function () {
                     expect(scope.supportedLanguages).toEqual([{
                         name: dutch.name,
                         code: dutch.code,
@@ -1924,6 +1712,10 @@ describe('i18n', function () {
                                     rendererScope.$digest();
                                 });
 
+                                var toNormalizedLocale = function(it) {
+                                    return {name:it.name, code:it.code}
+                                };
+
                                 it('copy supported languages to child scope ordered by main language and name', function () {
                                     expect(rendererScope.languages).toEqual([english, dutch]);
                                 });
@@ -1979,7 +1771,11 @@ describe('i18n', function () {
                                         });
 
                                         it('update supported languages on scope ordered by name', function () {
-                                            expect(scope.supportedLanguages).toEqual([chinese, dutch, english]);
+                                            expect(
+                                                scope.supportedLanguages.map(toNormalizedLocale)
+                                            ).toEqual(
+                                                [chinese, dutch, english].map(toNormalizedLocale)
+                                            );
                                         });
 
                                         describe('and main locale changes', function () {
@@ -1991,7 +1787,8 @@ describe('i18n', function () {
                                             });
 
                                             it('update supported languages on scope', function () {
-                                                expect(scope.supportedLanguages).toEqual([chinese, dutch]);
+                                                expect(scope.supportedLanguages.map(toNormalizedLocale))
+                                                    .toEqual([chinese, dutch].map(toNormalizedLocale));
                                             });
                                         });
 
@@ -2017,7 +1814,8 @@ describe('i18n', function () {
                                     });
 
                                     it('add to languages', function () {
-                                        expect(rendererScope.availableLanguages).toEqual([arabic, chinese, dutch, french]);
+                                        expect(rendererScope.availableLanguages.map(toNormalizedLocale))
+                                            .toEqual([arabic, chinese, dutch, french].map(toNormalizedLocale));
                                     });
 
                                     it('update selected language', function () {
@@ -2031,7 +1829,8 @@ describe('i18n', function () {
                                     });
 
                                     it('add to supported languages ordered by main language', function () {
-                                        expect(rendererScope.languages).toEqual([english, arabic, dutch]);
+                                        expect(rendererScope.languages.map(toNormalizedLocale))
+                                            .toEqual([english, arabic, dutch].map(toNormalizedLocale));
                                     });
 
                                     it('remove from languages', function () {
@@ -2055,13 +1854,12 @@ describe('i18n', function () {
 
                 describe('on destroy', function () {
                     beforeEach(function () {
+                        scope.locale = undefined;
                         scope.$destroy();
                     });
 
                     it('remove event from registry', function () {
-                        binarta.application.setLocaleForPresentation('en');
                         binarta.application.refreshEvents();
-
                         expect(scope.locale).toBeUndefined();
                     });
                 });

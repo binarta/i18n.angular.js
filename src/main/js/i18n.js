@@ -615,7 +615,9 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             if (supportedLanguages.length > 0 || !config.supportedLanguages) {
                 config.supportedLanguages = supportedLanguages;
             }
-            binarta.application.profile().supportedLanguages = config.supportedLanguages;
+            var profile = binarta.application.profile();
+            profile.supportedLanguages = config.supportedLanguages;
+            binarta.application.setProfile(profile);
             deferred.resolve(config.supportedLanguages);
         });
         return deferred.promise;
@@ -637,7 +639,9 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }, {
             success: function () {
                 config.supportedLanguages = updatedLanguages;
-                binarta.application.profile().supportedLanguages = updatedLanguages;
+                var profile = binarta.application.profile();
+                profile.supportedLanguages = updatedLanguages;
+                binarta.application.setProfile(profile);
                 binarta.application.refreshEvents();
                 if (onSuccess) onSuccess();
             }
