@@ -1,6 +1,11 @@
 var gulp = require('gulp'),
     minifyHtml = require('gulp-minify-html'),
-    templateCache = require('gulp-angular-templatecache');
+    templateCache = require('gulp-angular-templatecache'),
+    karma = require('karma').Server;
+
+gulp.task('test', function (done) {
+  new karma({configFile: __dirname + '/karma10.conf.js'}, done).start();
+});
 
 var minifyHtmlOpts = {
     empty: true,
