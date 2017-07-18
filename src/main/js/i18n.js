@@ -13,6 +13,7 @@ angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18
     .directive('i18nTranslate', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'binarta', i18nDirectiveFactory])
     .directive('i18n', ['$rootScope', 'i18n', 'i18nRenderer', 'editMode', 'localeResolver', 'i18nRendererTemplate', 'ngRegisterTopicHandler', 'binarta', i18nDirectiveFactory])
     .directive('i18nLanguageSwitcher', ['config', 'i18n', 'editMode', 'editModeRenderer', 'activeUserHasPermission', 'binarta', I18nLanguageSwitcherDirective])
+    .component('binLanguageSwitcher', new BinLanguageSwitcherComponent())
     .run(['$cacheFactory', function ($cacheFactory) {
         $cacheFactory('i18n');
     }])
@@ -436,6 +437,28 @@ function I18nLanguageSwitcherDirective(config, i18n, editMode, editModeRenderer,
             }
         }
     };
+}
+
+function BinLanguageSwitcherComponent() {
+    this.templateUrl = ['$attrs', function ($attrs) {
+        return $attrs.templateUrl || 'bin-language-switcher.html';
+    }];
+
+    this.controller = ['topicRegistry', function (topics) {
+        var $ctrl = this;
+
+        $ctrl.$onInit = function () {
+            topics.subscribe('edit.mode', editModeListener);
+
+            $ctrl.$onDestroy = function () {
+                topics.unsubscribe('edit.mode', editModeListener);
+            };
+        };
+
+        function editModeListener(e) {
+            $ctrl.editing = e;
+        }
+    }];
 }
 
 function BinartaI18nMessageConverter(context) {
