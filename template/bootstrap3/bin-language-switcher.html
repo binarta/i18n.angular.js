@@ -1,13 +1,13 @@
 <span i18n-language-switcher ng-show="supportedLanguages.length > 1 || $ctrl.editing">
-     <a href="" ng-click="open()" ng-if="supportedLanguages.length <= 1 && $ctrl.editing">
+     <a href="" class="btn-language-switcher" ng-click="open()" ng-if="supportedLanguages.length <= 1 && $ctrl.editing">
         <i class="fa fa-globe fa-fw"></i> <span i18n code="i18n.menu.add.first.language.button" read-only ng-bind="var"></span>
     </a> 
-    <a href="" class="dropdown-toggle" data-toggle="dropdown" ng-if="supportedLanguages.length > 1">
-        <i class="fa fa-globe fa-fw"></i> <span ng-bind="getActiveLanguageName()"></span>
+    <a href="" class="dropdown-toggle btn-language-switcher" data-toggle="dropdown" ng-if="supportedLanguages.length > 1">
+        <i class="fa fa-globe fa-fw"></i> <span ng-bind="locale"></span>
     </a>
     <ul class="dropdown-menu" role="menu" ng-if="supportedLanguages.length > 1">
         <li ng-repeat="lang in supportedLanguages track by lang.code" ng-class="{active: lang.code == locale}">
-            <a role="menuitem" tabindex="-1" ng-href="{{lang.url}}" ng-class="{active: lang.code == activeLanguage.code}" ng-bind="lang.name"></a>
+            <a role="menuitem" tabindex="-1" ng-href="{{lang.url}}" ng-bind="lang.name"></a>
         </li>
     </ul>
 </span>

@@ -1,4 +1,21 @@
 bin-language-switcher {
-    display: inline-block;
-    position: relative;
+  display: inline-block;
+  position: relative;
+
+  .btn-language-switcher {
+    color: inherit;
+
+    span {
+      text-decoration: underline;
+    }
+
+    &:hover, &:focus {
+      text-decoration: none;
+    }
+  }
+
+  .dropdown-menu {
+    left: auto;
+    right: 0;
+  }
 }
