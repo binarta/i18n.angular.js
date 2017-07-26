@@ -56,6 +56,16 @@ angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18
                     installer.bottomMenuControls(args.isEditable) +
                     '</form>';
             });
+
+            installer.add('input', function (args) {
+                return '<form name="i18nForm" ng-submit="submit()">' +
+                    '<div class="bin-menu-edit-body">' +
+                    installer.topMenuControls() +
+                    '<input name="translation" ng-model="translation" ' + (args.isEditable ? '' : 'disabled="true"') + '>' +
+                    '</div>' +
+                    installer.bottomMenuControls(args.isEditable) +
+                    '</form>';
+            });
         }
     }])
     .run(['binarta', 'config', '$cacheFactory', 'topicMessageDispatcher', '$rootScope', function (binarta, config, $cacheFactory, topicMessageDispatcher, $rootScope) {
