@@ -24,6 +24,13 @@ describe('i18n', function () {
     }));
 
     afterEach(function () {
+        sessionStorage.removeItem('binarta:i18n:default:default:code');
+        sessionStorage.removeItem('binarta:i18n:default:en:code');
+        sessionStorage.removeItem('binarta:i18n:default:L:code');
+        sessionStorage.removeItem('binarta:i18n:default:custom:code');
+        sessionStorage.removeItem('binarta:i18n:N:default:code');
+        sessionStorage.removeItem('binarta:i18n:N:en:code');
+        sessionStorage.removeItem('binarta:i18n:namespace:default:translation.code');
         if (binarta.application.gateway.clear)
             binarta.application.gateway.clear();
     });
@@ -39,9 +46,11 @@ describe('i18n', function () {
     });
 
     describe('i18n service', function () {
-        var $rootScope, config, i18n, localStorage, publicConfigReader, publicConfigWriter, $location, $httpBackend;
+        var $rootScope, config, i18n, localStorage, publicConfigReader, publicConfigWriter, $location, $httpBackend,
+            now;
 
         beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_, _publicConfigReader_, _publicConfigWriter_, _$location_, _$httpBackend_) {
+            now = new Date();
             $rootScope = _$rootScope_;
             config = _config_;
             i18n = _i18n_;
@@ -50,6 +59,7 @@ describe('i18n', function () {
             publicConfigWriter = _publicConfigWriter_;
             $location = _$location_;
             $httpBackend = _$httpBackend_;
+            i18n.timeline = [now];
         }));
 
         it('i18n service should be defined', function () {
@@ -147,7 +157,10 @@ describe('i18n', function () {
                         $rootScope.$digest();
                         usecaseAdapter.calls.first().args[1]();
 
-                        expect(cache.get('default:default:code')).toEqual('translation');
+                        expect(cache.get('default:default:code')).toBeUndefined();
+                        var translation = JSON.parse(sessionStorage.getItem('binarta:i18n:default:default:code'));
+                        expect(moment(translation.timestamp, 'YYYYMMDDHHmmssSSSZ').toDate()).toEqual(now);
+                        expect(translation.value).toEqual('translation');
                     });
 
                     it('with namespace', function () {
@@ -157,7 +170,9 @@ describe('i18n', function () {
                         $rootScope.$digest();
                         usecaseAdapter.calls.first().args[1]();
 
-                        expect(cache.get('N:default:code')).toEqual('translation');
+                        var translation = JSON.parse(sessionStorage.getItem('binarta:i18n:N:default:code'));
+                        expect(moment(translation.timestamp, 'YYYYMMDDHHmmssSSSZ').toDate()).toEqual(now);
+                        expect(translation.value).toEqual('translation');
                     });
                 });
             });
@@ -223,7 +238,9 @@ describe('i18n', function () {
                         $rootScope.$digest();
                         usecaseAdapter.calls.first().args[1]();
 
-                        expect(cache.get('default:en:code')).toEqual('translation');
+                        var translation = JSON.parse(sessionStorage.getItem('binarta:i18n:default:en:code'));
+                        expect(moment(translation.timestamp, 'YYYYMMDDHHmmssSSSZ').toDate()).toEqual(now);
+                        expect(translation.value).toEqual('translation');
                     });
 
                     it('with namespace', function () {
@@ -233,7 +250,9 @@ describe('i18n', function () {
                         $rootScope.$digest();
                         usecaseAdapter.calls.first().args[1]();
 
-                        expect(cache.get('N:en:code')).toEqual('translation');
+                        var translation = JSON.parse(sessionStorage.getItem('binarta:i18n:N:en:code'));
+                        expect(moment(translation.timestamp, 'YYYYMMDDHHmmssSSSZ').toDate()).toEqual(now);
+                        expect(translation.value).toEqual('translation');
                     });
 
                     expectTopicsMessageDispatcherToFire();
@@ -266,7 +285,9 @@ describe('i18n', function () {
                         $rootScope.$digest();
                         usecaseAdapter.calls.first().args[1]();
 
-                        expect(cache.get('default:L:code')).toEqual('translation');
+                        var translation = JSON.parse(sessionStorage.getItem('binarta:i18n:default:L:code'));
+                        expect(moment(translation.timestamp, 'YYYYMMDDHHmmssSSSZ').toDate()).toEqual(now);
+                        expect(translation.value).toEqual('translation');
                     });
 
                     expectTopicsMessageDispatcherToFire();
@@ -279,7 +300,9 @@ describe('i18n', function () {
                     $rootScope.$digest();
                     usecaseAdapter.calls.first().args[1]();
 
-                    expect(cache.get('default:custom:code')).toEqual('translation');
+                    var translation = JSON.parse(sessionStorage.getItem('binarta:i18n:default:custom:code'));
+                    expect(moment(translation.timestamp, 'YYYYMMDDHHmmssSSSZ').toDate()).toEqual(now);
+                    expect(translation.value).toEqual('translation');
                 });
             });
         });
@@ -429,6 +452,24 @@ describe('i18n', function () {
                     expect(cache.get('namespace:default:translation.code')).toEqual(' ');
                 });
 
+                it('resolution prefers session storage', inject(function () {
+                    sessionStorage.setItem('binarta:i18n:namespace:default:translation.code', JSON.stringify({
+                        timestamp: moment(now).format('YYYYMMDDHHmmssSSSZ'),
+                        value: 'from-session-storage'
+                    }));
+
+                    i18n.resolve(context).then(presenter);
+                    $rootScope.$digest();
+
+                    expect(receivedContext).toEqual({
+                        translation: 'from-session-storage',
+                        code: code,
+                        default: undefined,
+                        locale: 'default'
+                    });
+                    expect(cache.get('namespace:default:translation.code')).toEqual('from-session-storage');
+                }));
+
                 it('resolve when translation cache populated by adhesive reading then no gateway calls are done', function () {
                     binarta.application.gateway.addSectionData({
                         type: 'i18n', key: code, message: 'translation-from-section-data'
@@ -445,6 +486,51 @@ describe('i18n', function () {
                         locale: 'default'
                     });
                     expect(reader.calls.first()).toBeUndefined();
+                });
+
+                it('messages in session storage are preferred over translation cache populated by old adhesive reading', function () {
+                    sessionStorage.setItem('binarta:i18n:namespace:default:translation.code', JSON.stringify({
+                        timestamp: moment(now).format('YYYYMMDDHHmmssSSSZ'),
+                        value: 'from-session-storage'
+                    }));
+
+                    binarta.application.gateway.addSectionData({
+                        type: 'i18n', key: code, message: 'translation-from-section-data'
+                    });
+                    binarta.application.adhesiveReading.read('-');
+
+                    i18n.resolve(context).then(presenter);
+                    $rootScope.$digest();
+
+                    expect(receivedContext).toEqual({
+                        translation: 'from-session-storage',
+                        code: code,
+                        default: undefined,
+                        locale: 'default'
+                    });
+                });
+
+                it('messages in session storage are removed when translation cache populated by newer adhesive reading', function () {
+                    sessionStorage.setItem('binarta:i18n:namespace:default:translation.code', JSON.stringify({
+                        timestamp: moment(now).format('YYYYMMDDHHmmssSSSZ'),
+                        value: 'from-session-storage'
+                    }));
+
+                    binarta.application.gateway.now = moment(now).add(1, 'm');
+                    binarta.application.gateway.addSectionData({
+                        type: 'i18n', key: code, message: 'translation-from-section-data'
+                    });
+                    binarta.application.adhesiveReading.read('-');
+
+                    i18n.resolve(context).then(presenter);
+                    $rootScope.$digest();
+
+                    expect(receivedContext).toEqual({
+                        translation: 'translation-from-section-data',
+                        code: code,
+                        default: undefined,
+                        locale: 'default'
+                    });
                 });
 
                 it('resolve when translation cache populated by adhesive reading with unknown translation code', function () {
@@ -1044,7 +1130,8 @@ describe('i18n', function () {
     });
 
     describe('i18n directive', function () {
-        var directive, $rootScope, scope, resolver, locale, attrs, rendererOpenCalled, rendererArgs, editMode, registry, topics, dispatcher;
+        var directive, $rootScope, scope, resolver, locale, attrs, rendererOpenCalled, rendererArgs, editMode, registry,
+            topics, dispatcher;
         var i18nResolveDeferred;
 
         beforeEach(inject(function (activeUserHasPermission, activeUserHasPermissionHelper, _$rootScope_, $q,
@@ -1534,7 +1621,8 @@ describe('i18n', function () {
     });
 
     describe('i18n language switcher directive', function () {
-        var $rootScope, i18n, editMode, editModeRenderer, publicConfigWriter, directive, scope, element, config, $location,
+        var $rootScope, i18n, editMode, editModeRenderer, publicConfigWriter, directive, scope, element, config,
+            $location,
             sessionStorage, activeUserHasPermission, binarta, path;
 
         beforeEach(inject(function (_$rootScope_, _i18n_, _config_, publicConfigReader, _publicConfigWriter_, $q, _$location_, _sessionStorage_, _binarta_) {
@@ -1712,8 +1800,8 @@ describe('i18n', function () {
                                     rendererScope.$digest();
                                 });
 
-                                var toNormalizedLocale = function(it) {
-                                    return {name:it.name, code:it.code}
+                                var toNormalizedLocale = function (it) {
+                                    return {name: it.name, code: it.code}
                                 };
 
                                 it('copy supported languages to child scope ordered by main language and name', function () {

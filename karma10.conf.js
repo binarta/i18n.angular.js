@@ -3,6 +3,7 @@ module.exports = function(config) {
         basePath:'.',
         frameworks:['jasmine'],
         files:[
+            {pattern:'bower_components/moment/moment.js'},
             {pattern:'bower_components/angular/angular.js'},
             {pattern:'bower_components/angular-route/angular-route.js'},
             {pattern:'bower_components/angular-mocks/angular-mocks.js'},
@@ -16,6 +17,9 @@ module.exports = function(config) {
             {pattern:'bower_components/thk-notifications-mock/src/notifications.mock.js'},
             {pattern:'bower_components/binarta.web.storage.angular/src/web.storage.js'},
             {pattern:'bower_components/binarta.web.storage/src/web.storage.js'},
+            {pattern:'bower_components/angular-moment/angular-moment.js'},
+            {pattern:'bower_components/moment-picker/src/angular-moment-picker.js'},
+            {pattern:'bower_components/binarta.momentx.angular/src/momentx.js'},
             {pattern:'bower_components/angular-bootstrap/ui-bootstrap.js'},
             {pattern:'src/main/**/*.js'},
             {pattern:'src/test/**/*.js'}

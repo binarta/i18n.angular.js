@@ -4,6 +4,7 @@
   "dependencies": {
     "binartajs-angular1": "1.*.*",
     "binarta.angularx": "0.*.*",
+    "binarta.momentx.angular": "0.*.*",
     "binarta.config.angular": "0.*.*",
     "binarta.config.rest.angular": "0.*.*",
     "binarta.usecase.adapter.angular": "0.*.*",

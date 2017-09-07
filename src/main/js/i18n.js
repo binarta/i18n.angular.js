@@ -1,5 +1,5 @@
 angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'notifications', 'checkpoint', 'toggle.edit.mode'])
-    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigReader', 'publicConfigWriter', '$http', 'binarta', '$log', 'topicMessageDispatcher', I18nService])
+    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigWriter', '$http', 'binarta', '$log', 'topicMessageDispatcher', 'sessionStorage', I18nService])
     .service('i18nRenderer', function () {
     })
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
@@ -68,7 +68,7 @@ angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18
             });
         }
     }])
-    .run(['binarta', 'config', '$cacheFactory', 'topicMessageDispatcher', '$rootScope', function (binarta, config, $cacheFactory, topicMessageDispatcher, $rootScope) {
+    .run(['binarta', 'config', '$cacheFactory', 'topicMessageDispatcher', '$rootScope', 'sessionStorage', function (binarta, config, $cacheFactory, topicMessageDispatcher, $rootScope, sessionStorage) {
         binarta.application.adhesiveReading.handlers.add(new CacheI18nMessageHandler());
         binarta.application.eventRegistry.add(new SetLocaleAdapter());
 
@@ -78,7 +78,14 @@ angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18
             this.type = 'i18n';
             this.cache = function (it) {
                 var locale = binarta.application.localeForPresentation() || binarta.application.locale();
-                messages.put(config.namespace + ':' + locale + ':' + it.key, it.message);
+                var key = config.namespace + ':' + locale + ':' + it.key;
+                if(sessionStorage.getItem('binarta:i18n:' + key)) {
+                    var fromSessionStorage = JSON.parse(sessionStorage.getItem('binarta:i18n:' + key));
+                    if(moment(fromSessionStorage.timestamp, 'YYYYMMDDHHmmssSSSZ') < it.timestamp) {
+                        sessionStorage.removeItem('binarta:i18n:' + key);
+                    }
+                }
+                messages.put(key, it.message);
             }
         }
 
@@ -487,7 +494,7 @@ function BinartaI18nMessageConverter(context) {
     }
 }
 
-function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigReader, publicConfigWriter, $http, binarta, $log, topicMessageDispatcher) {
+function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigWriter, $http, binarta, $log, topicMessageDispatcher, sessionStorage) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
     var supportedLanguages, metadataPromise, internalLocalePromise, externalLocalePromise;
@@ -499,6 +506,8 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         internalLocalePromise = undefined;
         externalLocalePromise = undefined;
     });
+
+    self.timeline = new BinartaTL();
 
     function getMetadata() {
         if (!metadataPromise) {
@@ -555,7 +564,8 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
 
         function getFromCache() {
-            return cache.get(toKey());
+            var fromSession = sessionStorage.getItem('binarta:i18n:' + toKey());
+            return fromSession ? JSON.parse(fromSession).value : cache.get(toKey());
         }
 
         function toKey() {
@@ -624,7 +634,12 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         self.getInternalLocale().then(function (locale) {
             ctx.locale = context.locale || locale || 'default';
             var onSuccess = function () {
-                deferred.resolve(cache.put(toKey(), ctx.message));
+                sessionStorage.setItem('binarta:i18n:' + toKey(), JSON.stringify({
+                    timestamp: moment(self.timeline.shift()).format('YYYYMMDDHHmmssSSSZ'),
+                    value: ctx.message
+                }));
+                // deferred.resolve(cache.put(toKey(), ctx.message));
+                deferred.resolve(ctx.message);
                 topicMessageDispatcher.fire('i18n.updated', {code: ctx.key, translation: ctx.message});
             };
             i18nMessageWriter(ctx, usecaseAdapterFactory(context, onSuccess));
@@ -790,10 +805,10 @@ function I18nRendererTemplateInstallerFactory(i18nRendererTemplate) {
                 (
                     isEditable
                         ? '<button type=\"reset\" class=\"btn btn-danger pull-left\" ng-click=\"erase()\" i18n code=\"i18n.menu.erase.text.button\" read-only ng-bind="var"></button>' +
-                    '<button type=\"submit\" class=\"btn btn-primary\" i18n code=\"i18n.menu.save.button\" read-only ng-bind="var"></button>' +
-                    '<button type=\"reset\" class=\"btn btn-default\" ng-click=\"cancel()\" i18n code=\"i18n.menu.cancel.button\" read-only ng-bind="var"></button>'
+                        '<button type=\"submit\" class=\"btn btn-primary\" i18n code=\"i18n.menu.save.button\" read-only ng-bind="var"></button>' +
+                        '<button type=\"reset\" class=\"btn btn-default\" ng-click=\"cancel()\" i18n code=\"i18n.menu.cancel.button\" read-only ng-bind="var"></button>'
                         : '<span class=\"pull-left margin-bottom\" i18n code=\"i18n.menu.no.multilingualism.message\" read-only><i class=\"fa fa-info-circle fa-fw\"></i> <span ng-bind="var"></span></span>' +
-                    '<button type=\"button\" class=\"btn btn-default\" ng-click=\"cancel()\" i18n code=\"i18n.menu.close.button\" read-only ng-bind="var"></button>'
+                        '<button type=\"button\" class=\"btn btn-default\" ng-click=\"cancel()\" i18n code=\"i18n.menu.close.button\" read-only ng-bind="var"></button>'
                 ) +
                 '</div>';
         }
