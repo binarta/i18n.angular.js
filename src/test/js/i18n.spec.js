@@ -777,6 +777,41 @@ describe('i18n', function () {
             });
         });
 
+        describe('on observe', function () {
+            var actual;
+
+            beforeEach(function () {
+                config.namespace = 'namespace';
+                binarta.application.gateway.updateApplicationProfile({supportedLanguages: []});
+                binarta.application.refresh();
+                binarta.application.setLocaleForPresentation(undefined);
+                binarta.application.gateway.addSectionData({
+                    type: 'i18n', key: 'code', message: 'message'
+                });
+                binarta.application.adhesiveReading.read('-');
+                i18n.observe('code', function (m) {
+                    actual = m;
+                });
+                $rootScope.$digest();
+            });
+
+            it('message is resolved', function () {
+                expect(actual).toEqual('message');
+            });
+
+            describe('on translate', function () {
+                beforeEach(inject(function (usecaseAdapterFactory) {
+                    i18n.translate({code: 'code', translation: 'updated'});
+                    $rootScope.$digest();
+                    usecaseAdapterFactory.calls.first().args[1]();
+                }));
+
+                it('observer is updated', function () {
+                    expect(actual).toEqual('updated');
+                });
+            });
+        });
+
         describe('get supported languages', function () {
             var languages;
 

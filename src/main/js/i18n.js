@@ -498,6 +498,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     var self = this;
     var cache = $cacheFactory.get('i18n');
     var supportedLanguages, metadataPromise, internalLocalePromise, externalLocalePromise;
+    var eventHandlers = new BinartaRX();
 
     var adhesiveReadingListener = new AdhesiveReadingListener();
     binarta.application.adhesiveReading.eventRegistry.add(adhesiveReadingListener);
@@ -597,6 +598,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             } else {
                 deferred.resolve(msg);
             }
+            notifyObservers(context.code, msg);
         }
 
         function storeInCache(msg) {
@@ -640,6 +642,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
                 }));
                 // deferred.resolve(cache.put(toKey(), ctx.message));
                 deferred.resolve(ctx.message);
+                notifyObservers(ctx.key, ctx.message);
                 topicMessageDispatcher.fire('i18n.updated', {code: ctx.key, translation: ctx.message});
             };
             i18nMessageWriter(ctx, usecaseAdapterFactory(context, onSuccess));
@@ -712,6 +715,20 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         });
         return deferred.promise;
     };
+
+    this.observe = function (key, success) {
+        var listener = {};
+        listener[key] = success;
+        var observer = eventHandlers.observe(listener);
+        self.resolve({code: key});
+        return observer;
+    };
+
+    function notifyObservers(key, value) {
+        eventHandlers.forEach(function (l) {
+            l.notify(key, value);
+        });
+    }
 
     function AdhesiveReadingListener() {
         var jobs = [];
