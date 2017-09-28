@@ -785,29 +785,47 @@ describe('i18n', function () {
                 binarta.application.gateway.updateApplicationProfile({supportedLanguages: []});
                 binarta.application.refresh();
                 binarta.application.setLocaleForPresentation(undefined);
-                binarta.application.gateway.addSectionData({
-                    type: 'i18n', key: 'code', message: 'message'
-                });
-                binarta.application.adhesiveReading.read('-');
-                i18n.observe('code', function (m) {
-                    actual = m;
-                });
-                $rootScope.$digest();
             });
 
-            it('message is resolved', function () {
-                expect(actual).toEqual('message');
-            });
-
-            describe('on translate', function () {
-                beforeEach(inject(function (usecaseAdapterFactory) {
-                    i18n.translate({code: 'code', translation: 'updated'});
+            describe('with default parameters', function () {
+                beforeEach(function () {
+                    binarta.application.gateway.addSectionData({
+                        type: 'i18n', key: 'code', message: 'message'
+                    });
+                    binarta.application.adhesiveReading.read('-');
+                    i18n.observe('code', function (m) {
+                        actual = m;
+                    });
                     $rootScope.$digest();
-                    usecaseAdapterFactory.calls.first().args[1]();
-                }));
+                });
 
-                it('observer is updated', function () {
-                    expect(actual).toEqual('updated');
+                it('message is resolved', function () {
+                    expect(actual).toEqual('message');
+                });
+
+                describe('on translate', function () {
+                    beforeEach(inject(function (usecaseAdapterFactory) {
+                        i18n.translate({code: 'code', translation: 'updated'});
+                        $rootScope.$digest();
+                        usecaseAdapterFactory.calls.first().args[1]();
+                    }));
+
+                    it('observer is updated', function () {
+                        expect(actual).toEqual('updated');
+                    });
+                });
+            });
+
+            describe('with custom arguments', function () {
+                beforeEach(function () {
+                    i18n.resolve = jasmine.createSpy('resolve');
+                    i18n.observe('C', function (m) {
+                        actual = m;
+                    }, {default: 'D'});
+                });
+
+                it('custom args are passed to resolver', function () {
+                    expect(i18n.resolve).toHaveBeenCalledWith({code: 'C', default: 'D'});
                 });
             });
         });

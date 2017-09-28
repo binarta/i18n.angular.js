@@ -716,11 +716,13 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         return deferred.promise;
     };
 
-    this.observe = function (key, success) {
+    this.observe = function (key, success, args) {
         var listener = {};
         listener[key] = success;
         var observer = eventHandlers.observe(listener);
-        self.resolve({code: key});
+        args = args || {};
+        args.code = key;
+        self.resolve(args);
         return observer;
     };
 
