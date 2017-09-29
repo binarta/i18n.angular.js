@@ -1,6 +1,19 @@
 bin-language-switcher {
   display: inline-block;
-  position: relative;
+
+  &:before {
+    content: '';
+    display: inline-block;
+    height: 100%;
+    width: 0;
+    vertical-align: middle;
+  }
+
+  > span {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+  }
 
   .btn-language-switcher {
     color: inherit;
