@@ -79,9 +79,9 @@ angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18
             this.cache = function (it) {
                 var locale = binarta.application.localeForPresentation() || binarta.application.locale();
                 var key = config.namespace + ':' + locale + ':' + it.key;
-                if (sessionStorage.getItem('binarta:i18n:' + key)) {
+                if(sessionStorage.getItem('binarta:i18n:' + key)) {
                     var fromSessionStorage = JSON.parse(sessionStorage.getItem('binarta:i18n:' + key));
-                    if (moment(fromSessionStorage.timestamp, 'YYYYMMDDHHmmssSSSZ') < it.timestamp) {
+                    if(moment(fromSessionStorage.timestamp, 'YYYYMMDDHHmmssSSSZ') < it.timestamp) {
                         sessionStorage.removeItem('binarta:i18n:' + key);
                     }
                 }
@@ -128,6 +128,7 @@ function LocaleSwapperFactory(binarta, $log, topicMessageDispatcher) {
     return function (locale) {
         $log.warn('@deprecated LocaleSwapperFactory - use binarta.application.setLocale(locale) instead!');
         binarta.application.setLocale(locale);
+        binarta.application.adhesiveReading.readRoute();
         topicMessageDispatcher.firePersistently('i18n.locale', locale);
     }
 }
@@ -144,18 +145,11 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 useExtendedResponse: true
             };
 
-            var observer = i18n.observe(attrs.code, updateTranslation);
-            scope.$on('$destroy', function () {
-                observer.disconnect();
-            });
+            ngRegisterTopicHandler(scope, 'i18n.locale', resolveWithLocale);
 
-            if (attrs.watchOnCode != undefined)
-                scope.$watch(function () {
-                    return attrs.code;
-                }, function () {
-                    observer.disconnect();
-                    observer = i18n.observe(attrs.code, updateTranslation);
-                });
+            ngRegisterTopicHandler(scope, 'i18n.updated', function (ctx) {
+                if (attrs.code == ctx.code) updateTranslation(ctx.translation);
+            });
 
             ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
                 scope.editing = enabled;
@@ -185,6 +179,20 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             function getLocalePrefix() {
                 var locale = binarta.application.localeForPresentation();
                 return locale ? '/' + locale : '';
+            }
+
+            function resolveWithLocale(locale) {
+                ctx.locale = locale;
+                if (attrs.watchOnCode != undefined) watchOnCodeChange(ctx);
+                else resolveTranslation(ctx);
+            }
+
+            function watchOnCodeChange(ctx) {
+                scope.$watch(function () {
+                    return attrs.code;
+                }, function () {
+                    resolveTranslation(ctx);
+                });
             }
 
             function translate(translation) {
@@ -228,13 +236,36 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 });
             }
 
+            function resolveTranslation(ctx) {
+                ctx.code = attrs.code;
+                ctx.default = attrs.default;
+                i18n.resolve(ctx).then(function (update) {
+                    updateTranslation(update.translation);
+                }, function () {
+                    isReadOnly() ? setEmptyText() : setPlaceholderTextWhenInEditMode();
+                });
+            }
+
+            function setPlaceholderTextWhenInEditMode() {
+                ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
+                    if (!translated) enabled ? setPlaceholderText() : setEmptyText();
+                });
+            }
+
+            function setEmptyText() {
+                setVar('');
+            }
+
+            function setPlaceholderText() {
+                setVar('place your text here');
+            }
+
             function updateTranslation(translation) {
                 translated = true;
                 setVar(translation);
             }
 
             function setVar(translation) {
-                if (scope.editing && !translation.trim()) translation = 'place your text here';
                 scope.var = translation;
                 if (attrs.var) scope.$parent[attrs.var] = translation;
             }
@@ -577,8 +608,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         if (config.namespace) context.namespace = config.namespace;
         binarta.schedule(function () {
             adhesiveReadingListener.schedule(function () {
-                if (context.locale) $log.warn('i18n.resolve() no longer takes any custom locale into account!');
-                context.locale = binarta.application.localeForPresentation() || binarta.application.locale();
+                if (!context.locale) context.locale = binarta.application.localeForPresentation() || binarta.application.locale();
                 isCached() ? fallbackToDefaultWhenUnknown(getFromCache()) : getFromGateway();
             });
         });
