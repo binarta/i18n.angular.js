@@ -724,13 +724,13 @@ describe('i18n', function () {
                         context.locale = 'custom';
                     });
 
-                    it('resolution includes the locale on context', function () {
+                    it('it is utterly ignored', function () {
                         resolveTo(translation);
                         $rootScope.$digest();
                         expectContextEquals({
                             useExtendedResponse: true,
                             code: code,
-                            locale: 'custom',
+                            locale: 'default',
                             namespace: 'namespace',
                             section: '/'
                         });
@@ -738,7 +738,7 @@ describe('i18n', function () {
                             translation: translation,
                             code: code,
                             default: undefined,
-                            locale: 'custom'
+                            locale: 'default'
                         });
                     });
                 });
@@ -1221,6 +1221,19 @@ describe('i18n', function () {
                     var deferred = $q.defer();
                     deferred.resolve('success');
                     return deferred.promise;
+                },
+                observes: {
+                    installations: 0
+                },
+                observe: function (key, listener) {
+                    resolver.observes.installations++;
+                    resolver.observes.id = key;
+                    resolver.observes.listener = listener;
+                    return {
+                        disconnect: function () {
+                            resolver.observes.disconnect = key;
+                        }
+                    };
                 }
             };
 
@@ -1263,22 +1276,10 @@ describe('i18n', function () {
                     };
 
                     directive.link(scope, element, attrs);
-                    registry['i18n.locale']();
                 });
 
                 it('editMode event binder is not installed', function () {
                     expect(editMode.bindEvent).not.toHaveBeenCalled();
-                });
-
-                describe('and message resolution is rejected', function () {
-                    beforeEach(function () {
-                        i18nResolveDeferred.reject();
-                        scope.$digest();
-                    });
-
-                    it('translation is empty', function () {
-                        expect(scope.var).toEqual('');
-                    });
                 });
             });
 
@@ -1292,7 +1293,23 @@ describe('i18n', function () {
                     locale = 'locale';
 
                     directive.link(scope, element, attrs);
-                    registry['i18n.locale']('locale');
+                });
+
+                it('observes code', function () {
+                    expect(resolver.observes.id).toEqual(attrs.code);
+                });
+
+                it('observed message changes are applied to scope', function () {
+                    resolver.observes.listener('x');
+                    expect(scope.var).toEqual('x');
+                    expect(scope.$parent['var']).toEqual(undefined);
+                });
+
+                it('observed message changes with custom var are applied to scope and parent scope', function () {
+                    attrs.var = 'var';
+                    resolver.observes.listener('x');
+                    expect(scope.var).toEqual('x');
+                    expect(scope.$parent['var']).toEqual('x');
                 });
 
                 it('initialize var on scope', function () {
@@ -1309,129 +1326,47 @@ describe('i18n', function () {
                     expect(scope.editing).toEqual(true);
                 });
 
-                describe('and message resolution is rejected', function () {
+                it('empty messages are converted in edit mode', function () {
+                    registry['edit.mode'](true);
+                    resolver.observes.listener(' ');
+                    expect(scope.var).toEqual('place your text here');
+                });
+
+                describe('and translation is updated', function () {
                     beforeEach(function () {
-                        i18nResolveDeferred.reject();
+                        scope.open();
+                        rendererArgs.submit();
                         scope.$digest();
                     });
 
-                    describe('and user is not in edit mode', function () {
-                        beforeEach(function () {
-                            registry['edit.mode'](false);
-                        });
-
-                        it('translation is empty', function () {
-                            expect(scope.var).toEqual('');
-                        });
+                    it('message is translated', function () {
+                        expect(scope.var).toEqual('success');
                     });
 
-
-                    describe('and user is in edit mode', function () {
+                    describe('and user not in edit mode', function () {
                         beforeEach(function () {
                             registry['edit.mode'](true);
                         });
 
-                        it('show placeholder text', function () {
-                            expect(scope.var).toEqual('place your text here');
-                        });
-                    });
-
-                    describe('and translation is updated', function () {
-                        beforeEach(function () {
-                            scope.open();
-                            rendererArgs.submit();
-                            scope.$digest();
-                        });
-
-                        it('message is translated', function () {
+                        it('message does not change', function () {
                             expect(scope.var).toEqual('success');
-                        });
-
-                        describe('and user not in edit mode', function () {
-                            beforeEach(function () {
-                                registry['edit.mode'](true);
-                            });
-
-                            it('message does not change', function () {
-                                expect(scope.var).toEqual('success');
-                            });
                         });
                     });
                 });
 
-                describe('and message resolution is resolved', function () {
-                    beforeEach(function () {
-                        scope.$digest();
-                    });
-
-                    it('triggers message resolution', function () {
-                        expect(resolver.args).toEqual({
-                            code: 'code',
-                            default: 'default',
-                            locale: 'locale',
-                            useExtendedResponse: true
-                        });
-                    });
-
-                    it('with no-locale attribute set', function () {
-                        attrs.noLocale = '';
-                        directive.link(scope, element, attrs);
-                        scope.$digest();
-
-                        expect(resolver.args).toEqual({
-                            code: 'code',
-                            default: 'default',
-                            locale: 'locale',
-                            useExtendedResponse: true
-                        });
-                    });
-
-                    describe('and message resolution completes without var defined on attributes', function () {
-                        it('exposes translation on scope', function () {
-                            i18nResolveDeferred.resolve(resolver.resolverResponse);
-                            scope.$digest();
-                            expect(scope.var).toEqual('translation');
-                        });
-
-                        it('does not exposes translation on parent scope', function () {
-                            expect(scope.$parent[attrs.var]).toEqual(undefined);
-                        });
-                    });
-
-                    describe('and message resolution completes with var defined on attributes', function () {
-                        beforeEach(function () {
-                            attrs.var = 'var';
-                            directive.link(scope, element, attrs);
-                            i18nResolveDeferred.resolve(resolver.resolverResponse);
-                            scope.$digest();
-                        });
-
-                        it('exposes translation on scope', function () {
-                            expect(scope.var).toEqual('translation');
-                        });
-
-                        it('exposes translation on parent scope', function () {
-                            expect(scope.$parent[attrs.var]).toEqual('translation');
-                        });
-                    });
+                it('code changes are ignored when watch on code is disabled', function () {
+                    attrs.code = 'changed';
+                    scope.$digest();
+                    expect(resolver.observes.id).toEqual('code');
                 });
 
                 describe('and watch on code is enabled', function () {
                     beforeEach(function () {
                         attrs.watchOnCode = '';
                         directive.link(scope, element, attrs);
-                        registry['i18n.locale']('locale');
                         scope.$digest();
                     });
 
-                    it('triggers message resolution', function () {
-                        expect(resolver.args).toEqual({
-                            code: 'code',
-                            default: 'default',
-                            locale: 'locale',
-                            useExtendedResponse: true
-                        });
-                    });
 
                     describe('when code is changed', function () {
                         beforeEach(function () {
@@ -1439,13 +1374,12 @@ describe('i18n', function () {
                             scope.$digest();
                         });
 
-                        it('triggers message resolution', function () {
-                            expect(resolver.args).toEqual({
-                                code: 'changed',
-                                default: 'default',
-                                locale: 'locale',
-                                useExtendedResponse: true
-                            });
+                        it('installs observer for the new code', function () {
+                            expect(resolver.observes.id).toEqual('changed');
+                        });
+
+                        it('disconnects observer for the old code', function () {
+                            expect(resolver.observes.disconnect).toEqual('code');
                         });
                     });
                 });
@@ -1612,28 +1546,6 @@ describe('i18n', function () {
                         });
                         expect(scope.var).toEqual('success');
                     });
-
-                    describe('and received i18n.updated notification', function () {
-                        describe('and code matches', function () {
-                            beforeEach(function () {
-                                registry['i18n.updated']({code: 'code', translation: 'foo'});
-                            });
-
-                            it('update translation', function () {
-                                expect(scope.var).toEqual('foo');
-                            });
-                        });
-
-                        describe('and code is different', function () {
-                            beforeEach(function () {
-                                registry['i18n.updated']({code: 'other.code', translation: 'foo'});
-                            });
-
-                            it('translation should not be altered', function () {
-                                expect(scope.var).toEqual('success');
-                            });
-                        });
-                    });
                 });
 
                 describe('on translation success with custom locale', function () {
@@ -1651,21 +1563,6 @@ describe('i18n', function () {
                             code: 'code',
                             translation: 'translation',
                             locale: 'default'
-                        });
-                    });
-                });
-
-                describe('on locale change', function () {
-                    beforeEach(function () {
-                        registry['i18n.locale']('new');
-                    });
-
-                    it('resolver is called with new locale', function () {
-                        expect(resolver.args).toEqual({
-                            code: 'code',
-                            default: 'default',
-                            locale: 'new',
-                            useExtendedResponse: true
                         });
                     });
                 });
@@ -2277,6 +2174,14 @@ describe('i18n', function () {
             eventRegistry.add({
                 continue: function () {
                     delegate.fetchSectionData(request, response);
+                }
+            });
+        };
+
+        this.fetchAdhesiveSnapshot = function (request, response) {
+            eventRegistry.add({
+                continue: function () {
+                    delegate.fetchAdhesiveSnapshot(request, response);
                 }
             });
         }
