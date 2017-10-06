@@ -1332,29 +1332,6 @@ describe('i18n', function () {
                     expect(scope.var).toEqual('place your text here');
                 });
 
-                it('when edit mode is enabled then existing messages remain on the scope', function() {
-                    resolver.observes.listener('x');
-                    registry['edit.mode'](true);
-                    expect(scope.var).toEqual('x');
-                });
-
-                it('when edit mode is enabled and there are no existing messages on the scope then it shows a placeholder message', function() {
-                    registry['edit.mode'](true);
-                    expect(scope.var).toEqual('place your text here');
-                });
-
-                it('when edit mode is disabled then existing messages remain on the scope', function() {
-                    resolver.observes.listener('x');
-                    registry['edit.mode'](false);
-                    expect(scope.var).toEqual('x');
-                });
-
-                it('when edit mode is disabled then existing messages remain on the scope', function() {
-                    resolver.observes.listener('place your text here');
-                    registry['edit.mode'](false);
-                    expect(scope.var).toEqual('');
-                });
-
                 describe('and translation is updated', function () {
                     beforeEach(function () {
                         scope.open();

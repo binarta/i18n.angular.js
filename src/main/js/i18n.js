@@ -159,7 +159,6 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
 
             ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
                 scope.editing = enabled;
-                setVar((scope.var == 'place your text here' ? '' : scope.var) || '');
             });
 
             scope.open = function () {
