@@ -140,6 +140,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             scope.var = undefined;
             var defaultLocale = 'default';
             var translated;
+            var resolvedOnce = false;
             var ctx = {
                 useExtendedResponse: true
             };
@@ -159,7 +160,8 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
 
             ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
                 scope.editing = enabled;
-                setVar((scope.var == 'place your text here' ? '' : scope.var) || '');
+                if(resolvedOnce)
+                    setVar((scope.var == 'place your text here' ? '' : scope.var) || '');
             });
 
             scope.open = function () {
@@ -235,6 +237,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             }
 
             function setVar(translation) {
+                resolvedOnce = true;
                 if (scope.editing && !translation.trim()) translation = 'place your text here';
                 scope.var = translation;
                 if (attrs.var) scope.$parent[attrs.var] = translation;

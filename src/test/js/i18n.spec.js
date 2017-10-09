@@ -1338,7 +1338,13 @@ describe('i18n', function () {
                     expect(scope.var).toEqual('x');
                 });
 
-                it('when edit mode is enabled and there are no existing messages on the scope then it shows a placeholder message', function() {
+                it('when edit mode is enabled and no message was ever resolve then the scope is not touched', function() {
+                    registry['edit.mode'](true);
+                    expect(scope.var).toBeUndefined();
+                });
+
+                it('when edit mode is enabled and there is an existing empty messages on the scope then it shows a placeholder message', function() {
+                    resolver.observes.listener(' ');
                     registry['edit.mode'](true);
                     expect(scope.var).toEqual('place your text here');
                 });
