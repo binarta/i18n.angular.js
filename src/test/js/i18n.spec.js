@@ -1225,9 +1225,10 @@ describe('i18n', function () {
                 observes: {
                     installations: 0
                 },
-                observe: function (key, listener) {
+                observe: function (key, listener, args) {
                     resolver.observes.installations++;
                     resolver.observes.id = key;
+                    resolver.observes.default = args ? args.default || undefined : undefined ;
                     resolver.observes.listener = listener;
                     return {
                         disconnect: function () {
@@ -1297,6 +1298,10 @@ describe('i18n', function () {
 
                 it('observes code', function () {
                     expect(resolver.observes.id).toEqual(attrs.code);
+                });
+
+                it('observes default', function () {
+                    expect(resolver.observes.default).toEqual(attrs.default);
                 });
 
                 it('observed message changes are applied to scope', function () {
@@ -1405,6 +1410,10 @@ describe('i18n', function () {
 
                         it('installs observer for the new code', function () {
                             expect(resolver.observes.id).toEqual('changed');
+                        });
+
+                        it('installs new default', function () {
+                            expect(resolver.observes.default).toEqual(attrs.default);
                         });
 
                         it('disconnects observer for the old code', function () {

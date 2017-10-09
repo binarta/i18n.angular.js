@@ -145,7 +145,8 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 useExtendedResponse: true
             };
 
-            var observer = i18n.observe(attrs.code, updateTranslation);
+            var resolutionArgs = {default: attrs.default};
+            var observer = i18n.observe(attrs.code, updateTranslation, resolutionArgs);
             scope.$on('$destroy', function () {
                 observer.disconnect();
             });
@@ -155,12 +156,12 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                     return attrs.code;
                 }, function () {
                     observer.disconnect();
-                    observer = i18n.observe(attrs.code, updateTranslation);
+                    observer = i18n.observe(attrs.code, updateTranslation, resolutionArgs);
                 });
 
             ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
                 scope.editing = enabled;
-                if(resolvedOnce)
+                if (resolvedOnce)
                     setVar((scope.var == 'place your text here' ? '' : scope.var) || '');
             });
 
