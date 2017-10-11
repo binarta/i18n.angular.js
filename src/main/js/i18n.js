@@ -519,7 +519,12 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
 
         function resolveFromMetadata() {
-            config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : deferred.reject();
+            config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : reject();
+        }
+
+        function reject() {
+            deferred.reject();
+            resolveAndCache(' ');
         }
 
         function resolveDefaultTranslationFromMetadata() {
@@ -530,7 +535,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
                     if (messages && messages[context.code]) translation = messages[context.code];
                 });
             }).finally(function () {
-                translation ? resolveAndCache(translation) : deferred.reject();
+                translation ? resolveAndCache(translation) : reject();
             });
         }
 
@@ -552,6 +557,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             i18nMessageReader(context, function (translation) {
                 fallbackToDefaultWhenUnknown(translation);
             }, function () {
+                fallbackToDefaultWhenUnknown('???' + context.code + '???');
                 fallbackToDefaultWhenUnknown('???' + context.code + '???');
             });
         }

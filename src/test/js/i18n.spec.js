@@ -28,6 +28,7 @@ describe('i18n', function () {
         sessionStorage.removeItem('binarta:i18n:default:en:code');
         sessionStorage.removeItem('binarta:i18n:default:L:code');
         sessionStorage.removeItem('binarta:i18n:default:custom:code');
+        sessionStorage.removeItem('binarta:i18n:namespace:default:code');
         sessionStorage.removeItem('binarta:i18n:N:default:code');
         sessionStorage.removeItem('binarta:i18n:N:en:code');
         sessionStorage.removeItem('binarta:i18n:namespace:default:translation.code');
@@ -786,6 +787,14 @@ describe('i18n', function () {
                 binarta.application.refresh();
                 binarta.application.setLocaleForPresentation(undefined);
             });
+
+            it('observing an unknown code resolves to empty message', inject(function (i18nMessageReader) {
+                i18n.observe('code', function (m) {
+                    actual = m;
+                });
+                i18nMessageReader.calls.first().args[1]('???code???');
+                expect(actual).toEqual(' ');
+            }));
 
             describe('with default parameters', function () {
                 beforeEach(function () {
