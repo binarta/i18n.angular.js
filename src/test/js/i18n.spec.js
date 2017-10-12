@@ -1326,6 +1326,13 @@ describe('i18n', function () {
                     expect(scope.$parent['var']).toEqual('x');
                 });
 
+                it('observed message is trimmed before being applied to scope and parent scope', function () {
+                    attrs.var = 'var';
+                    resolver.observes.listener(' x ');
+                    expect(scope.var).toEqual('x');
+                    expect(scope.$parent['var']).toEqual('x');
+                });
+
                 it('initialize var on scope', function () {
                     expect(scope.var).toBeUndefined();
                 });

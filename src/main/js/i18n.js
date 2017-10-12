@@ -239,7 +239,8 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
 
             function setVar(translation) {
                 resolvedOnce = true;
-                if (scope.editing && !translation.trim()) translation = 'place your text here';
+                translation = translation.trim();
+                if (scope.editing && !translation) translation = 'place your text here';
                 scope.var = translation;
                 if (attrs.var) scope.$parent[attrs.var] = translation;
             }
