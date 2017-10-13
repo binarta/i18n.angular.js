@@ -68,29 +68,17 @@ angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18
             });
         }
     }])
-    .run(['binarta', 'config', '$cacheFactory', 'topicMessageDispatcher', '$rootScope', 'sessionStorage', function (binarta, config, $cacheFactory, topicMessageDispatcher, $rootScope, sessionStorage) {
+    .run(['binarta', 'topicMessageDispatcher', '$rootScope', 'i18n', function (binarta, topicMessageDispatcher, $rootScope, i18n) {
         binarta.application.adhesiveReading.handlers.add(new CacheI18nMessageHandler());
         binarta.application.eventRegistry.add(new SetLocaleAdapter());
 
         function CacheI18nMessageHandler() {
-            var messages = $cacheFactory.get('i18n');
-
             this.type = 'i18n';
-            this.cache = function (it) {
-                var locale = binarta.application.localeForPresentation() || binarta.application.locale();
-                var key = config.namespace + ':' + locale + ':' + it.key;
-                if (sessionStorage.getItem('binarta:i18n:' + key)) {
-                    var fromSessionStorage = JSON.parse(sessionStorage.getItem('binarta:i18n:' + key));
-                    if (moment(fromSessionStorage.timestamp, 'YYYYMMDDHHmmssSSSZ') < it.timestamp) {
-                        sessionStorage.removeItem('binarta:i18n:' + key);
-                    }
-                }
-                messages.put(key, it.message);
-            }
+            this.cache = i18n.cache;
         }
 
         function SetLocaleAdapter() {
-            this.setLocale = function (locale) {
+            this.setLocale = function () {
                 topicMessageDispatcher.firePersistently('i18n.locale', binarta.application.localeForPresentation() || binarta.application.locale());
                 $rootScope.unlocalizedPath = binarta.application.unlocalizedPath();
                 $rootScope.locale = binarta.application.localeForPresentation() || '';
@@ -472,7 +460,7 @@ function BinartaI18nMessageConverter(context) {
 function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigWriter, $http, binarta, $log, topicMessageDispatcher, sessionStorage) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
-    var supportedLanguages, metadataPromise, internalLocalePromise, externalLocalePromise;
+    var metadataPromise, internalLocalePromise, externalLocalePromise;
     var eventHandlers = new BinartaRX();
 
     var adhesiveReadingListener = new AdhesiveReadingListener();
@@ -495,15 +483,20 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         return metadataPromise;
     }
 
-    function getLocaleFromPath(languages) {
-        var param = getFirstRouteParam($location.path());
-        if (languages.indexOf(param) != -1) return param;
-    }
+    this.cache = function (args) {
+        var locale = binarta.application.localeForPresentation() || binarta.application.locale();
+        var key = config.namespace + ':' + locale + ':' + args.key;
 
-    function getFirstRouteParam(path) {
-        var param = path.match(/^\/[^\/]+\//);
-        if (param) return param[0].replace(/\//g, '');
-    }
+        if (args.timestamp && sessionStorage.getItem('binarta:i18n:' + key)) {
+            var fromSessionStorage = JSON.parse(sessionStorage.getItem('binarta:i18n:' + key));
+            if (moment(fromSessionStorage.timestamp, 'YYYYMMDDHHmmssSSSZ') < args.timestamp) {
+                sessionStorage.removeItem('binarta:i18n:' + key);
+            }
+        }
+
+        cache.put(key, args.message);
+        notifyObservers(args.key, args.message);
+    };
 
     this.resolve = function (context) {
         var deferred = $q.defer();
@@ -579,11 +572,13 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             } else {
                 deferred.resolve(msg);
             }
-            notifyObservers(context.code, msg);
         }
 
         function storeInCache(msg) {
-            cache.put(toKey(), msg);
+            self.cache({
+                key: context.code,
+                message: msg
+            });
         }
 
         if (config.namespace) context.namespace = config.namespace;

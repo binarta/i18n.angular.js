@@ -37,7 +37,7 @@ describe('i18n', function () {
     });
 
     function triggerBinartaSchedule() {
-        binarta.application.adhesiveReading.read('-');
+        binarta.application.adhesiveReading.read();
     }
 
     describe('on module loaded', function () {
@@ -801,7 +801,7 @@ describe('i18n', function () {
                     binarta.application.gateway.addSectionData({
                         type: 'i18n', key: 'code', message: 'message'
                     });
-                    binarta.application.adhesiveReading.read('-');
+                    binarta.application.adhesiveReading.read();
                     i18n.observe('code', function (m) {
                         actual = m;
                     });
@@ -822,6 +822,14 @@ describe('i18n', function () {
                     it('observer is updated', function () {
                         expect(actual).toEqual('updated');
                     });
+                });
+
+                it('when change in adhesive reading data', function () {
+                    binarta.application.gateway.addSectionData({
+                        type: 'i18n', key: 'code', message: 'x'
+                    });
+                    binarta.application.adhesiveReading.read();
+                    expect(actual).toEqual('x');
                 });
             });
 
