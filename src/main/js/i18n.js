@@ -495,7 +495,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
 
         cache.put(key, args.message);
-        notifyObservers(args.key, args.message);
+        notifyObservers(args.key, getFromCache(key));
     };
 
     this.resolve = function (context) {
@@ -534,12 +534,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         }
 
         function isCached() {
-            return getFromCache() != undefined;
-        }
-
-        function getFromCache() {
-            var fromSession = sessionStorage.getItem('binarta:i18n:' + toKey());
-            return fromSession ? JSON.parse(fromSession).value : cache.get(toKey());
+            return getFromCache(toKey()) != undefined;
         }
 
         function toKey() {
@@ -586,7 +581,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             adhesiveReadingListener.schedule(function () {
                 if (context.locale) $log.warn('i18n.resolve() no longer takes any custom locale into account!');
                 context.locale = binarta.application.localeForPresentation() || binarta.application.locale();
-                isCached() ? fallbackToDefaultWhenUnknown(getFromCache()) : getFromGateway();
+                isCached() ? fallbackToDefaultWhenUnknown(getFromCache(toKey())) : getFromGateway();
             });
         });
 
@@ -707,6 +702,11 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
         eventHandlers.forEach(function (l) {
             l.notify(key, value);
         });
+    }
+
+    function getFromCache(key) {
+        var fromSession = sessionStorage.getItem('binarta:i18n:' + key);
+        return fromSession ? JSON.parse(fromSession).value : cache.get(key);
     }
 
     function AdhesiveReadingListener() {

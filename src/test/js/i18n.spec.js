@@ -20,18 +20,12 @@ describe('i18n', function () {
     beforeEach(inject(function ($cacheFactory, _binarta_) {
         cache = $cacheFactory.get('i18n');
         binarta = _binarta_;
+        binarta.application.gateway.now = moment(new Date());
         triggerBinartaSchedule();
     }));
 
     afterEach(function () {
-        sessionStorage.removeItem('binarta:i18n:default:default:code');
-        sessionStorage.removeItem('binarta:i18n:default:en:code');
-        sessionStorage.removeItem('binarta:i18n:default:L:code');
-        sessionStorage.removeItem('binarta:i18n:default:custom:code');
-        sessionStorage.removeItem('binarta:i18n:namespace:default:code');
-        sessionStorage.removeItem('binarta:i18n:N:default:code');
-        sessionStorage.removeItem('binarta:i18n:N:en:code');
-        sessionStorage.removeItem('binarta:i18n:namespace:default:translation.code');
+        sessionStorage.clear();
         if (binarta.application.gateway.clear)
             binarta.application.gateway.clear();
     });
@@ -830,6 +824,24 @@ describe('i18n', function () {
                     });
                     binarta.application.adhesiveReading.read();
                     expect(actual).toEqual('x');
+                });
+
+                describe('when newer message is available in session', function () {
+                    beforeEach(function () {
+                        sessionStorage.clear();
+                        sessionStorage.setItem('binarta:i18n:namespace:default:code', JSON.stringify({
+                            timestamp: moment(now).format('YYYYMMDDHHmmssSSSZ'),
+                            value: 'from-session-storage'
+                        }));
+                    });
+
+                    it('when change in adhesive reading data', function () {
+                        binarta.application.gateway.addSectionData({
+                            type: 'i18n', key: 'code', message: 'x'
+                        });
+                        binarta.application.adhesiveReading.read();
+                        expect(actual).toEqual('from-session-storage');
+                    });
                 });
             });
 
