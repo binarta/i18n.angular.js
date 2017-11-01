@@ -504,7 +504,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
 
         function resolveAndCache(msg) {
             resolve(msg);
-            storeInCache(msg);
+            self.cache({key: context.code, message: msg});
         }
 
         function resolve(msg) {
@@ -518,13 +518,6 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
             } else {
                 deferred.resolve(msg);
             }
-        }
-
-        function storeInCache(msg) {
-            self.cache({
-                key: context.code,
-                message: msg
-            });
         }
 
         if (config.namespace) context.namespace = config.namespace;
