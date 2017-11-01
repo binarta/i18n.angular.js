@@ -41,10 +41,10 @@ describe('i18n', function () {
     });
 
     describe('i18n service', function () {
-        var $rootScope, config, i18n, localStorage, publicConfigReader, publicConfigWriter, $location, $httpBackend,
+        var $rootScope, config, i18n, localStorage, publicConfigReader, publicConfigWriter, $location, $httpBackend, i18nMessageReader,
             now;
 
-        beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_, _publicConfigReader_, _publicConfigWriter_, _$location_, _$httpBackend_) {
+        beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_, _publicConfigReader_, _publicConfigWriter_, _$location_, _$httpBackend_, _i18nMessageReader_) {
             now = new Date();
             $rootScope = _$rootScope_;
             config = _config_;
@@ -54,6 +54,7 @@ describe('i18n', function () {
             publicConfigWriter = _publicConfigWriter_;
             $location = _$location_;
             $httpBackend = _$httpBackend_;
+            i18nMessageReader = _i18nMessageReader_;
             i18n.timeline = [now];
         }));
 
@@ -572,16 +573,13 @@ describe('i18n', function () {
                         context.code = code;
                     });
 
-                    it('resolve is rejected', function () {
-                        var rejected;
-                        i18n.resolve(context).then(presenter, function () {
-                            rejected = true;
-                        });
+                    it('resolves to empty message', function () {
+                        i18n.resolve(context).then(presenter);
                         $rootScope.$digest();
                         reader.calls.first().args[2]();
                         $rootScope.$digest();
 
-                        expect(rejected).toBeTruthy();
+                        expect(receivedContext.translation).toEqual(' ');
                     });
 
                     describe('when using metadata as fallback', function () {
@@ -689,15 +687,12 @@ describe('i18n', function () {
                                 config.defaultLocaleFromMetadata = 'en';
                             });
 
-                            it('use placeholder text', function () {
-                                var rejected;
-                                i18n.resolve(context).then(presenter, function () {
-                                    rejected = true;
-                                });
+                            it('resolves to empty message', function () {
+                                i18n.resolve(context).then(presenter);
                                 resolveTo(unknownCode);
                                 $httpBackend.flush();
 
-                                expect(rejected).toBeTruthy();
+                                expect(receivedContext.translation).toEqual(' ');
                             });
                         });
                     });
@@ -782,13 +777,13 @@ describe('i18n', function () {
                 binarta.application.setLocaleForPresentation(undefined);
             });
 
-            it('observing an unknown code resolves to empty message', inject(function (i18nMessageReader) {
+            it('observing an unknown code resolves to empty message', function () {
                 i18n.observe('code', function (m) {
                     actual = m;
                 });
                 i18nMessageReader.calls.first().args[1]('???code???');
                 expect(actual).toEqual(' ');
-            }));
+            });
 
             describe('with default parameters', function () {
                 beforeEach(function () {
@@ -826,6 +821,19 @@ describe('i18n', function () {
                     expect(actual).toEqual('x');
                 });
 
+                describe('when adhesive reading data is changed with an unknown code', function () {
+                    beforeEach(function () {
+                        binarta.application.gateway.addSectionData({
+                            type: 'i18n', key: 'code', message: '???code???'
+                        });
+                        binarta.application.adhesiveReading.read();
+                    });
+
+                    it('resolved to empty message', function () {
+                        expect(actual).toEqual(' ');
+                    });
+                });
+
                 describe('when newer message is available in session', function () {
                     beforeEach(function () {
                         sessionStorage.clear();
@@ -846,15 +854,31 @@ describe('i18n', function () {
             });
 
             describe('with custom arguments', function () {
+                var actual;
+
                 beforeEach(function () {
-                    i18n.resolve = jasmine.createSpy('resolve');
-                    i18n.observe('C', function (m) {
+                    i18n.observe('code', function (m) {
                         actual = m;
                     }, {default: 'D'});
+
+                    i18nMessageReader.calls.mostRecent().args[2]();
                 });
 
-                it('custom args are passed to resolver', function () {
-                    expect(i18n.resolve).toHaveBeenCalledWith({code: 'C', default: 'D'});
+                it('message is resolved to default value', function () {
+                    expect(actual).toEqual('D');
+                });
+
+                describe('when change in adhesive reading data', function () {
+                    beforeEach(function () {
+                        binarta.application.gateway.addSectionData({
+                            type: 'i18n', key: 'code', message: '???code???'
+                        });
+                        binarta.application.adhesiveReading.read();
+                    });
+
+                    it('resolved to default message', function () {
+                        expect(actual).toEqual('D');
+                    });
                 });
             });
         });

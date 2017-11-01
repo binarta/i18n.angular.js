@@ -1,7 +1,8 @@
 angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'notifications', 'checkpoint', 'toggle.edit.mode'])
-    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigWriter', '$http', 'binarta', '$log', 'topicMessageDispatcher', 'sessionStorage', I18nService])
+    .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigWriter', 'binarta', '$log', 'topicMessageDispatcher', 'sessionStorage', 'i18nMessageConverter', I18nService])
     .service('i18nRenderer', function () {
     })
+    .factory('i18nMessageConverter', ['$http', '$q', 'config', i18nMessageConverterFactory])
     .factory('i18nRendererInstaller', ['i18nRenderer', I18nRendererInstallerFactory])
     .factory('i18nLocation', ['$q', '$location', '$routeParams', 'i18n', I18nLocationFactory])
     .factory('i18nResolver', ['i18n', I18nResolverFactory])
@@ -441,26 +442,10 @@ function BinLanguageSwitcherComponent() {
     }];
 }
 
-function BinartaI18nMessageConverter(context) {
-    var self = this;
-
-    this.isUnknown = function (translation) {
-        return translation == '???' + context.code + '???';
-    };
-
-    this.toDefaultWhenUnknown = function (translation) {
-        return self.isUnknown(translation) ? self.toDefaultTranslation() : translation;
-    };
-
-    this.toDefaultTranslation = function () {
-        return context.default == '' || context.default == undefined ? ' ' : context.default;
-    }
-}
-
-function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigWriter, $http, binarta, $log, topicMessageDispatcher, sessionStorage) {
+function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cacheFactory, i18nMessageWriter, usecaseAdapterFactory, publicConfigWriter, binarta, $log, topicMessageDispatcher, sessionStorage, i18nMessageConverter) {
     var self = this;
     var cache = $cacheFactory.get('i18n');
-    var metadataPromise, internalLocalePromise, externalLocalePromise;
+    var internalLocalePromise, externalLocalePromise;
     var eventHandlers = new BinartaRX();
 
     var adhesiveReadingListener = new AdhesiveReadingListener();
@@ -472,16 +457,6 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     });
 
     self.timeline = new BinartaTL();
-
-    function getMetadata() {
-        if (!metadataPromise) {
-            metadataPromise = $q.all([
-                $http.get('metadata-app.json'),
-                $http.get('metadata-system.json')
-            ]);
-        }
-        return metadataPromise;
-    }
 
     this.cache = function (args) {
         var locale = binarta.application.localeForPresentation() || binarta.application.locale();
@@ -501,40 +476,17 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     this.resolve = function (context) {
         var deferred = $q.defer();
 
-        var messageConverter = new BinartaI18nMessageConverter(context);
-
         function fallbackToDefaultWhenUnknown(translation) {
-            var result = messageConverter.toDefaultWhenUnknown(translation);
-            resolveFromMetadataIfEmpty(result);
-        }
-
-        function resolveFromMetadataIfEmpty(result) {
-            result == ' ' && context.default == undefined ? resolveFromMetadata() : resolveAndCache(result);
-        }
-
-        function resolveFromMetadata() {
-            config.defaultLocaleFromMetadata ? resolveDefaultTranslationFromMetadata() : reject();
-        }
-
-        function reject() {
-            deferred.reject();
-            resolveAndCache(' ');
-        }
-
-        function resolveDefaultTranslationFromMetadata() {
-            var translation;
-            getMetadata().then(function (data) {
-                angular.forEach(data, function (metadata) {
-                    var messages = metadata.data.msgs[config.defaultLocaleFromMetadata];
-                    if (messages && messages[context.code]) translation = messages[context.code];
-                });
-            }).finally(function () {
-                translation ? resolveAndCache(translation) : reject();
+            i18nMessageConverter({
+                code: context.code,
+                default: context.default,
+                translation: translation,
+                onResolved: resolveAndCache
             });
         }
 
         function isCached() {
-            return getFromCache(toKey()) != undefined;
+            return getFromCache(toKey()) !== undefined;
         }
 
         function toKey() {
@@ -689,10 +641,17 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
 
     this.observe = function (key, success, args) {
         var listener = {};
-        listener[key] = success;
-        var observer = eventHandlers.observe(listener);
         args = args || {};
         args.code = key;
+        listener[key] = function (t) {
+            i18nMessageConverter({
+                code: key,
+                default: args.default,
+                translation: t,
+                onResolved: success
+            });
+        };
+        var observer = eventHandlers.observe(listener);
         self.resolve(args);
         return observer;
     };
@@ -729,6 +688,50 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
                 job();
             else
                 jobs.push(job);
+        }
+    }
+}
+
+function i18nMessageConverterFactory($http, $q, config) {
+    var metadataPromise;
+
+    return function (ctx) {
+        toMetadataWhenUnknown(ctx.translation, function (t) {
+            ctx.onResolved(toDefaultWhenUnknown(t));
+        });
+
+        function toMetadataWhenUnknown(translation, onResolved) {
+            if (isUnknown(translation) && config.defaultLocaleFromMetadata) resolveFromMetadata(translation, onResolved);
+            else onResolved(translation);
+        }
+
+        function resolveFromMetadata(translation, onResolved) {
+            getMetadata().then(function (data) {
+                angular.forEach(data, function (metadata) {
+                    var messages = metadata.data.msgs[config.defaultLocaleFromMetadata];
+                    if (messages && messages[ctx.code]) translation = messages[ctx.code];
+                });
+            }).finally(function () {
+                onResolved(translation);
+            });
+        }
+
+        function toDefaultWhenUnknown(translation) {
+            return isUnknown(translation) ? toDefaultTranslation() : translation;
+        }
+
+        function isUnknown(translation) {
+            return translation === '???' + ctx.code + '???';
+        }
+
+        function toDefaultTranslation() {
+            return ctx.default === '' || ctx.default === undefined ? ' ' : ctx.default;
+        }
+
+        function getMetadata() {
+            if (!metadataPromise)
+                metadataPromise = $q.all([$http.get('metadata-app.json'), $http.get('metadata-system.json')]);
+            return metadataPromise;
         }
     }
 }
