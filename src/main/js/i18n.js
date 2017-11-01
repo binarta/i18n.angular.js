@@ -547,7 +547,6 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
                 fallbackToDefaultWhenUnknown(translation);
             }, function () {
                 fallbackToDefaultWhenUnknown('???' + context.code + '???');
-                fallbackToDefaultWhenUnknown('???' + context.code + '???');
             });
         }
 
