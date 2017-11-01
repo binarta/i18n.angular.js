@@ -130,9 +130,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             var defaultLocale = 'default';
             var translated;
             var resolvedOnce = false;
-            var ctx = {
-                useExtendedResponse: true
-            };
+            var placeholderText = 'place your text here';
 
             var resolutionArgs = {default: attrs.default};
             var observer = i18n.observe(attrs.code, updateTranslation, resolutionArgs);
@@ -140,7 +138,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
                 observer.disconnect();
             });
 
-            if (attrs.watchOnCode != undefined)
+            if (attrs.watchOnCode !== undefined)
                 scope.$watch(function () {
                     return attrs.code;
                 }, function () {
@@ -151,13 +149,17 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             ngRegisterTopicHandler(scope, 'edit.mode', function (enabled) {
                 scope.editing = enabled;
                 if (resolvedOnce)
-                    setVar((scope.var == 'place your text here' ? '' : scope.var) || '');
+                    setVar((isPlaceholderTextUsed() ? '' : scope.var) || '');
             });
+
+            function isPlaceholderTextUsed() {
+                return scope.var === placeholderText;
+            }
 
             scope.open = function () {
                 var ctx = {
                     code: attrs.code,
-                    translation: angular.copy(scope.var),
+                    translation: isPlaceholderTextUsed() ? '' : angular.copy(scope.var),
                     editor: attrs.editor,
                     submit: translate,
                     template: i18nRendererTemplate.getTemplate({
@@ -197,19 +199,19 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             };
 
             function useDefaultLocale() {
-                return attrs.noLocale != undefined;
+                return attrs.noLocale !== undefined;
             }
 
             function currentLocaleIsDefault() {
-                return localeResolver() == defaultLocale;
+                return localeResolver() === defaultLocale;
             }
 
             function currentLocaleIsMain() {
-                return localeResolver() == $rootScope.mainLocale;
+                return localeResolver() === $rootScope.mainLocale;
             }
 
             function isReadOnly() {
-                return attrs.readOnly != undefined;
+                return attrs.readOnly !== undefined;
             }
 
             if (!isReadOnly()) {
@@ -229,7 +231,7 @@ function i18nDirectiveFactory($rootScope, i18n, i18nRenderer, editMode, localeRe
             function setVar(translation) {
                 resolvedOnce = true;
                 translation = translation.trim();
-                if (scope.editing && !translation) translation = 'place your text here';
+                if (scope.editing && !translation) translation = placeholderText;
                 scope.var = translation;
                 if (attrs.var) scope.$parent[attrs.var] = translation;
             }

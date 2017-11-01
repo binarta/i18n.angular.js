@@ -1491,19 +1491,30 @@ describe('i18n', function () {
                     });
                 });
 
-                it('linker registers an open function', function () {
-                    attrs = {
-                        code: 'code',
-                        editor: 'editor'
-                    };
-                    directive.link(scope, null, attrs);
-                    scope.var = 'var';
-                    scope.open();
-                    expect(rendererArgs.code).toEqual('code');
-                    expect(rendererArgs.translation).toEqual('var');
-                    expect(rendererArgs.editor).toEqual('editor');
-                    expect(rendererArgs.submit).toEqual(jasmine.any(Function));
-                    expect(rendererArgs.template).toEqual(jasmine.any(String));
+                describe('linker registers an open function', function () {
+                    beforeEach(function () {
+                        attrs = {
+                            code: 'code',
+                            editor: 'editor'
+                        };
+                        directive.link(scope, null, attrs);
+                    });
+
+                    it('with translation', function () {
+                        scope.var = 'var';
+                        scope.open();
+                        expect(rendererArgs.code).toEqual('code');
+                        expect(rendererArgs.translation).toEqual('var');
+                        expect(rendererArgs.editor).toEqual('editor');
+                        expect(rendererArgs.submit).toEqual(jasmine.any(Function));
+                        expect(rendererArgs.template).toEqual(jasmine.any(String));
+                    });
+
+                    it('when translation is the placeholder text', function () {
+                        scope.var = 'place your text here';
+                        scope.open();
+                        expect(rendererArgs.translation).toEqual('');
+                    });
                 });
 
                 describe('when element is a link', function () {
