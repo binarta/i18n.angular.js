@@ -1,4 +1,4 @@
-angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'notifications', 'checkpoint', 'toggle.edit.mode'])
+angular.module('i18n', ['i18n.templates', 'binarta-applicationjs-angular1', 'binarta-i18njs-angular1', 'i18n.gateways', 'config', 'config.gateways', 'angular.usecase.adapter', 'web.storage', 'notifications', 'checkpoint', 'toggle.edit.mode'])
     .service('i18n', ['$rootScope', '$q', '$location', 'config', 'i18nMessageReader', '$cacheFactory', 'i18nMessageWriter', 'usecaseAdapterFactory', 'publicConfigWriter', 'binarta', '$log', 'topicMessageDispatcher', 'sessionStorage', 'i18nMessageConverter', I18nService])
     .service('i18nRenderer', function () {
     })
@@ -448,7 +448,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     var self = this;
     var cache = $cacheFactory.get('i18n');
     var internalLocalePromise, externalLocalePromise;
-    var eventHandlers = new BinartaRX();
+    var eventHandlers = binarta.i18n.rx;
 
     var adhesiveReadingListener = new AdhesiveReadingListener();
     binarta.application.adhesiveReading.eventRegistry.add(adhesiveReadingListener);
@@ -635,6 +635,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     };
 
     this.observe = function (key, success, args) {
+        $log.warn('@Deprecated - Use binarta.i18n.observe() instead!');
         var listener = {};
         args = args || {};
         args.code = key;
@@ -652,6 +653,7 @@ function I18nService($rootScope, $q, $location, config, i18nMessageReader, $cach
     };
 
     function notifyObservers(key, value) {
+        binarta.i18n.raiseTranslation({code: key, message: value});
         eventHandlers.forEach(function (l) {
             l.notify(key, value);
         });

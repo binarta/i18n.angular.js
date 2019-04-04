@@ -41,7 +41,8 @@ describe('i18n', function () {
     });
 
     describe('i18n service', function () {
-        var $rootScope, config, i18n, localStorage, publicConfigReader, publicConfigWriter, $location, $httpBackend, i18nMessageReader,
+        var $rootScope, config, i18n, localStorage, publicConfigReader, publicConfigWriter, $location, $httpBackend,
+            i18nMessageReader,
             now;
 
         beforeEach(inject(function (_i18n_, _config_, _$rootScope_, _localStorage_, _publicConfigReader_, _publicConfigWriter_, _$location_, _$httpBackend_, _i18nMessageReader_) {
@@ -63,9 +64,11 @@ describe('i18n', function () {
         });
 
         describe('on translate', function () {
-            var $rootScope, writer, context, usecaseAdapter, topics;
+            var $rootScope, writer, context, usecaseAdapter, topics, observer, spy;
 
             beforeEach(inject(function (_$rootScope_, i18nMessageWriter, usecaseAdapterFactory, $q, topicMessageDispatcherMock) {
+                spy = jasmine.createSpyObj('spy', ['translation']);
+                observer = binarta.i18n.observe(spy);
                 $rootScope = _$rootScope_;
                 writer = i18nMessageWriter;
                 usecaseAdapter = usecaseAdapterFactory;
@@ -75,6 +78,10 @@ describe('i18n', function () {
                 };
                 topics = topicMessageDispatcherMock;
             }));
+
+            afterEach(function () {
+                observer.disconnect();
+            });
 
             function expectContextEquals(ctx) {
                 expect(writer.calls.first().args[0]).toEqual(ctx);
@@ -159,16 +166,27 @@ describe('i18n', function () {
                         expect(translation.value).toEqual('translation');
                     });
 
-                    it('with namespace', function () {
-                        config.namespace = 'N';
+                    describe('with namespace', function() {
+                        beforeEach(function() {
+                            config.namespace = 'N';
 
-                        i18n.translate(context);
-                        $rootScope.$digest();
-                        usecaseAdapter.calls.first().args[1]();
+                            i18n.translate(context);
+                            $rootScope.$digest();
+                            usecaseAdapter.calls.first().args[1]();
+                        });
 
-                        var translation = JSON.parse(sessionStorage.getItem('binarta:i18n:N:default:code'));
-                        expect(moment(translation.timestamp, 'YYYYMMDDHHmmssSSSZ').toDate()).toEqual(now);
-                        expect(translation.value).toEqual('translation');
+                        it('translation is stored in session storage', function () {
+                            var translation = JSON.parse(sessionStorage.getItem('binarta:i18n:N:default:code'));
+                            expect(moment(translation.timestamp, 'YYYYMMDDHHmmssSSSZ').toDate()).toEqual(now);
+                            expect(translation.value).toEqual('translation');
+                        });
+
+                        it('observers are notified of the translation', function() {
+                            expect(spy.translation).toHaveBeenCalledWith({
+                                code: 'code',
+                                message: 'translation'
+                            });
+                        });
                     });
                 });
             });
@@ -1281,7 +1299,7 @@ describe('i18n', function () {
                 observe: function (key, listener, args) {
                     resolver.observes.installations++;
                     resolver.observes.id = key;
-                    resolver.observes.default = args ? args.default || undefined : undefined ;
+                    resolver.observes.default = args ? args.default || undefined : undefined;
                     resolver.observes.listener = listener;
                     return {
                         disconnect: function () {
@@ -1397,30 +1415,30 @@ describe('i18n', function () {
                     expect(scope.var).toEqual('place your text here');
                 });
 
-                it('when edit mode is enabled then existing messages remain on the scope', function() {
+                it('when edit mode is enabled then existing messages remain on the scope', function () {
                     resolver.observes.listener('x');
                     registry['edit.mode'](true);
                     expect(scope.var).toEqual('x');
                 });
 
-                it('when edit mode is enabled and no message was ever resolve then the scope is not touched', function() {
+                it('when edit mode is enabled and no message was ever resolve then the scope is not touched', function () {
                     registry['edit.mode'](true);
                     expect(scope.var).toBeUndefined();
                 });
 
-                it('when edit mode is enabled and there is an existing empty messages on the scope then it shows a placeholder message', function() {
+                it('when edit mode is enabled and there is an existing empty messages on the scope then it shows a placeholder message', function () {
                     resolver.observes.listener(' ');
                     registry['edit.mode'](true);
                     expect(scope.var).toEqual('place your text here');
                 });
 
-                it('when edit mode is disabled then existing messages remain on the scope', function() {
+                it('when edit mode is disabled then existing messages remain on the scope', function () {
                     resolver.observes.listener('x');
                     registry['edit.mode'](false);
                     expect(scope.var).toEqual('x');
                 });
 
-                it('when edit mode is disabled then existing messages remain on the scope', function() {
+                it('when edit mode is disabled then existing messages remain on the scope', function () {
                     resolver.observes.listener('place your text here');
                     registry['edit.mode'](false);
                     expect(scope.var).toEqual('');
